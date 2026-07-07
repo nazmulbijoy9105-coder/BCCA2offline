@@ -175,8 +175,8 @@ export class BCCAAEngine {
         {
           citation: "60 DLR (AD) 54",
           court: "Appellate Division",
-          holding: "Registration of Bainapatra and deposit of remaining purchase money are absolute statutory prerequisites under Section 21A of the Specific Relief Act 1877.",
-          relevance: "Defeats any specific performance claims based on unregistered agreements or where balance deposit is lacking."
+          holding: "Registration of Bainapatra and deposit of remaining purchase money are absolute statutory prerequisites under Section 21A of the Specific Relief Act 1877. In their absence, a specific performance suit is incompetent and must be rejected at the threshold.",
+          relevance: "Strict statutory bar on maintainability of suits based on unregistered Bainapatras or where treasury deposit of the balance consideration is lacking."
         },
         {
           citation: "59 DLR (AD) 112",
@@ -247,7 +247,7 @@ export class BCCAAEngine {
       name: p.name,
       legalIdentity: p.identity,
       capacity: p.capacity,
-      causeOfActionAccess: p.causeOfAction || (isSP ? "Right to seek performance under registered agreement" : "Right of recovery as absolute registered titleholder"),
+      causeOfActionAccess: p.causeOfAction || (isSP ? "Right to seek performance under contract" : "Right of recovery as absolute registered titleholder"),
     }));
 
     const defendants = facts.parties.filter((p) => p.side === "defendant").map((p) => ({
@@ -258,13 +258,13 @@ export class BCCAAEngine {
     }));
 
     const joinderIssues = isSP
-      ? "No misjoinder or non-joinder identified. Only the original parties to the registered Bainapatra are necessary parties."
+      ? "No misjoinder or non-joinder identified. Only the original parties to the Bainapatra are necessary parties."
       : isDP
       ? "No misjoinder. If any third party is occupying a portion of the land, they must be added as a party to avoid issues in execution."
       : "No procedural misjoinder or non-joinder of parties.";
 
     const locusStandiSummary = isSP
-      ? "Plaintiff has undeniable locus standi as the contract-holder who paid advance consideration under a registered Bainapatra."
+      ? "Plaintiff has locus standi as the contract-holder. However, maintainability requires strict compliance with statutory pre-requisites (registration and deposit)."
       : isDP
       ? "Plaintiff has undeniable locus standi as the registered titleholder of the suit land supported by mutation khatians."
       : "Plaintiff has locus standi based on direct infringement of civil rights.";
@@ -287,8 +287,18 @@ export class BCCAAEngine {
     const territorialSection = "Section 16(a) and 16(d) of the Code of Civil Procedure 1908";
     const jurisdictionalFacts = facts.location || "The suit land situated within the local limits of the selected Court.";
 
-    const pecuniaryLimits = "Assistant Judge Court: Up to 15L | Senior Assistant: 15L to 25L | Joint District: 25L to 5Cr | District Judge: Unlimited (appeals up to 5Cr)";
-    
+    const pecuniaryLimits = `PECUNIARY JURISDICTION TABLE (Civil Courts Act 1887, as amended by the Civil Courts (Amendment) Act 2021):
+- Assistant Judge Court: Up to BDT 1,500,000 (15 Lakhs)
+- Senior Assistant Judge Court: BDT 1,500,001 to BDT 2,500,000 (25 Lakhs)
+- Joint District Judge Court: Above BDT 2,500,000 (Unlimited original jurisdiction)
+- District Judge Court (Appeals): Up to BDT 50,000,000 (5 Crores)
+- High Court Division (Appeals): Above BDT 50,000,000 (5 Crores)
+
+COMPUTED JURISDICTIONAL MAPPING:
+1. This suit is valued at ${valuationText} based on the contract consideration / land market rate.
+2. Under the Civil Courts (Amendment) Act 2021, BDT ${valuationNum.toLocaleString("en-US")} falls precisely in the ${courtLevel === "Senior Assistant Judge Court" ? "Senior Assistant Judge Court bracket (15L to 25L)" : courtLevel === "Assistant Judge Court" ? "Assistant Judge Court bracket (Up to 15L)" : "Joint District Judge Court bracket (Above 25L)"}.
+3. Therefore, the competent court of first instance is the ${courtLevel}.`;
+
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
     const suitsValuationActNotes = isSP
       ? `Valued under Section 7(x)(a) of the Court Fees Act 1870 and Section 8 of the Suits Valuation Act 1887. The suit is valued exactly at the contract consideration of BDT ${valuationNum.toLocaleString("en-US")}, requiring mandatory ad valorem court fees.`
@@ -312,7 +322,7 @@ export class BCCAAEngine {
         governingStatute: "Civil Courts Act 1887 and Section 9 of CPC 1908",
       },
       objectionStrategy: isSP
-        ? "Defendant may falsely assert that the property is undervalued. Promptly present the registered Bainapatra deed which records the agreed consideration, leaving no room for valuation disputes."
+        ? "Defendant may falsely assert that the property is undervalued. Promptly present the Bainapatra deed which records the agreed consideration, leaving no room for valuation disputes."
         : "Defendant may object under Section 21 of CPC. Counter by presenting the certified minimum valuation register of the sub-registry to prove valuation compliance.",
     };
   }
@@ -324,9 +334,9 @@ export class BCCAAEngine {
     const plaintChecklist = isSP
       ? [
           "Pleading the execution of the written Bainapatra",
-          "Pleading the registration of the Bainapatra (critical under Section 21A SRA)",
+          `Pleading the registration of the Bainapatra (WARNING: Bainapatra is unregistered/unregistered status is not specified. Fatal defect under Sec 21A SRA!)`,
           "Averring complete and continuous readiness and willingness to perform (Section 24 SRA)",
-          "Pleading the deposit of the remaining balance consideration in court",
+          `Pleading the deposit of the remaining balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court (WARNING: Lack of deposit mentioned in facts. Fatal defect under Sec 21A!)`,
           "Factual chronology of demand and defendant's refusal",
           "Correct description and boundaries of the suit land",
         ]
@@ -341,11 +351,12 @@ export class BCCAAEngine {
 
     const groundsForRejection = isSP
       ? [
-          "Order VII Rule 11(d) CPC if the suit is filed beyond 1 year of limitation",
-          "Order VII Rule 11(a) CPC if the plaint fails to show deposit of remaining balance (Section 21A SRA)",
+          "Order VII Rule 11(d) CPC if the suit is filed beyond 1 year of limitation (Article 54 Limitation Act).",
+          `Order VII Rule 11(a) and 11(d) CPC if the plaint fails to show registration of the Bainapatra, which is a mandatory statutory condition precedent under Section 21A SRA and Section 17A Registration Act.`,
+          `Order VII Rule 11(a) and 11(d) CPC if the plaint fails to show treasury deposit of the remaining balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")}, violating Section 21A SRA 1877.`
         ]
       : [
-          "Order VII Rule 11(d) CPC if the suit is filed beyond 12 years from the date of dispossession",
+          "Order VII Rule 11(d) CPC if the suit is filed beyond 12 years from the date of dispossession (Article 142 Limitation Act).",
         ];
 
     const writtenStatementDeemedAdmissions = isSP
@@ -407,7 +418,7 @@ export class BCCAAEngine {
     const applicablePrinciples = isSP
       ? [
           { principle: "Equity treats as done that which ought to be done", application: "Directs court to treat the contract of sale as an obligation that must be fulfilled by signing the deed.", weight: "High" },
-          { principle: "He who seeks equity must do equity", application: "Requires the Plaintiff to deposit the balance consideration of BDT " + facts.contractDetails.balance.toLocaleString("en-US") + " in court.", weight: "High" }
+          { principle: "He who seeks equity must do equity", application: `Requires the Plaintiff to deposit the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court treasury.`, weight: "High" }
         ]
       : [
           { principle: "He who comes to equity must come with clean hands", application: "The Defendant is a trespasser who forcefully dispossessed the owner and erected fences. No equitable relief is available to him.", weight: "High" },
@@ -415,7 +426,9 @@ export class BCCAAEngine {
         ];
 
     const discretionaryReliefCheck = isSP
-      ? "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion must be exercised on sound judicial principles. Since the Bainapatra is registered, balance money is deposited, and Plaintiff is ready, the court has no judicial grounds to deny the decree."
+      ? (!facts.isRegisteredBainapatra || !facts.isBalanceDeposited
+          ? "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion cannot be exercised in favor of an unregistered agreement or where the mandatory treasury deposit is unfulfilled. The statutory bar under Section 21A SRA strictly strips the court of its power to grant discretionary relief in this case."
+          : "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion must be exercised on sound judicial principles. Since the Bainapatra is registered, balance money is deposited, and Plaintiff is ready, the court has no judicial grounds to deny the decree.")
       : "Declarations under Section 42 and injunctions under Section 54 are discretionary. However, once the Plaintiff establishes absolute registered title and wrongful dispossession, recovery of possession under Section 8 SRA becomes an absolute legal right.";
 
     return {
@@ -430,15 +443,15 @@ export class BCCAAEngine {
 
     const stages = isSP
       ? [
-          { name: "Institution of Suit", cpc: "Order VII Rule 1", actions: "Draft plaint, pay ad valorem court fees, and file in Court.", strategy: "Ensure registered Bainapatra and balance deposit challan are attached." },
+          { name: "Institution of Suit", cpc: "Order VII Rule 1", actions: "Draft plaint, pay ad valorem court fees, and file in Court.", strategy: facts.isRegisteredBainapatra && facts.isBalanceDeposited ? "Attach registered Bainapatra and balance deposit treasury challan." : "WARNING: If Bainapatra is unregistered or balance is not deposited, plaint is highly vulnerable to rejection under Order VII Rule 11 CPC." },
           { name: "Service of Summons", cpc: "Order V", actions: "Dispatch summons through court bailiff and registered post with A/D.", strategy: "Verify defendant service to prevent delays in ex-parte proceedings." },
           { name: "Written Statement", cpc: "Order VIII Rule 1", actions: "Defendant must file written statement within 30-60 days.", strategy: "Examine written statement for any evasive denials of contract execution." },
-          { name: "Framing of Issues", cpc: "Order XIV Rule 1", actions: "Court frames formal issues of fact and law.", strategy: "Ensure the issues of execution, registration, and readiness are specifically framed." },
-          { name: "Plaintiff Evidence (P.W.)", cpc: "Order XVIII Rule 4", actions: "Examination-in-chief of Plaintiff, attesting witnesses of Bainapatra, and cross-examination.", strategy: "Affirm execution of Bainapatra, payment of advance, and deposit of balance money." },
+          { name: "Framing of Issues", cpc: "Order XIV Rule 1", actions: "Court frames formal issues of fact and law.", strategy: "Ensure the issues of execution, registration, and treasury deposit compliance are specifically framed." },
+          { name: "Plaintiff Evidence (P.W.)", cpc: "Order XVIII Rule 4", actions: "Examination-in-chief of Plaintiff, attesting witnesses, and cross-examination.", strategy: "Affirm execution of Bainapatra, payment of advance, and deposit of balance money." },
           { name: "Defendant Evidence (D.W.)", cpc: "Order XVIII", actions: "DW examination-in-chief and cross-examination by Plaintiff's pleader.", strategy: "Expose inconsistencies in Defendant's claims of fraud or non-payment during cross." },
-          { name: "Arguments", cpc: "Section 192 CPC", actions: "Final oral and written arguments.", strategy: "Cite 60 DLR (AD) 54 to assert that registration and deposit make performance mandatory." },
-          { name: "Judgment & Decree", cpc: "Order XX", actions: "Pronouncement of judgment directing specific performance.", strategy: "Verify that the decree directs execution and registration of sale deed in 30 days." },
-          { name: "Execution Case", cpc: "Order XXI Rule 34", actions: "File execution case if Defendant refuses to sign the deed.", strategy: "Pray for Court execution of the deed and delivery of physical possession." },
+          { name: "Arguments", cpc: "Section 192 CPC", actions: "Final oral and written arguments.", strategy: facts.isRegisteredBainapatra && facts.isBalanceDeposited ? "Cite 60 DLR (AD) 54 to assert that registration and deposit make performance mandatory." : "Explain statutory gaps or defend against Order VII Rule 11 dismissal." },
+          { name: "Judgment & Decree", cpc: "Order XX", actions: "Pronouncement of judgment.", strategy: facts.isRegisteredBainapatra && facts.isBalanceDeposited ? "Verify that the decree directs execution and registration of sale deed in 30 days." : "Expect dismissal/rejection of plaint unless statutory gaps are cured or alternative relief is granted." },
+          { name: "Execution Case", cpc: "Order XXI Rule 34", actions: "File execution case if decree is granted and Defendant refuses to sign.", strategy: "Pray for Court execution of the deed and delivery of physical possession." },
         ]
       : [
           { name: "Institution of Suit", cpc: "Order VII Rule 1", actions: "Draft plaint, value according to land market rate, pay ad valorem fees, file.", strategy: "Attach original registered sale deeds, mutation khatian, and dakhilas." },
@@ -502,13 +515,32 @@ export class BCCAAEngine {
     let executionPathway = "";
 
     if (isSP) {
-      overview = `This is a suit for Specific Performance of a contract for sale of land (Bainapatra). Under Section 21A of the Specific Relief Act 1877 (introduced in 2004) and Section 17A of the Registration Act 1908, a suit for specific performance is maintainable only if: (1) the Bainapatra is written and registered, and (2) the remaining purchase money of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is deposited in the court. The Plaintiff has complied with both statutory mandates. The Defendant has breached the reciprocal contract by refusing to execute the final sale deed.`;
-      
-      reliefDecree = `A decree for specific performance of contract is to be passed in favor of the Plaintiff. The Defendant is ordered to sign, execute, and register a proper Deed of Sale (Saf Kabala) in favor of the Plaintiff for the suit land within 30 days, upon drawing the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} deposited in court. In default, the Court shall execute and register the deed on behalf of the Defendant at their expense under Order XXI Rule 34 CPC, and direct physical delivery of possession.`;
-      
-      equitableBars = `No equitable bars apply against the Plaintiff. The Plaintiff has demonstrated continuous readiness, deposited the balance money, and filed within the strict 1-year limitation under Article 54. The Defendant is barred by the doctrine of reciprocal promises and statutory non-compliance.`;
-      
-      executionPathway = `The decree will be executed by filing an Execution Case under Order XXI Rule 32 and Rule 34 CPC. If the Defendant refuses to execute the deed, the executing court will execute and register the deed of sale. If needed, the court will issue a writ of delivery of possession (Dakhalnama) under Order XXI Rule 35 CPC to deliver actual vacant possession of the land.`;
+      if (!facts.isRegisteredBainapatra || !facts.isBalanceDeposited) {
+        let defectMsg = "";
+        if (!facts.isRegisteredBainapatra && !facts.isBalanceDeposited) {
+          defectMsg = "the Bainapatra is unregistered and there is no deposit of the remaining balance consideration in court";
+        } else if (!facts.isRegisteredBainapatra) {
+          defectMsg = "the Bainapatra is unregistered";
+        } else {
+          defectMsg = "there is no deposit of the remaining balance consideration in court";
+        }
+
+        overview = `CRITICAL COMPLIANCE GAP: This is a suit for Specific Performance where ${defectMsg}. Under Section 21A of the Specific Relief Act 1877 (introduced in 2004) and Section 17A of the Registration Act 1908, a suit for specific performance of a contract for land sale is strictly non-maintainable unless: (1) the Bainapatra is written and registered, and (2) the remaining purchase money of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is deposited in the court. Because these statutory conditions are unfulfilled, the suit is incompetent and will be dismissed at the threshold.`;
+        
+        reliefDecree = `Suit Dismissed / Plaint Rejected. No decree for specific performance can be passed in favor of the Plaintiff. The plaint is liable to be rejected under Order VII Rule 11 CPC due to a fatal statutory bar under Section 21A of the Specific Relief Act 1877 (unregistered Bainapatra or lack of treasury deposit). The Plaintiff must first ensure registration of the agreement and make the mandatory deposit of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} prior to or at the time of filing, or seek alternative remedies like refund of earnest money under Section 19 SRA.`;
+        
+        equitableBars = `The Plaintiff is barred by the strict provisions of Section 21A SRA 1877. The equitable principle of part-performance (Section 53A of the Transfer of Property Act) is also inapplicable as the agreement is unregistered. Equity cannot override an express statutory bar ("Equity follows the law").`;
+        
+        executionPathway = `None. Since the suit is dismissed or the plaint is rejected under Order VII Rule 11 CPC, no execution proceedings can be initiated under Order XXI CPC.`;
+      } else {
+        overview = `This is a suit for Specific Performance of a contract for sale of land (Bainapatra). The Bainapatra is written and registered, and the remaining purchase money of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is deposited in the court. The Plaintiff has complied with both statutory mandates of Section 21A of the Specific Relief Act 1877 and Section 17A of the Registration Act 1908. The Defendant has breached the contract by refusing to execute the final deed of sale.`;
+        
+        reliefDecree = `A decree for specific performance of contract is to be passed in favor of the Plaintiff. The Defendant is ordered to sign, execute, and register a proper Deed of Sale (Saf Kabala) in favor of the Plaintiff for the suit land within 30 days, upon drawing the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} deposited in court. In default, the Court shall execute and register the deed on behalf of the Defendant at their expense under Order XXI Rule 34 CPC, and direct physical delivery of possession.`;
+        
+        equitableBars = `No equitable bars apply against the Plaintiff. The Plaintiff has demonstrated continuous readiness, deposited the balance money, and filed within the strict 1-year limitation under Article 54. The Defendant is barred by the doctrine of reciprocal promises and statutory non-compliance.`;
+        
+        executionPathway = `The decree will be executed by filing an Execution Case under Order XXI Rule 32 and Rule 34 CPC. If the Defendant refuses to execute the deed, the executing court will execute and register the deed of sale. If needed, the court will issue a writ of delivery of possession (Dakhalnama) under Order XXI Rule 35 CPC to deliver actual vacant possession of the land.`;
+      }
     } else if (isDP) {
       const hasSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
       if (hasSec9) {
@@ -558,7 +590,7 @@ export class BCCAAEngine {
     
     // Extract dates dynamically
     const dateInfoList = this.extractDates(text);
-    const dates = dateInfoList.map((d) => {
+    let dates = dateInfoList.map((d) => {
       const parsedEvent = this.inferEventForDateEx(d, text);
       return {
         date: d.dateStr,
@@ -604,6 +636,60 @@ export class BCCAAEngine {
       category = "DECLARATION_AND_POSSESSION";
     }
 
+    // Explicit statutory compliance checks (anti-fabrication logic)
+    const isRegisteredBainapatra = lower.includes("registered") && !lower.includes("unregistered");
+    const isBalanceDeposited = /\b(?:deposit|deposited|treasury|challan)\b/i.test(lower);
+
+    // Fallback sequential timeline if no calendar dates are found
+    if (dates.length === 0) {
+      if (category === "SPECIFIC_PERFORMANCE") {
+        dates = [
+          {
+            date: "T=0 (Execution Date Not Specified)",
+            event: "Execution of the written agreement to sell (Bainapatra) between Plaintiff and Defendant.",
+            parties: "Plaintiff and Defendant",
+            statutorySignificance: "Establishes a contract under Section 54 of the Transfer of Property Act 1882. Subject to mandatory registration under Section 17A of the Registration Act 1908."
+          },
+          {
+            date: "T + Implied Performance Window",
+            event: "Stipulated deadline/duration for registration of sale deed under contract terms.",
+            parties: "Plaintiff and Defendant",
+            statutorySignificance: "Defines performance window. Triggers limitation period under Article 54 of the Limitation Act 1908 if breach occurs."
+          },
+          {
+            date: "T + Refusal (Later Date)",
+            event: "Defendant's refusal to perform contract and execute final registered sale deed.",
+            parties: "Defendant",
+            statutorySignificance: "Constitutes breach of reciprocal promise and triggers cause of action for Specific Performance under Section 12 SRA 1877."
+          }
+        ];
+      } else if (category === "DECLARATION_AND_POSSESSION") {
+        dates = [
+          {
+            date: "T=0 (Prior Registered Title)",
+            event: "Plaintiff acquires legal ownership of property via registered sale deed, mutation, and dakhilas.",
+            parties: "Plaintiff",
+            statutorySignificance: "Establishes absolute registered title chain under Section 54 of the Transfer of Property Act 1882."
+          },
+          {
+            date: "T + Dispossession Date (Not Specified)",
+            event: "Wrongful and forceful dispossession of the Plaintiff from the suit land by the Defendant.",
+            parties: "Defendant",
+            statutorySignificance: "Causes ouster. Triggers 12-year recovery window under Article 142 of the Limitation Act or 6-month summary remedy under Section 9 SRA 1877."
+          }
+        ];
+      } else {
+        dates = [
+          {
+            date: "T=0 (Civil Dispute Emergence)",
+            event: "Occurrence of primary dispute and infringement of civil rights.",
+            parties: "Pleading Parties",
+            statutorySignificance: "Establishes cause of action for a civil suit under Section 9 of the Code of Civil Procedure 1908."
+          }
+        ];
+      }
+    }
+
     // Extract contract details
     const contractDetails = this.extractContractDetails(text);
 
@@ -623,7 +709,7 @@ export class BCCAAEngine {
       keywords,
       admitted: this.extractAdmittedFacts(text, category, contractDetails),
       disputed: this.extractDisputedFacts(text, category),
-      inferred: this.extractInferredFacts(text, category),
+      inferred: this.extractInferredFacts(text, category, isRegisteredBainapatra, isBalanceDeposited),
       liability: this.extractLiabilityFacts(text, category),
       quantum: this.extractQuantumFacts(text, category, contractDetails),
       triggers: this.extractTriggers(text, category, contractDetails),
@@ -631,6 +717,8 @@ export class BCCAAEngine {
       location: this.extractLocation(text),
       category,
       contractDetails,
+      isRegisteredBainapatra,
+      isBalanceDeposited,
     };
   }
 
@@ -909,7 +997,7 @@ export class BCCAAEngine {
       
       if (breachDateInfo) {
         accrualDate = breachDateInfo.parsedDate;
-        accrualDateStr = breachDateInfo.dateStr + " (Defendant's refusal to register the sale deed)";
+        accrualDateStr = breachDateInfo.dateStr + " (Defendant's refusal to register)";
       } else if (executionDateInfo) {
         // Assume 6 months deadline if no breach date explicitly found
         const execDate = executionDateInfo.parsedDate;
@@ -975,7 +1063,7 @@ export class BCCAAEngine {
         preliminaryAnalysis = `The suit is WITHIN LIMITATION. The cause of action accrued ${diffDays} days ago, which is well within the prescribed period of ${period} under ${article} of the Limitation Act 1908.`;
       }
     } else {
-      preliminaryAnalysis = `The limitation cannot be fully computed as no valid accrual date (e.g. date of refusal or dispossession) could be extracted from the fact pattern. Pleaders must verify these dates.`;
+      preliminaryAnalysis = `CHRONOLOGY DEFICIT WARNING: The limitation period cannot be computed because the input fact pattern does not specify any calendar dates (such as the date of execution of the agreement or the date of refusal). Under Article 54, a specific performance suit must be filed within 1 year of the date fixed for performance, or if no such date is fixed, when the plaintiff has notice that performance is refused. Without these dates, filing timing is completely unverified. Gaps explicitly flagged: execution date, performance deadline, and refusal date are required.`;
     }
     
     return {
@@ -1001,11 +1089,15 @@ export class BCCAAEngine {
           title: `Whether the suit is maintainable in its present form and under Sections 12 and 21A of the Specific Relief Act 1877`,
           type: "Mixed (Law & Fact)",
           burden: "Plaintiff",
-          evidence: "Plaint compliance, registered Bainapatra, deposit receipt",
-          plaintiffPosition: "Suit is fully maintainable as the contract is registered and remaining purchase money is deposited.",
-          defendantPosition: "Suit is barred by statutory rules and lack of cause of action.",
-          courtAnalysis: "Under Section 21A, registration and balance deposit are mandatory. If met, the suit is maintainable.",
-          projectedFinding: "Decided in favor of Plaintiff."
+          evidence: "Plaint compliance, registered Bainapatra, treasury deposit receipt",
+          plaintiffPosition: facts.isRegisteredBainapatra && facts.isBalanceDeposited
+            ? "Suit is fully maintainable as the contract is registered and remaining purchase money is deposited."
+            : "Plaintiff asserts readiness, but lacks proof of registration and deposit.",
+          defendantPosition: "Suit is strictly barred under Section 21A SRA due to failure to register Bainapatra or deposit balance consideration.",
+          courtAnalysis: "Under Section 21A SRA, a suit for specific performance is incompetent unless the Bainapatra is registered and the balance money is deposited in court via treasury challan. Facts do not show compliance with these prerequisites.",
+          projectedFinding: facts.isRegisteredBainapatra && facts.isBalanceDeposited
+            ? "Decided in favor of Plaintiff."
+            : "Decided AGAINST Plaintiff (Fatal statutory bar under Section 21A of the Specific Relief Act 1877)."
         },
         {
           title: `Whether the suit is barred by limitation under Article 54 of the Limitation Act 1908`,
@@ -1013,29 +1105,41 @@ export class BCCAAEngine {
           burden: "Defendant",
           evidence: "Stipulated deadline of performance or refusal date, date of filing",
           plaintiffPosition: "The suit was filed within 1 year of Defendant's refusal to register the deed.",
-          defendantPosition: "The suit was filed beyond 1 year from the date fixed for performance.",
-          courtAnalysis: "Article 54 prescribes 1 year for specific performance. Based on the refusal/breach date, the suit timing is computed.",
-          projectedFinding: "Decided in favor of Plaintiff (if filed within 1 year) or Defendant (if over 1 year)."
+          defendantPosition: "The suit is barred by limitation.",
+          courtAnalysis: "Article 54 prescribes 1 year for specific performance. If no specific dates are provided, limitation cannot be verified and is a severe triable issue.",
+          projectedFinding: "Triable Issue / Subject to proof of precise calendar dates."
         },
         {
           title: `Whether there was a valid and registered Bainapatra executed between ${pName} and ${dName}`,
           type: "Fact",
           burden: "Plaintiff",
           evidence: "Original registered Bainapatra, attesting witnesses, payment voucher of advance",
-          plaintiffPosition: `Plaintiff executed a valid, registered Bainapatra on the recorded date and paid BDT ${facts.contractDetails.advance.toLocaleString("en-US")} in advance.`,
-          defendantPosition: "Denies execution of registered agreement or asserts signatures were obtained by fraud.",
-          courtAnalysis: "The registered deed carries a strong presumption of execution under Section 60 of the Registration Act. No credible fraud shown.",
-          projectedFinding: "Decided in favor of Plaintiff."
+          plaintiffPosition: facts.isRegisteredBainapatra
+            ? `Plaintiff executed a valid, registered Bainapatra on the recorded date and paid BDT ${facts.contractDetails.advance.toLocaleString("en-US")} in advance.`
+            : `Plaintiff executed a written Bainapatra, but has not demonstrated registration.`,
+          defendantPosition: "Denies execution of registered agreement or asserts signatures were obtained by fraud / unregistered status bars suit.",
+          courtAnalysis: facts.isRegisteredBainapatra
+            ? "The registered deed carries a strong presumption of execution under Section 60 of the Registration Act. No credible fraud shown."
+            : "The contract is unregistered. Under Section 17A of the Registration Act 1908 and Section 21A SRA, an unregistered land contract is legally inoperative for seeking specific performance.",
+          projectedFinding: facts.isRegisteredBainapatra
+            ? "Decided in favor of Plaintiff."
+            : "Decided AGAINST Plaintiff (No title interest or right of specific performance under unregistered agreement)."
         },
         {
           title: `Whether the Plaintiff was always ready and willing to pay the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")}`,
           type: "Mixed",
           burden: "Plaintiff",
           evidence: "Written notices demanding execution, bank challan of the balance deposit",
-          plaintiffPosition: `Plaintiff was ready and willing at all times, and has deposited the balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court.`,
-          defendantPosition: "Plaintiff has no funds and failed to perform obligations within time.",
-          courtAnalysis: "Deposit of balance consideration in court under Section 21A SRA is conclusive proof of Plaintiff's continuous readiness and willingness.",
-          projectedFinding: "Decided in favor of Plaintiff."
+          plaintiffPosition: facts.isBalanceDeposited
+            ? `Plaintiff was ready and willing at all times, and has deposited the balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court.`
+            : "Plaintiff claims willingness but has not made the actual treasury deposit.",
+          defendantPosition: "Plaintiff has no funds and failed to perform obligations, and failed to make the mandatory deposit.",
+          courtAnalysis: facts.isBalanceDeposited
+            ? "Deposit of balance consideration in court under Section 21A SRA is conclusive proof of Plaintiff's continuous readiness and willingness."
+            : "Under Section 21A SRA, continuous readiness must be backed by actual treasury deposit of the remaining balance consideration. A mere pleading of 'ready and willing' is a fatal omission without the deposit.",
+          projectedFinding: facts.isBalanceDeposited
+            ? "Decided in favor of Plaintiff."
+            : "Decided AGAINST Plaintiff (Unproved readiness due to lack of treasury deposit)."
         }
       ];
     } else if (isDP) {
@@ -1131,18 +1235,24 @@ export class BCCAAEngine {
     if (isSP) {
       evidence.push(
         {
-          item: "Original Registered Bainapatra (Agreement to Sell)",
+          item: facts.isRegisteredBainapatra
+            ? "Original Registered Bainapatra (Agreement to Sell)"
+            : "Original Written Bainapatra (Agreement to Sell - WARNING: UNREGISTERED)",
           source: "Plaintiff",
           type: "Documentary (Primary)",
           governingSection: "Section 61 and 62 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — Registered document carrying high statutory execution weight under Section 60 of the Registration Act."
+          admissibilityChallenge: facts.isRegisteredBainapatra
+            ? "Admissible — Registered document carrying high statutory execution weight under Section 60 of the Registration Act."
+            : "FATAL DEFICIENCY — Admissible as a private document, but legally legally ineffective for specific performance due to Section 17A of the Registration Act and Section 21A SRA."
         },
         {
           item: "Bank Challan / Treasury Deposit Receipt (Remaining Balance)",
           source: "Pleader's Court Filings",
           type: "Documentary (Certified)",
           governingSection: "Section 74 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — Proof of statutory deposit of the remaining consideration in the government treasury under Section 21A SRA."
+          admissibilityChallenge: facts.isBalanceDeposited
+            ? "Admissible — Proof of statutory deposit of the remaining consideration in the government treasury under Section 21A SRA."
+            : "MISSING — No treasury deposit receipt is mentioned in the facts. Under Section 21A, lack of actual treasury deposit of remaining balance is a fatal statutory bar."
         },
         {
           item: "Written Legal Notices & Postal Receipts",
@@ -1222,7 +1332,9 @@ export class BCCAAEngine {
         {
           statuteSection: "Section 60 of the Registration Act 1908",
           presumptionStyle: "Shall presume valid execution",
-          effectOnCase: "The Court will presume the Bainapatra was validly executed once the certificate of registration is exhibited."
+          effectOnCase: facts.isRegisteredBainapatra
+            ? "The Court will presume the Bainapatra was validly executed once the certificate of registration is exhibited."
+            : "No presumption. The Bainapatra is unregistered."
         },
         {
           statuteSection: "Section 114 of the Evidence Act 1872",
@@ -1251,7 +1363,7 @@ export class BCCAAEngine {
     const isSP = category === "SPECIFIC_PERFORMANCE";
 
     if (isSP) {
-      admitted.push("Execution of a written contract of sale (Bainapatra) between the parties.");
+      admitted.push("Execution of a written agreement/contract of sale (Bainapatra) between the parties.");
       admitted.push(`Receipt of BDT ${details.advance.toLocaleString("en-US")} as advance/earnest money by the Defendant.`);
     } else {
       admitted.push("Plaintiff holds a chain of title deeds.");
@@ -1266,8 +1378,9 @@ export class BCCAAEngine {
 
     if (isSP) {
       disputed.push("Whether the Defendant willfully neglected to execute and register the final sale deed.");
-      disputed.push("Whether the Bainapatra is registered in compliance with Section 17A of the Registration Act.");
+      disputed.push("Whether the Bainapatra is registered in compliance with Section 17A of the Registration Act 1908.");
       disputed.push("Whether the Plaintiff was continuously ready and willing to perform the contract.");
+      disputed.push("Whether the remaining balance consideration has been deposited in court as required by Section 21A SRA.");
     } else {
       disputed.push("Whether the Plaintiff has absolute legal title or if Defendant has any hostile independent right.");
       disputed.push("Whether the Defendant forcefully dispossessed the Plaintiff and built unauthorized fences.");
@@ -1276,10 +1389,21 @@ export class BCCAAEngine {
     return disputed;
   }
 
-  private extractInferredFacts(text: string, category: string): string[] {
+  private extractInferredFacts(text: string, category: string, isRegistered: boolean, isDeposited: boolean): string[] {
     const isSP = category === "SPECIFIC_PERFORMANCE";
     if (isSP) {
-      return ["Plaintiff has demonstrated absolute ready-to-pay status by depositing the remaining consideration in the treasury."];
+      const inferred: string[] = [];
+      if (!isRegistered) {
+        inferred.push("INFERRED VULNERABILITY: The Bainapatra was executed as a written private document, but was NOT registered.");
+      } else {
+        inferred.push("The Bainapatra is registered and legally operative.");
+      }
+      if (!isDeposited) {
+        inferred.push("INFERRED VULNERABILITY: The Plaintiff did NOT deposit the remaining balance consideration in the Court treasury.");
+      } else {
+        inferred.push("The Plaintiff has demonstrated ready-to-pay status by depositing the remaining consideration in court.");
+      }
+      return inferred;
     } else {
       return ["Defendant occupies the land solely as a trespasser, lacking any registered conveyance or mutation records."];
     }
@@ -1288,7 +1412,7 @@ export class BCCAAEngine {
   private extractLiabilityFacts(text: string, category: string): string[] {
     const isSP = category === "SPECIFIC_PERFORMANCE";
     if (isSP) {
-      return ["Defendant is contractually and statutory liable to execute and register the final Sale Deed."];
+      return ["Defendant is contractually liable to execute and register the final Sale Deed, subject to statutory conditions being met."];
     } else {
       return ["Defendant is liable for wrongful dispossession, civil trespass, and must dismantle encroaching fences."];
     }
@@ -1300,7 +1424,7 @@ export class BCCAAEngine {
       return [
         `Total agreed consideration: BDT ${details.total.toLocaleString("en-US")}`,
         `Advance paid under Bainapatra: BDT ${details.advance.toLocaleString("en-US")}`,
-        `Remaining balance deposit: BDT ${details.balance.toLocaleString("en-US")}`
+        `Remaining balance to be deposited: BDT ${details.balance.toLocaleString("en-US")}`
       ];
     } else {
       const match = text.match(/(\d+)\s*decimals/i);
@@ -1318,7 +1442,7 @@ export class BCCAAEngine {
       return [
         { domain: "Contract Law", fact: "Written agreement (Bainapatra)", trigger: "Section 2(h) of the Contract Act 1872 & Section 54 of the Transfer of Property Act 1882" },
         { domain: "Registration Law", fact: "Mandatory registration", trigger: "Section 17A of the Registration Act 1908" },
-        { domain: "Specific Relief", fact: "Balance money deposited", trigger: "Section 21A of the Specific Relief Act 1877" }
+        { domain: "Specific Relief", fact: "Mandatory Treasury Deposit", trigger: "Section 21A of the Specific Relief Act 1877" }
       ];
     } else {
       return [
@@ -1345,6 +1469,8 @@ interface ParsedFacts {
   location?: string;
   category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL";
   contractDetails: { total: number; advance: number; balance: number };
+  isRegisteredBainapatra: boolean;
+  isBalanceDeposited: boolean;
 }
 
 interface ParsedParty {
