@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           maxAdmins: 10,
           maxUsers: 100,
           tier: "enterprise",
-          allowedDomains: ["localhost", "127.0.0.1", "run.app"],
+          allowedDomains: ["localhost", "127.0.0.1", "run.app", "vercel.app", "vercel.dev"],
           features: ["offline_engine", "pdf_export", "case_history", "audit_logs", "user_management"]
         });
         activeLicenseKey = autoKey;

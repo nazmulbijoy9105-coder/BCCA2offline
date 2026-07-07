@@ -130,7 +130,14 @@ export function validateLicenseKey(licenseKey: string): { valid: boolean; reason
     if (typeof window !== "undefined" && window.location) {
       const currentDomain = window.location.hostname;
       if (data.allowedDomains && data.allowedDomains.length > 0) {
-        const isAllowed = data.allowedDomains.some((d: string) => d === currentDomain || currentDomain === "localhost" || currentDomain === "127.0.0.1" || currentDomain.endsWith("." + d));
+        const isAllowed = data.allowedDomains.some((d: string) => 
+          d === currentDomain || 
+          currentDomain === "localhost" || 
+          currentDomain === "127.0.0.1" || 
+          currentDomain.endsWith("." + d) ||
+          currentDomain.endsWith(".vercel.app") ||
+          currentDomain.endsWith(".run.app")
+        );
         if (!isAllowed) {
           return { valid: false, reason: `Domain ${currentDomain} is unauthorized under license terms` };
         }
