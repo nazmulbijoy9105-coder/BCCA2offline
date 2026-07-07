@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { CaseAnalysisResponse } from "../types/types";
+import TimelineValidation from "./TimelineValidation";
 import { 
   Briefcase, Scale, Calendar, AlertTriangle, Users, MapPin, 
   FileCheck, List, Shield, Eye, HelpCircle, GitCommit, CornerRightDown, Layers
@@ -255,6 +256,15 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     </div>
                   </div>
 
+                  {analysis.stage3.timelineValidation && (
+                    <TimelineValidation 
+                      timeline={analysis.stage3.timelineValidation}
+                      isTimeBarred={analysis.stage3.isTimeBarred}
+                      accrualDate={analysis.stage3.accrualDate}
+                      category={analysis.stage0.factsMeta?.category}
+                    />
+                  )}
+
                   <div className="bg-[#FDFBF7] p-3 border border-[#E5E1D8] rounded text-[11px] italic">
                     <strong>Limitation Assessment:</strong> {analysis.stage3.preliminaryAnalysis}
                   </div>
@@ -484,20 +494,103 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
 
               {/* STAGE 11 */}
               {activeStage === 11 && (
-                <div className="space-y-4">
-                  <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Civil Procedure Lifecycle Milestones</h4>
-                  <div className="relative border-l-2 border-[#C5A059] ml-2 pl-4 space-y-4">
-                    {analysis.stage11.timelineProgress.map((tp, i) => (
-                      <div key={i} className="relative">
-                        <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-[#C5A059] border-4 border-white" />
-                        <div className="text-[11px]">
-                          <div className="font-bold text-[#1E252B]">{tp.stageName} <span className="font-mono text-[9px] font-bold text-neutral-400">({tp.cpcReference})</span></div>
-                          <p className="text-[#4A5560] mt-0.5">Actions: {tp.subActions}</p>
-                          <p className="text-[#C5A059] font-medium font-mono text-[10px] uppercase mt-0.5">Strategy: {tp.strategicPlay}</p>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-3">Civil Procedure Lifecycle Milestones</h4>
+                    <div className="relative border-l-2 border-[#C5A059] ml-2 pl-4 space-y-4">
+                      {analysis.stage11.timelineProgress.map((tp, i) => (
+                        <div key={i} className="relative">
+                          <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-[#C5A059] border-4 border-white" />
+                          <div className="text-[11px]">
+                            <div className="font-bold text-[#1E252B]">{tp.stageName} <span className="font-mono text-[9px] font-bold text-neutral-400">({tp.cpcReference})</span></div>
+                            <p className="text-[#4A5560] mt-0.5">Actions: {tp.subActions}</p>
+                            <p className="text-[#C5A059] font-medium font-mono text-[10px] uppercase mt-0.5">Strategy: {tp.strategicPlay}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {analysis.stage1.primaryDomain === "Partition & Succession Suit" && (
+                    <div className="border border-[#1E252B] bg-[#FAF9F5] p-5 relative space-y-4 mt-6">
+                      <div className="absolute top-0 right-0 bg-[#C5A059] text-[#1E252B] font-mono text-[9px] font-bold px-3 py-1 uppercase tracking-wider">
+                        O39 R1&2 CPC Draft
+                      </div>
+                      <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-[#1E252B] border-b border-[#E5E1D8] pb-2 flex items-center gap-2">
+                        <span>⚖️ Framed Temporary Injunction Application (Order XXXIX Rules 1 & 2)</span>
+                      </h4>
+                      <p className="text-[11px] text-[#4A5560] leading-relaxed">
+                        To restrain Defendant Fatema from alienating, selling, or transferring undivided parts of the suit property to third parties during the pendency of the partition suit.
+                      </p>
+
+                      <div className="bg-white border border-[#E5E1D8] p-5 font-mono text-[11.5px] text-[#1E252B] space-y-4 overflow-x-auto max-h-[400px] overflow-y-auto leading-relaxed shadow-inner">
+                        <div className="text-center font-bold space-y-1">
+                          <p className="uppercase">IN THE COURT OF THE JOINT DISTRICT JUDGE, DHAKA</p>
+                          <p>OTHER CLASS SUIT NO. ________ OF 2026</p>
+                        </div>
+
+                        <div className="flex justify-between font-bold text-[10.5px]">
+                          <div>
+                            <p>1. Tariq Karim</p>
+                            <p>2. Sajid Karim</p>
+                            <p className="normal-case italic font-normal pl-4">... Plaintiffs-Petitioners</p>
+                          </div>
+                          <div className="text-center self-center">-Versus-</div>
+                          <div className="text-right">
+                            <p>Fatema Karim</p>
+                            <p className="normal-case italic font-normal pr-4">... Defendant-Opposite Party</p>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-[#E5E1D8] pt-2">
+                          <p className="font-bold uppercase text-center underline leading-normal">
+                            APPLICATION FOR TEMPORARY INJUNCTION UNDER ORDER XXXIX RULES 1 AND 2 READ WITH SECTION 151 OF THE CODE OF CIVIL PROCEDURE, 1908
+                          </p>
+                        </div>
+
+                        <p className="font-bold">The humble petition of the Plaintiffs-Petitioners above-named most respectfully sheweth:</p>
+
+                        <ol className="list-decimal pl-5 space-y-3">
+                          <li>
+                            That the Plaintiffs-Petitioners have filed the accompanying Partition Suit for declaration of heirship, specific fractional shares (2/5th each to Plaintiffs and 1/5th to Defendant) under Muslim Shariat law, and partition of the suit property left by the intestate demise of their father, Abdul Karim, on 15 January 2026.
+                          </li>
+                          <li>
+                            That after the demise of the ancestor, the Defendant Fatema obtained an exclusive wrongful namjari mutation (No. 4502/2026) in her name at the Upazila Land Office by suppression of facts, thereby clouding the title of the Plaintiffs.
+                          </li>
+                          <li>
+                            That the Defendant has recently engaged in advanced negotiations with local third-party real estate developers to alienate the undivided joint family property, specifically the valuable commercial portion, without the consent of the Plaintiffs.
+                          </li>
+                          <li>
+                            That the Plaintiffs have a clear <strong>prima facie case</strong> and high probability of success in the partition suit as succession opens automatically upon death under Shariat law, vesting immediate legal ownership in the co-heirs.
+                          </li>
+                          <li>
+                            That the <strong>balance of convenience and inconvenience</strong> lies heavily in favor of granting the injunction. If the Defendant is permitted to sell or alter the physical state of the undivided suit land, it will introduce third-party interests, create multiple litigation nodes, and frustrate the partition decree.
+                          </li>
+                          <li>
+                            That the Plaintiffs will suffer <strong>irreparable loss and injury</strong> which cannot be compensated in monetary terms if the status quo is disrupted during the trial.
+                          </li>
+                        </ol>
+
+                        <p className="font-bold">Wherefore, it is most humbly prayed that your Honour would graciously be pleased to:</p>
+
+                        <div className="pl-5 space-y-2">
+                          <p>
+                            a) Grant an order of <strong>Temporary Injunction</strong> restraining the Defendant, her agents, servants, or assigns from alienating, selling, or transferring the undivided suit land or creating any third-party encumbrances until the disposal of the suit; and/or
+                          </p>
+                          <p>
+                            b) Pass an ad-interim order of <strong>Status Quo</strong> in respect of the possession and title records of the suit property;
+                          </p>
+                          <p>
+                            c) Pass such other or further order(s) as your Honour may deem fit and proper.
+                          </p>
+                        </div>
+
+                        <div className="text-right pt-4 font-bold">
+                          <p>And for this act of kindness, the petitioners as in duty bound shall ever pray.</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 

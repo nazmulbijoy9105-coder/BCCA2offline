@@ -34,6 +34,14 @@ export interface CaseAnalysisResponse {
     inferredFacts: string[];
     liabilityFacts: string[];
     quantumFacts: string[];
+    factsMeta?: {
+      category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION";
+      isRegisteredBainapatra: boolean | "unspecified";
+      isBalanceDeposited: boolean | "unspecified";
+      plaintiffHasRegisteredTitle: boolean | "unspecified";
+      dispossessionProven: boolean | "unspecified";
+      isUsingDefaultAmounts?: boolean;
+    };
   };
   stage1: {
     primaryDomain: string;
@@ -66,6 +74,15 @@ export interface CaseAnalysisResponse {
     isTimeBarred: boolean;
     exceptionsOrExtensions: string;
     preliminaryAnalysis: string;
+    timelineValidation?: {
+      agreementDate: string | null;
+      refusalDate: string | null;
+      isAgreementDateExtracted: boolean;
+      isRefusalDateExtracted: boolean;
+      calculationType: "real_refusal" | "heuristic_6_months" | "missing_dates" | "other_category";
+      validationStatus: "valid" | "heuristic_applied" | "invalid_gaps";
+      explanation: string;
+    };
   };
   stage4: {
     plaintiffs: Array<{

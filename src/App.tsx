@@ -7,6 +7,8 @@ import { downloadSecurePDF } from "./utils/pdfGeneratorSecure";
 import { logAudit } from "./utils/audit";
 import { CaseAnalysisResponse, CaseHistoryItem } from "./types/types";
 import StageExplorer from "./components/StageExplorer";
+import MissingEvidenceAlert from "./components/MissingEvidenceAlert";
+import AIComparePanel from "./components/AIComparePanel";
 import LoginPage from "./auth/LoginPage";
 import SuperAdminDashboard from "./admin/SuperAdminDashboard";
 
@@ -470,6 +472,12 @@ export default function App() {
                 {analysisResult.stage13.overview}
               </div>
             </div>
+
+            {/* Missing Evidence Alert Panel */}
+            <MissingEvidenceAlert analysis={analysisResult} />
+
+            {/* AI Comparison Panel */}
+            <AIComparePanel factPattern={factPattern} analysisResult={analysisResult} />
 
             {/* Stage-by-Stage Explorer */}
             <StageExplorer analysis={analysisResult} />
