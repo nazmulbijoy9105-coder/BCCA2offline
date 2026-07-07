@@ -107,6 +107,8 @@ export class BCCAAEngine {
         primary = "Specific Performance";
       } else if (facts.category === "DECLARATION_AND_POSSESSION") {
         primary = "Declaration of Title";
+      } else if (facts.category === "INHERITANCE_CONSULTATION") {
+        primary = "Inheritance Consultation";
       } else {
         primary = "General Civil Dispute";
       }
@@ -116,6 +118,8 @@ export class BCCAAEngine {
       ? ["Contract Law", "Registration & Stamp Law", "Equity Jurisprudence"]
       : facts.category === "DECLARATION_AND_POSSESSION"
       ? ["Specific Relief", "Property and Land Law", "Recovery and Ouster"]
+      : facts.category === "INHERITANCE_CONSULTATION"
+      ? ["Muslim Personal Law (Shariat)", "Civil Procedure", "Inheritance and Succession"]
       : ["General Civil Procedure", "Injunctions"];
 
     return {
@@ -133,8 +137,9 @@ export class BCCAAEngine {
   private mapLegislation(facts: ParsedFacts) {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
     const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
 
-    const primaryAct = isSP || isDP ? "Specific Relief Act 1877" : "Code of Civil Procedure 1908";
+    const primaryAct = isSP || isDP ? "Specific Relief Act 1877" : isInheritance ? "Muslim Personal Law (Shariat) Application Act 1937" : "Code of Civil Procedure 1908";
 
     const relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }> = [];
 
@@ -160,6 +165,12 @@ export class BCCAAEngine {
       relevantSections.push(
         { actName: "Specific Relief Act 1877", sectionOrRule: "Section 54", purpose: "Grant of perpetual/permanent injunction to restrain further trespass." },
         { actName: "State Acquisition and Tenancy Act 1950", sectionOrRule: "Section 143", purpose: "Rules for updating land record-of-rights (Khatian) and recording mutation." }
+      );
+    } else if (isInheritance) {
+      relevantSections.push(
+        { actName: "Muslim Personal Law (Shariat) Application Act 1937", sectionOrRule: "Section 2", purpose: "Mandates application of Muslim Personal Law in all questions regarding inheritance and succession of Muslims." },
+        { actName: "Code of Civil Procedure 1908", sectionOrRule: "Section 9", purpose: "Jurisdiction of civil courts, requiring a present cause of action of a civil nature." },
+        { actName: "Specific Relief Act 1877", sectionOrRule: "Section 42", purpose: "Enables declaratory suits for establishing present legal character or property rights (which do not exist prior to ancestor's death)." }
       );
     } else {
       relevantSections.push(
@@ -200,6 +211,21 @@ export class BCCAAEngine {
           relevance: "Corroborates the Plaintiff's possession chain and refutes claims of adverse possession by trespassers."
         }
       );
+    } else if (isInheritance) {
+      precedents.push(
+        {
+          citation: "30 DLR (SC) 115",
+          court: "Supreme Court",
+          holding: "Under Muslim Law, a child does not acquire any interest in their parent's property during the parent's lifetime. No right of inheritance can vest or be declared as long as the parent is alive.",
+          relevance: "Sons have no vested right or maintainable cause of action to challenge parent's declarations during his lifetime."
+        },
+        {
+          citation: "55 DLR (AD) 180",
+          court: "Appellate Division",
+          holding: "A unilateral declaration or newspaper notice 'disowning' a child is unknown to Muslim law and has no legal effect. It neither disinherits the heir nor operates as a gift/transfer to divest the owner's title.",
+          relevance: "Sons' future right of succession remains intact as a matter of law, but is not currently a justiciable right."
+        }
+      );
     } else {
       precedents.push(
         {
@@ -220,6 +246,11 @@ export class BCCAAEngine {
       ? [
           "He who comes to equity must come with clean hands — a trespasser cannot resist the legal title of the registered owner.",
           "Equity aids the vigilant, not those who slumber on their rights — enforcing strict 12-year limits on title recovery."
+        ]
+      : isInheritance
+      ? [
+          "Equity follows the law — Muslim personal law governs the succession; courts cannot create a present inheritance right where law denies it.",
+          "Equity will not grant a declaration in the air — no declaration can be granted for a mere expectation of succession (spes successionis)."
         ]
       : [
           "Delay defeats equity — Vigilantibus non dormientibus jura subveniunt."
@@ -242,32 +273,52 @@ export class BCCAAEngine {
   private analyzeParties(facts: ParsedFacts) {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
     const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
 
     const plaintiffs = facts.parties.filter((p) => p.side === "plaintiff").map((p) => ({
       name: p.name,
       legalIdentity: p.identity,
       capacity: p.capacity,
-      causeOfActionAccess: p.causeOfAction || (isSP ? "Right to seek performance under contract" : "Right of recovery as absolute registered titleholder"),
+      causeOfActionAccess: p.causeOfAction || (isSP ? "Right to seek performance under contract" : isInheritance ? "No present cause of action; inheritance rights have not vested" : "Right of recovery as absolute registered titleholder"),
     }));
 
     const defendants = facts.parties.filter((p) => p.side === "defendant").map((p) => ({
       name: p.name,
       legalIdentity: p.identity,
       capacity: p.capacity,
-      liabilityType: p.liability || (isSP ? "Contractual breach of Bainapatra" : "Wrongful trespass and illegal dispossession"),
+      liabilityType: p.liability || (isSP ? "Contractual breach of Bainapatra" : isInheritance ? "Unilateral declarant; holds absolute ownership till death" : "Wrongful trespass and illegal ouster"),
     }));
 
     const joinderIssues = isSP
       ? "No misjoinder or non-joinder identified. Only the original parties to the Bainapatra are necessary parties."
       : isDP
       ? "No misjoinder. If any third party is occupying a portion of the land, they must be added as a party to avoid issues in execution."
+      : isInheritance
+      ? "Sons cannot sue father as a matter of right for declaration of inheritance shares during his lifetime. The suit is fundamentally incompetent for lack of a maintainable cause of action."
       : "No procedural misjoinder or non-joinder of parties.";
 
-    const locusStandiSummary = isSP
-      ? "Plaintiff has locus standi as the contract-holder. However, maintainability requires strict compliance with statutory pre-requisites (registration and deposit)."
-      : isDP
-      ? "Plaintiff has undeniable locus standi as the registered titleholder of the suit land supported by mutation khatians."
-      : "Plaintiff has locus standi based on direct infringement of civil rights.";
+    let locusStandiSummary = "";
+    if (isSP) {
+      if (facts.isRegisteredBainapatra === true) {
+        locusStandiSummary = "Plaintiff has valid locus standi as the holder of a registered contract of sale (Bainapatra) in compliance with Section 17A of the Registration Act 1908.";
+      } else if (facts.isRegisteredBainapatra === false) {
+        locusStandiSummary = "CRITICAL STANDI FAILURE: Plaintiff lacks standard locus standi for specific performance as the contract is explicitly unregistered, rendering the suit strictly incompetent under Section 21A SRA.";
+      } else {
+        locusStandiSummary = "Locus standi is contingent on the Bainapatra being registered. If unregistered, Plaintiff is barred under Section 21A SRA from seeking specific performance.";
+      }
+    } else if (isDP) {
+      if (facts.plaintiffHasRegisteredTitle === true) {
+        locusStandiSummary = "Plaintiff has undeniable locus standi as the registered legal owner of the property holding registered deeds and certified mutation khatians.";
+      } else if (facts.plaintiffHasRegisteredTitle === false) {
+        locusStandiSummary = "CRITICAL STANDI FAILURE: Plaintiff has no registered title or mutation in the land records, which undermines any locus standi to claim land declaration.";
+      } else {
+        locusStandiSummary = "Locus standi depends on proving ownership. The Plaintiff must produce registered title deeds or mutation records to maintain a suit for declaration under Section 42 SRA.";
+      }
+    } else if (isInheritance) {
+      locusStandiSummary = "The Plaintiffs (sons) LACK locus standi at present. A person possesses no status as an 'heir' during the ancestor's lifetime; they possess a mere 'spes successionis' (hope of succession) which is non-transferable and non-justiciable.";
+    } else {
+      locusStandiSummary = "Plaintiff has locus standi based on direct infringement of civil rights.";
+    }
 
     return {
       plaintiffs,
@@ -279,8 +330,34 @@ export class BCCAAEngine {
 
   // ─── STAGE 5: JURISDICTION ───
   private determineJurisdiction(facts: ParsedFacts) {
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
+    if (isInheritance) {
+      return {
+        territorial: {
+          rule: "Not yet applicable.",
+          governingSection: "Section 16 CPC (Deferred)",
+          jurisdictionalFacts: "Since no maintainable civil cause of action is disclosed, territorial jurisdiction cannot be established."
+        },
+        pecuniary: {
+          valuation: "Not applicable (Deferred)",
+          courtLevel: "Deferred",
+          pecuniaryLimits: "Not applicable",
+          suitsValuationActNotes: "No court can presently be selected or pecuniary jurisdiction calculated because no maintainable suit exists on the stated facts alone. Any valuation or court fee assessment is entirely premature."
+        },
+        subjectMatter: {
+          isExcluded: true,
+          forum: "None",
+          governingStatute: "Muslim Personal Law / CPC Section 9"
+        },
+        objectionStrategy: "Any plaint filed under these facts must be met with a threshold objection under Order VII Rule 11(a) CPC (rejection of plaint for failure to disclose a cause of action) and Section 42 of the Specific Relief Act (non-maintainability)."
+      };
+    }
+
     const valuationNum = facts.contractDetails.total;
-    const valuationText = `BDT ${valuationNum.toLocaleString("en-US")}`;
+    const isDefault = facts.contractDetails.isUsingDefaultAmounts;
+    const valuationText = isDefault 
+      ? `BDT ${valuationNum.toLocaleString("en-US")} (WARNING: Default placeholder - no valuation figures specified in facts)`
+      : `BDT ${valuationNum.toLocaleString("en-US")}`;
     const courtLevel = this.determineCourtLevel(valuationNum);
 
     const territorialRule = "A civil suit for land title, possession, or specific performance must be instituted where the immovable property is situated.";
@@ -300,9 +377,16 @@ COMPUTED JURISDICTIONAL MAPPING:
 3. Therefore, the competent court of first instance is the ${courtLevel}.`;
 
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const suitsValuationActNotes = isSP
-      ? `Valued under Section 7(x)(a) of the Court Fees Act 1870 and Section 8 of the Suits Valuation Act 1887. The suit is valued exactly at the contract consideration of BDT ${valuationNum.toLocaleString("en-US")}, requiring mandatory ad valorem court fees.`
-      : `Valued under Section 7(iv)(c) of the Court Fees Act 1870. The Plaintiff has valued the relief for declaration of title with consequential recovery of khas possession at the market rate of BDT ${valuationNum.toLocaleString("en-US")}, requiring ad valorem court fees.`;
+    let suitsValuationActNotes = "";
+    if (isSP) {
+      suitsValuationActNotes = isDefault
+        ? `(WARNING: Placeholder valuation used) Since no contract value was specified in the facts, a default value of BDT 1,200,000 has been applied for illustration. In an actual suit, it is valued under Section 7(x)(a) of the Court Fees Act 1870 at the exact contract consideration.`
+        : `Valued under Section 7(x)(a) of the Court Fees Act 1870 and Section 8 of the Suits Valuation Act 1887. The suit is valued exactly at the contract consideration of BDT ${valuationNum.toLocaleString("en-US")}, requiring mandatory ad valorem court fees.`;
+    } else {
+      suitsValuationActNotes = isDefault
+        ? `(WARNING: Placeholder valuation used) Since no land value was specified in the facts, a default value of BDT 1,200,000 has been applied. In an actual suit, recovery is valued under Section 7(iv)(c) of the Court Fees Act 1870 at the market rate.`
+        : `Valued under Section 7(iv)(c) of the Court Fees Act 1870. The Plaintiff has valued the relief for declaration of title with consequential recovery of khas possession at the market rate of BDT ${valuationNum.toLocaleString("en-US")}, requiring ad valorem court fees.`;
+    }
 
     return {
       territorial: {
@@ -330,40 +414,102 @@ COMPUTED JURISDICTIONAL MAPPING:
   // ─── STAGE 6: PLEADINGS ───
   private checkPleadings(facts: ParsedFacts) {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
+    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
 
-    const plaintChecklist = isSP
-      ? [
-          "Pleading the execution of the written Bainapatra",
-          `Pleading the registration of the Bainapatra (WARNING: Bainapatra is unregistered/unregistered status is not specified. Fatal defect under Sec 21A SRA!)`,
-          "Averring complete and continuous readiness and willingness to perform (Section 24 SRA)",
-          `Pleading the deposit of the remaining balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court (WARNING: Lack of deposit mentioned in facts. Fatal defect under Sec 21A!)`,
-          "Factual chronology of demand and defendant's refusal",
-          "Correct description and boundaries of the suit land",
-        ]
-      : [
-          "Pleading absolute ownership and registered title deeds",
-          "Pleading mutation details and land development tax payments",
-          "Averring the exact date, time, and manner of wrongful dispossession",
-          "Providing detailed schedule and boundaries of the encroached land",
-          "Prayer for declaration of title and khas possession",
-          "Prayer for permanent injunction and removal of structures",
-        ];
+    let plaintChecklist: string[] = [];
+    if (isInheritance) {
+      plaintChecklist.push("Pleading future expectation of inheritance (spes successionis) (WARNING: Non-justiciable!)");
+      plaintChecklist.push("Pleading the father's affidavit/notice as a legal injury (WARNING: This does not constitute a legally cognizable injury!)");
+      plaintChecklist.push("Prayer for declaration of inheritance shares (WARNING: Strictly prohibited during lifetime of ancestor!)");
+      plaintChecklist.push("Prayer for partition or injunction against father (WARNING: Unenforceable during lifetime of ancestor!)");
+    } else if (isSP) {
+      plaintChecklist.push("Pleading the execution of the written Bainapatra");
+      if (facts.isRegisteredBainapatra === true) {
+        plaintChecklist.push("Pleading the registration of the Bainapatra (Status: Satisfied - Registered Bainapatra is available)");
+      } else if (facts.isRegisteredBainapatra === false) {
+        plaintChecklist.push("Pleading the registration of the Bainapatra (CRITICAL DEFICIENCY: Agreement is explicitly unregistered, violating Section 21A SRA!)");
+      } else {
+        plaintChecklist.push("Pleading the registration of the Bainapatra (WARNING: Registration is unspecified; must plead and produce registered deed)");
+      }
+      plaintChecklist.push("Averring complete and continuous readiness and willingness to perform (Section 24 SRA)");
+      if (facts.isBalanceDeposited === true) {
+        plaintChecklist.push(`Pleading the deposit of the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court (Status: Satisfied - Treasury receipt available)`);
+      } else if (facts.isBalanceDeposited === false) {
+        plaintChecklist.push(`Pleading the deposit of the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} (CRITICAL DEFICIENCY: Balance is explicitly NOT deposited in court, violating Section 21A SRA!)`);
+      } else {
+        plaintChecklist.push(`Pleading the deposit of the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} (WARNING: Deposit status is unspecified; must deposit in treasury via challan before filing)`);
+      }
+      plaintChecklist.push("Factual chronology of demand and defendant's refusal");
+      plaintChecklist.push("Correct description and boundaries of the suit land");
+    } else {
+      if (facts.plaintiffHasRegisteredTitle === true) {
+        plaintChecklist.push("Pleading absolute ownership supported by registered Saf Kabala and mutation (Status: Satisfied)");
+      } else if (facts.plaintiffHasRegisteredTitle === false) {
+        plaintChecklist.push("Pleading ownership (CRITICAL DEFICIENCY: Plaintiff explicitly has no registered title or mutation!)");
+      } else {
+        plaintChecklist.push("Pleading ownership (WARNING: Title documents and mutation records are unspecified)");
+      }
+      plaintChecklist.push("Pleading mutation details and land development tax payments");
+      if (facts.dispossessionProven === true) {
+        plaintChecklist.push("Averring the exact date, time, and manner of wrongful dispossession (Status: Satisfied)");
+      } else if (facts.dispossessionProven === false) {
+        plaintChecklist.push("Averring dispossession (CRITICAL DEFICIENCY: Facts explicitly state no ouster or dispossession occurred!)");
+      } else {
+        plaintChecklist.push("Averring dispossession (WARNING: Details of dispossession/ouster are unspecified)");
+      }
+      plaintChecklist.push("Providing detailed schedule and boundaries of the encroached land");
+      plaintChecklist.push("Prayer for declaration of title and khas possession");
+      plaintChecklist.push("Prayer for permanent injunction and removal of structures");
+    }
 
-    const groundsForRejection = isSP
-      ? [
-          "Order VII Rule 11(d) CPC if the suit is filed beyond 1 year of limitation (Article 54 Limitation Act).",
-          `Order VII Rule 11(a) and 11(d) CPC if the plaint fails to show registration of the Bainapatra, which is a mandatory statutory condition precedent under Section 21A SRA and Section 17A Registration Act.`,
-          `Order VII Rule 11(a) and 11(d) CPC if the plaint fails to show treasury deposit of the remaining balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")}, violating Section 21A SRA 1877.`
-        ]
-      : [
-          "Order VII Rule 11(d) CPC if the suit is filed beyond 12 years from the date of dispossession (Article 142 Limitation Act).",
-        ];
+    const lim = this.computeLimitation(facts);
+    const groundsForRejection: string[] = [];
+    if (isInheritance) {
+      groundsForRejection.push("Order VII Rule 11(a) CPC: The plaint fails to disclose any accrued civil cause of action since the father is alive.");
+      groundsForRejection.push("Order VII Rule 11(d) CPC / Section 42 SRA: The suit is barred by law as a declaratory suit for inheritance shares during the ancestor's lifetime is legally non-maintainable.");
+    } else if (isSP) {
+      if (lim.isTimeBarred) {
+        groundsForRejection.push("Order VII Rule 11(d) CPC as the suit is filed beyond the 1-year limitation under Article 54.");
+      } else if (lim.accrualDate === "Not determinable from facts") {
+        groundsForRejection.push("Order VII Rule 11(d) CPC warning: Inability to verify limitation due to missing calendar dates in pleadings.");
+      } else {
+        groundsForRejection.push("Order VII Rule 11(d) CPC warning if filed beyond 1 year of limitation (Article 54 Limitation Act).");
+      }
 
-    const writtenStatementDeemedAdmissions = isSP
+      if (facts.isRegisteredBainapatra === false) {
+        groundsForRejection.push("Order VII Rule 11(a) and 11(d) CPC: The plaint shows the Bainapatra is unregistered, which is a fatal statutory threshold bar under Section 21A SRA.");
+      } else if (facts.isRegisteredBainapatra === "unspecified") {
+        groundsForRejection.push("Order VII Rule 11(a) and (d) risk if the Plaintiff fails to produce/plead a registered Bainapatra.");
+      }
+
+      if (facts.isBalanceDeposited === false) {
+        groundsForRejection.push(`Order VII Rule 11(a) and 11(d) CPC: The plaint shows the Plaintiff failed to deposit the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court treasury, violating Section 21A SRA.`);
+      } else if (facts.isBalanceDeposited === "unspecified") {
+        groundsForRejection.push(`Order VII Rule 11(a) and (d) risk if the Plaintiff fails to deposit the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in treasury.`);
+      }
+    } else {
+      if (lim.isTimeBarred) {
+        const isSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
+        groundsForRejection.push(isSec9 
+          ? "Order VII Rule 11(d) CPC: Summary suit is clearly barred as it was filed beyond the 6-month limit of Section 9 SRA." 
+          : "Order VII Rule 11(d) CPC: Suit is clearly barred as it was filed beyond the 12-year limit of Article 142.");
+      } else if (lim.accrualDate === "Not determinable from facts") {
+        groundsForRejection.push("Order VII Rule 11(d) CPC warning: Dispossession dates are completely missing, risking dismissal on limitation grounds.");
+      } else {
+        groundsForRejection.push("Order VII Rule 11(d) CPC if the suit is filed beyond 12 years from dispossession (Article 142 Limitation Act) or 6 months for Section 9 summary suits.");
+      }
+    }
+
+    const writtenStatementDeemedAdmissions = isInheritance
+      ? "The Defendant (father) can assert absolute, unencumbered ownership of the properties. The unilateral affidavit or notice disowning the sons is a factual event, but is legally irrelevant to title ownership."
+      : isSP
       ? "Under Order VIII Rule 5 CPC, if the Defendant fails to specifically deny the execution or registration of the Bainapatra, it will be treated as a deemed admission. General or evasive denials are insufficient."
       : "If the Defendant does not specifically challenge the registered sale deeds of the Plaintiff or their mutation entries, they shall be treated as deemed admissions under Order VIII Rule 5 CPC.";
 
-    const counterclaimsOrSetOff = isSP
+    const counterclaimsOrSetOff = isInheritance
+      ? "The Defendant (father) may seek a perpetual injunction under Section 54 SRA to restrain the sons from interfering with his physical possession, enjoyment, or alienation of his absolute property."
+      : isSP
       ? "Defendant may file a counterclaim seeking cancellation of the Bainapatra under Section 39 SRA on grounds of alleged fraud. The burden to establish fraud lies heavily on the Defendant."
       : "Defendant may assert a counterclaim of adverse possession or independent title, which requires high proof of hostile and continuous physical possession exceeding 12 years.";
 
@@ -414,22 +560,90 @@ COMPUTED JURISDICTIONAL MAPPING:
   // ─── STAGE 10: EQUITY ───
   private checkEquity(facts: ParsedFacts) {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
+    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
 
-    const applicablePrinciples = isSP
-      ? [
-          { principle: "Equity treats as done that which ought to be done", application: "Directs court to treat the contract of sale as an obligation that must be fulfilled by signing the deed.", weight: "High" },
-          { principle: "He who seeks equity must do equity", application: `Requires the Plaintiff to deposit the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court treasury.`, weight: "High" }
-        ]
-      : [
-          { principle: "He who comes to equity must come with clean hands", application: "The Defendant is a trespasser who forcefully dispossessed the owner and erected fences. No equitable relief is available to him.", weight: "High" },
-          { principle: "Equity aids the vigilant, not those who slumber on their rights", application: "Plaintiff filed the suit within the 12-year statutory limit from dispossession, demonstrating vigil.", weight: "Medium" }
-        ];
+    let applicablePrinciples: { principle: string; application: string; weight: string }[] = [];
+    if (isInheritance) {
+      applicablePrinciples.push({
+        principle: "Equity follows the law",
+        application: "Since Muslim personal law mandates that inheritance only opens upon death and CPC Section 9 requires a present cause of action, equity cannot create a right of succession where the law denies it during the parent's lifetime.",
+        weight: "Absolute"
+      });
+      applicablePrinciples.push({
+        principle: "Equity will not grant a declaration in the air",
+        application: "The court will not grant an equitable declaration for a future contingent interest (spes successionis). Equity only acts to protect vested, justiciable rights.",
+        weight: "High"
+      });
+    } else if (isSP) {
+      applicablePrinciples.push({
+        principle: "Equity treats as done that which ought to be done",
+        application: "Directs the court to treat the contract of sale as an obligation that must be fulfilled by signing the final deed, provided the statutory conditions under Section 21A are fully met.",
+        weight: facts.isRegisteredBainapatra === true ? "High" : "Low (Overridden by statutory bar)"
+      });
 
-    const discretionaryReliefCheck = isSP
-      ? (!facts.isRegisteredBainapatra || !facts.isBalanceDeposited
-          ? "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion cannot be exercised in favor of an unregistered agreement or where the mandatory treasury deposit is unfulfilled. The statutory bar under Section 21A SRA strictly strips the court of its power to grant discretionary relief in this case."
-          : "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion must be exercised on sound judicial principles. Since the Bainapatra is registered, balance money is deposited, and Plaintiff is ready, the court has no judicial grounds to deny the decree.")
-      : "Declarations under Section 42 and injunctions under Section 54 are discretionary. However, once the Plaintiff establishes absolute registered title and wrongful dispossession, recovery of possession under Section 8 SRA becomes an absolute legal right.";
+      let depositApp = "";
+      if (facts.isBalanceDeposited === true) {
+        depositApp = `Plaintiff has done equity by depositing the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court treasury.`;
+      } else if (facts.isBalanceDeposited === false) {
+        depositApp = `CRITICAL FAILURE: Plaintiff has failed to do equity because the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is explicitly NOT deposited in the court treasury.`;
+      } else {
+        depositApp = `Plaintiff must do equity by depositing the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in treasury before filing.`;
+      }
+
+      applicablePrinciples.push({
+        principle: "He who seeks equity must do equity",
+        application: depositApp,
+        weight: "High"
+      });
+    } else {
+      let cleanHandsApp = "";
+      if (facts.plaintiffHasRegisteredTitle === false) {
+        cleanHandsApp = "CRITICAL WARNING: The Plaintiff holds NO registered title or mutation deeds, which severely compromises their legal stand and their claim of clean hands to seek equitable relief.";
+      } else if (facts.dispossessionProven === false) {
+        cleanHandsApp = "CRITICAL WARNING: No dispossession has been shown in the facts, yet Plaintiff is seeking recovery of khas possession. Seeking recovery without actual ouster violates the principle of clean hands.";
+      } else {
+        cleanHandsApp = "The Plaintiff comes with clean hands, backed by registered title deeds and seeking to restore possession of which they were wrongfully deprived by a trespasser.";
+      }
+
+      applicablePrinciples.push({
+        principle: "He who comes to equity must come with clean hands",
+        application: cleanHandsApp,
+        weight: "High"
+      });
+
+      const lim = this.computeLimitation(facts);
+      applicablePrinciples.push({
+        principle: "Equity aids the vigilant, not those who slumber on their rights",
+        application: lim.isTimeBarred 
+          ? "CRITICAL WARNING: Plaintiff has slumbered on their rights! The suit is filed beyond the statutory limitation period, completely barring equitable or legal remedies."
+          : lim.accrualDate === "Not determinable from facts"
+          ? "WARNING: Vigilance cannot be verified due to lack of specific dispossession/calendar dates in the facts."
+          : `Plaintiff filed the suit within the statutory limit from the date of dispossession (${lim.accrualDate}), demonstrating adequate vigilance.`,
+        weight: lim.isTimeBarred ? "Fatal" : "Medium"
+      });
+    }
+
+    let discretionaryReliefCheck = "";
+    if (isInheritance) {
+      discretionaryReliefCheck = "Declarations under Section 42 and injunctions under Section 54 of the Specific Relief Act are entirely discretionary. However, since the Plaintiffs have no present legal character or vested property right, the court has zero discretionary power to entertain the suit and must reject it under Order VII Rule 11(a) CPC.";
+    } else if (isSP) {
+      if (facts.isRegisteredBainapatra === false || facts.isBalanceDeposited === false) {
+        discretionaryReliefCheck = "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion cannot be exercised in favor of an unregistered agreement or where the mandatory treasury deposit is unfulfilled. The statutory threshold bar under Section 21A SRA strictly strips the court of its power to grant discretionary relief in this case. The suit must be dismissed.";
+      } else if (facts.isRegisteredBainapatra === "unspecified" || facts.isBalanceDeposited === "unspecified") {
+        discretionaryReliefCheck = `WARNING: Discretionary relief under Section 12 SRA is highly conditional. If the Bainapatra is proved to be unregistered or the balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is not deposited in the court treasury, the court has ZERO discretion and must reject the plaint under Section 21A SRA.`;
+      } else {
+        discretionaryReliefCheck = "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion must be exercised on sound, reasonable judicial principles. Since the Bainapatra is registered, balance money is fully deposited, and Plaintiff is ready, the court has no judicial grounds to deny the decree.";
+      }
+    } else {
+      if (facts.plaintiffHasRegisteredTitle === false) {
+        discretionaryReliefCheck = "Declarations under Section 42 and injunctions under Section 54 are discretionary. Since the Plaintiff has no registered title, the court cannot exercise discretion to declare a title that does not exist in the record.";
+      } else if (facts.dispossessionProven === false) {
+        discretionaryReliefCheck = "Recovery of possession under Section 8 SRA requires actual ouster/wrongful dispossession. Since no dispossession is established, the court has no legal basis to grant a recovery decree.";
+      } else {
+        discretionaryReliefCheck = "Declarations under Section 42 and injunctions under Section 54 are discretionary. However, once the Plaintiff establishes absolute registered title and wrongful dispossession, recovery of possession under Section 8 SRA becomes an absolute legal right that the court is bound to enforce.";
+      }
+    }
 
     return {
       applicablePrinciples,
@@ -508,30 +722,55 @@ COMPUTED JURISDICTIONAL MAPPING:
   private synthesize(facts: ParsedFacts) {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
     const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
 
     let overview = "";
     let reliefDecree = "";
     let equitableBars = "";
     let executionPathway = "";
 
-    if (isSP) {
-      if (!facts.isRegisteredBainapatra || !facts.isBalanceDeposited) {
-        let defectMsg = "";
-        if (!facts.isRegisteredBainapatra && !facts.isBalanceDeposited) {
-          defectMsg = "the Bainapatra is unregistered and there is no deposit of the remaining balance consideration in court";
-        } else if (!facts.isRegisteredBainapatra) {
-          defectMsg = "the Bainapatra is unregistered";
-        } else {
-          defectMsg = "there is no deposit of the remaining balance consideration in court";
-        }
+    const lim = this.computeLimitation(facts);
 
-        overview = `CRITICAL COMPLIANCE GAP: This is a suit for Specific Performance where ${defectMsg}. Under Section 21A of the Specific Relief Act 1877 (introduced in 2004) and Section 17A of the Registration Act 1908, a suit for specific performance of a contract for land sale is strictly non-maintainable unless: (1) the Bainapatra is written and registered, and (2) the remaining purchase money of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is deposited in the court. Because these statutory conditions are unfulfilled, the suit is incompetent and will be dismissed at the threshold.`;
+    if (isInheritance) {
+      overview = `MATTER CLASSIFIED: Inheritance / Succession Consultation (Muslim Personal Law).
+The facts describe a family dispute where a living father has executed an affidavit or newspaper notice 'disowning' his sons and declaring they have no claim to his estate.
+Under the Muslim Personal Law (Shariat) Application Act 1937, inheritance only opens upon the death of the owner. While the father is alive, the sons hold no vested legal right or interest in his property, but a mere expectation of succession (spes successionis).
+Furthermore, a unilateral disowning declaration by affidavit is legally ineffective under Muslim law to alter the statutory lines of succession or strip an heir of their future entitlement.
+Therefore, there is no present civil cause of action, no accrued legal injury, and no maintainable lawsuit at this stage.`;
+
+      reliefDecree = `No Decree / Dismissal recommended if a suit is filed. 
+A court of law cannot grant a declaration of future inheritance shares or partition during the lifetime of the ancestor. Any suit instituted on these facts alone lacks a justiciable cause of action and is liable to be rejected under Order VII Rule 11(a) CPC.`;
+
+      equitableBars = `A declaratory suit is barred under Section 42 of the Specific Relief Act 1877 because the Plaintiffs have no present vested legal character or right to property. Equity follows the law and will not grant a declaration in the air for a future contingent right.`;
+
+      executionPathway = `None. Since no decree can be passed on these facts, no execution proceedings under Order XXI CPC can be initiated.`;
+    } else if (isSP) {
+      if (facts.isRegisteredBainapatra === false || facts.isBalanceDeposited === false || lim.isTimeBarred) {
+        let defects: string[] = [];
+        if (facts.isRegisteredBainapatra === false) defects.push("the Bainapatra is unregistered (violates Section 21A SRA)");
+        if (facts.isBalanceDeposited === false) defects.push("the remaining balance consideration is NOT deposited in court (violates Section 21A SRA)");
+        if (lim.isTimeBarred) defects.push("the suit is barred by limitation (violates Article 54, filed beyond 1 year)");
+
+        overview = `CRITICAL COMPLIANCE FAILURE: This is a suit for Specific Performance of a Bainapatra with fatal threshold defects: ${defects.join(", ")}. Under Section 21A of the Specific Relief Act 1877 and Section 17A of the Registration Act 1908, these statutory conditions are mandatory and non-negotiable. Because the Plaintiff has failed to satisfy these legal preconditions, the suit is incompetent and will be dismissed at the threshold.`;
         
-        reliefDecree = `Suit Dismissed / Plaint Rejected. No decree for specific performance can be passed in favor of the Plaintiff. The plaint is liable to be rejected under Order VII Rule 11 CPC due to a fatal statutory bar under Section 21A of the Specific Relief Act 1877 (unregistered Bainapatra or lack of treasury deposit). The Plaintiff must first ensure registration of the agreement and make the mandatory deposit of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} prior to or at the time of filing, or seek alternative remedies like refund of earnest money under Section 19 SRA.`;
+        reliefDecree = `Suit Dismissed / Plaint Rejected. The Court cannot pass a decree for specific performance. The plaint is liable to be rejected under Order VII Rule 11 CPC. The Plaintiff has no legal entitlement to a deed execution or physical possession. Any prayer for a decree of specific performance is strictly denied.`;
         
-        equitableBars = `The Plaintiff is barred by the strict provisions of Section 21A SRA 1877. The equitable principle of part-performance (Section 53A of the Transfer of Property Act) is also inapplicable as the agreement is unregistered. Equity cannot override an express statutory bar ("Equity follows the law").`;
+        equitableBars = `The Plaintiff's claim is barred by the strict provisions of Section 21A SRA 1877. The equitable principle of part-performance (Section 53A of the Transfer of Property Act 1882) is completely inapplicable as the contract is unregistered. "Equity follows the law" — the court cannot bypass express statutory mandates to grant discretionary relief.`;
         
-        executionPathway = `None. Since the suit is dismissed or the plaint is rejected under Order VII Rule 11 CPC, no execution proceedings can be initiated under Order XXI CPC.`;
+        executionPathway = `None. Since the suit is dismissed or the plaint is rejected under Order VII Rule 11 CPC, no execution case can be initiated under Order XXI CPC.`;
+      } else if (facts.isRegisteredBainapatra === "unspecified" || facts.isBalanceDeposited === "unspecified" || lim.accrualDate === "Not determinable from facts") {
+        let warnings: string[] = [];
+        if (facts.isRegisteredBainapatra === "unspecified") warnings.push("unspecified registration status of the Bainapatra");
+        if (facts.isBalanceDeposited === "unspecified") warnings.push("unspecified court treasury deposit of the balance consideration");
+        if (lim.accrualDate === "Not determinable from facts") warnings.push("undeterminable limitation status due to missing calendar dates");
+
+        overview = `WARNING - POTENTIAL COMPLIANCE GAPS: The factual record contains critical unspecified elements: ${warnings.join(", ")}. Under Section 21A SRA 1877, a specific performance suit cannot survive if the Bainapatra is unregistered or the balance consideration remains undeposited. If these facts are unproven at trial, the suit will fail.`;
+
+        reliefDecree = `Decree Conditional / Potential Dismissal. A decree for specific performance can ONLY be passed if the Plaintiff proves registration of the Bainapatra and demonstrates that the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} was deposited in the court treasury via challan. If either element is unproved, the suit must be dismissed.`;
+
+        equitableBars = `Discretionary relief under Section 12 SRA is highly conditional. If the Bainapatra is unregistered or the balance is undeposited, the court is stripped of its discretionary power by Section 21A SRA.`;
+
+        executionPathway = `Conditional Execution. Execution under Order XXI CPC (specifically Rule 34 for executing deeds) can only proceed if the Plaintiff obtains a favorable decree by proving statutory compliance.`;
       } else {
         overview = `This is a suit for Specific Performance of a contract for sale of land (Bainapatra). The Bainapatra is written and registered, and the remaining purchase money of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is deposited in the court. The Plaintiff has complied with both statutory mandates of Section 21A of the Specific Relief Act 1877 and Section 17A of the Registration Act 1908. The Defendant has breached the contract by refusing to execute the final deed of sale.`;
         
@@ -544,21 +783,51 @@ COMPUTED JURISDICTIONAL MAPPING:
     } else if (isDP) {
       const hasSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
       if (hasSec9) {
-        overview = "This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877. The Plaintiff has proved forcible dispossession from the suit land within 6 months prior to filing the suit without consent. In a Section 9 suit, the court decides purely on the question of possession and dispossession, without entering into the question of ultimate title.";
-        
-        reliefDecree = "A decree is to be passed directing the Defendant to restore actual khas possession of the suit land to the Plaintiff within 30 days, and ordering the removal of unauthorized structures/fences. No declaration of title is granted in this summary proceeding.";
-        
-        equitableBars = "The suit was filed within 6 months of dispossession. The Defendant is barred from raising title claims in this suit and must seek remedy in an independent title suit.";
-        
-        executionPathway = "The decree will be executed by filing an Execution Case under Order XXI Rule 35 CPC. The court will issue a writ of delivery of possession (Dakhalnama) and direct a bailiff to physically hand over vacant possession, pulling down structures if necessary.";
+        if (lim.isTimeBarred) {
+          overview = "CRITICAL LIMITATION FAILURE: This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877. The facts indicate the suit was filed beyond the strict 6-month statutory limit from the date of dispossession.";
+          reliefDecree = "Suit Dismissed as Time-Barred. No decree for restoration of possession can be passed under Section 9 SRA as the suit is barred by limitation. Plaint is liable to be rejected under Order VII Rule 11(d) CPC. The Plaintiff's only remaining remedy is to file a regular title suit under Section 8 of the SRA within 12 years.";
+          equitableBars = "The Plaintiff is completely barred by the strict 6-month statutory limitation period of Section 9 SRA. Court has no power to condone delay under Section 5 of the Limitation Act for Section 9 suits.";
+          executionPathway = "None. The suit is dismissed.";
+        } else if (facts.dispossessionProven === false) {
+          overview = "CRITICAL FACTUAL DEFECT: This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877, but the facts explicitly state that no wrongful dispossession or ouster occurred.";
+          reliefDecree = "Suit Dismissed. Since the Plaintiff was never dispossessed or ousted from the suit land, the primary cause of action under Section 9 SRA is absent. No relief can be granted.";
+          equitableBars = "Seeking recovery of possession without any actual dispossession violates the fundamental principles of clean hands and constitutes an abuse of the judicial process.";
+          executionPathway = "None. The suit is dismissed.";
+        } else {
+          overview = "This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877. The Plaintiff has proved forcible dispossession from the suit land within 6 months prior to filing the suit without consent. In a Section 9 suit, the court decides purely on the question of possession and dispossession, without entering into the question of ultimate title.";
+          
+          reliefDecree = "A decree is to be passed directing the Defendant to restore actual khas possession of the suit land to the Plaintiff within 30 days, and ordering the removal of unauthorized structures/fences. No declaration of title is granted in this summary proceeding.";
+          
+          equitableBars = "The suit was filed within 6 months of dispossession. The Defendant is barred from raising title claims in this suit and must seek remedy in an independent title suit.";
+          
+          executionPathway = "The decree will be executed by filing an Execution Case under Order XXI Rule 35 CPC. The court will issue a writ of delivery of possession (Dakhalnama) and direct a bailiff to physically hand over vacant possession, pulling down structures if necessary.";
+        }
       } else {
-        overview = "This is a suit for Declaration of Title and Recovery of Khas Possession. The Plaintiff holds valid title through registered sale deeds, mutation, and tax records, while the Defendant occupies the property as a trespasser. Under Section 8 and 42 of the Specific Relief Act 1877, a lawful title-holder is entitled to recover possession from a wrongful occupant.";
-        
-        reliefDecree = "A decree is to be passed declaring the Plaintiff's absolute title to the suit land, directing the Defendant to deliver actual physical khas possession of the land to the Plaintiff within 30 days, and ordering the Defendant to dismantle and remove any unauthorized structures, fences, or brick boundary walls built thereon. A permanent injunction is also granted restraining the Defendant from interfering with the Plaintiff's possession.";
-        
-        equitableBars = "The Defendant is a trespasser with no legal or equitable title. The Plaintiff is not barred by laches as the suit was instituted well within the 12-year limitation period from dispossession under Article 142.";
-        
-        executionPathway = "The decree will be executed by filing an Execution Case under Order XXI Rule 35 CPC. The court will issue a writ of delivery of possession (Dakhalnama) and appoint a Civil Court Commissioner with police force assistance to demolish unauthorized boundary fences or structures and physically deliver vacant possession.";
+        // Regular Title + Possession (Section 8 + 42 SRA)
+        if (lim.isTimeBarred) {
+          overview = "CRITICAL LIMITATION FAILURE: This is a suit for Declaration of Title and Recovery of Khas Possession filed beyond the 12-year statutory limit under Article 142 of the Limitation Act 1908.";
+          reliefDecree = "Suit Dismissed as Time-Barred. The Plaintiff's right to recover possession is extinguished under Section 28 of the Limitation Act 1908, and the plaint must be rejected under Order VII Rule 11(d) CPC. No declaration of title or recovery of possession can be decreed.";
+          equitableBars = "The Plaintiff has slumbered on their rights for over 12 years, allowing the Defendant's possession to ripen. Equity aids the vigilant, not those who sleep on their rights.";
+          executionPathway = "None. The suit is dismissed.";
+        } else if (facts.plaintiffHasRegisteredTitle === false) {
+          overview = "CRITICAL COMPLIANCE FAILURE: This is a suit for Declaration of Title and Recovery of Khas Possession where the Plaintiff does not hold any registered title deeds (Saf Kabala) or valid mutation khatian.";
+          reliefDecree = "Suit Dismissed / Declaration Denied. The Court cannot declare a title that is explicitly absent or unregistered in the record. Since title is not established, the consequential relief of recovery of khas possession under Section 8 SRA is also denied.";
+          equitableBars = "The Plaintiff holds no legal title and has no clean hands or locus standi to seek a declaration of ownership from a court of equity. Discretionary relief under Section 42 SRA cannot be exercised in favor of a title-less claimant.";
+          executionPathway = "None. The suit is dismissed.";
+        } else if (facts.dispossessionProven === false) {
+          overview = "CRITICAL FACTUAL DEFECT: This is a suit for Declaration of Title and Recovery of Khas Possession, but the facts explicitly state that the Plaintiff was never dispossessed or ousted from physical possession.";
+          reliefDecree = "Partial Decree / Incomplete Relief. While the Plaintiff's title may be declared under Section 42 SRA (if registered deeds are proven), the consequential relief of recovery of khas possession under Section 8 SRA is denied because no dispossession or encroachment has taken place.";
+          equitableBars = "The Plaintiff cannot seek recovery of possession of land of which they already hold physical possession. Equity will not grant redundant or factually groundless reliefs.";
+          executionPathway = "Limited Execution. Execution can only proceed for costs or permanent injunction under Order XXI Rule 32 CPC, but no writ of delivery of possession can be issued as Plaintiff is already in physical possession.";
+        } else {
+          overview = "This is a suit for Declaration of Title and Recovery of Khas Possession. The Plaintiff holds valid title through registered sale deeds, mutation, and tax records, while the Defendant occupies the property as a trespasser. Under Section 8 and 42 of the Specific Relief Act 1877, a lawful title-holder is entitled to recover possession from a wrongful occupant.";
+          
+          reliefDecree = "A decree is to be passed declaring the Plaintiff's absolute title to the suit land, directing the Defendant to deliver actual physical khas possession of the land to the Plaintiff within 30 days, and ordering the Defendant to dismantle and remove any unauthorized structures, fences, or brick boundary walls built thereon. A permanent injunction is also granted restraining the Defendant from interfering with the Plaintiff's possession.";
+          
+          equitableBars = "The Defendant is a trespasser with no legal or equitable title. The Plaintiff is not barred by laches as the suit was instituted well within the 12-year limitation period from dispossession under Article 142.";
+          
+          executionPathway = "The decree will be executed by filing an Execution Case under Order XXI Rule 35 CPC. The court will issue a writ of delivery of possession (Dakhalnama) and appoint a Civil Court Commissioner with police force assistance to demolish unauthorized boundary fences or structures and physically deliver vacant possession.";
+        }
       }
     } else {
       overview = `Analysis of the civil dispute reveals maintainable causes of action under the identified statutory framework of CPC 1908. The suit is recommended for institution with proper pleadings and evidentiary preparation.`;
@@ -570,7 +839,9 @@ COMPUTED JURISDICTIONAL MAPPING:
       executionPathway = "The decree will be executed under Order XXI Rule 32 CPC by attachment of property or civil detention if the Defendant violates the permanent injunction.";
     }
 
-    const costsApportionment = "Full costs of the suit, including ad valorem court fees, advocate fees, and procedural expenses, are awarded to the Plaintiff under Section 35 of the Code of Civil Procedure 1908.";
+    const costsApportionment = isInheritance
+      ? "Not applicable (No maintainable civil suit exists)."
+      : "Full costs of the suit, including ad valorem court fees, advocate fees, and procedural expenses, are awarded to the Plaintiff under Section 35 of the Code of Civil Procedure 1908.";
 
     return {
       overview,
@@ -603,9 +874,11 @@ COMPUTED JURISDICTIONAL MAPPING:
     // Detect Category with robust scoring
     let spScore = 0;
     let dpScore = 0;
+    let inheritanceScore = 0;
     
     const spKeywords = ["specific performance", "bainapatra", "agreement to sell", "contract", "advance", "earnest", "execute deed", "execute sale deed", "breach of contract", "refused to execute", "balance payment"];
     const dpKeywords = ["declaration of title", "khas possession", "dispossessed", "trespass", "ousted", "ouster", "recovery of possession", "boundary wall", "khas", "possession", "title deed", "registered sale deed"];
+    const inheritanceKeywords = ["disown", "disowned", "inheritance", "succession", "heir", "father", "son", "sons", "affidavit", "newspaper", "living father", "ancestor", "shariat", "muslim personal law"];
     
     for (const k of spKeywords) {
       if (lower.includes(k)) spScore += 2;
@@ -622,9 +895,15 @@ COMPUTED JURISDICTIONAL MAPPING:
     if (lower.includes("possession")) dpScore += 1;
     if (lower.includes("trespass")) dpScore += 1;
     if (lower.includes("dispossession")) dpScore += 1;
+
+    for (const k of inheritanceKeywords) {
+      if (lower.includes(k)) inheritanceScore += 2;
+    }
     
-    let category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" = "GENERAL_CIVIL";
-    if (spScore > dpScore && spScore > 0) {
+    let category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION" = "GENERAL_CIVIL";
+    if (inheritanceScore > spScore && inheritanceScore > dpScore && inheritanceScore > 0) {
+      category = "INHERITANCE_CONSULTATION";
+    } else if (spScore > dpScore && spScore > 0) {
       category = "SPECIFIC_PERFORMANCE";
     } else if (dpScore >= spScore && dpScore > 0) {
       category = "DECLARATION_AND_POSSESSION";
@@ -634,11 +913,38 @@ COMPUTED JURISDICTIONAL MAPPING:
       category = "SPECIFIC_PERFORMANCE";
     } else if (focusDomain === "Declaration of Title") {
       category = "DECLARATION_AND_POSSESSION";
+    } else if (focusDomain === "Inheritance Consultation") {
+      category = "INHERITANCE_CONSULTATION";
     }
 
     // Explicit statutory compliance checks (anti-fabrication logic)
-    const isRegisteredBainapatra = lower.includes("registered") && !lower.includes("unregistered");
-    const isBalanceDeposited = /\b(?:deposit|deposited|treasury|challan)\b/i.test(lower);
+    let isRegisteredBainapatra: boolean | "unspecified" = "unspecified";
+    if (lower.includes("registered") && !lower.includes("unregistered")) {
+      isRegisteredBainapatra = true;
+    } else if (lower.includes("unregistered")) {
+      isRegisteredBainapatra = false;
+    }
+
+    let isBalanceDeposited: boolean | "unspecified" = "unspecified";
+    if (/\b(?:deposit|deposited|treasury|challan)\b/i.test(lower)) {
+      isBalanceDeposited = true;
+    } else if (/\b(?:not deposited|no deposit|did not deposit)\b/i.test(lower)) {
+      isBalanceDeposited = false;
+    }
+
+    let plaintiffHasRegisteredTitle: boolean | "unspecified" = "unspecified";
+    if (lower.includes("registered sale deed") || lower.includes("kabala") || lower.includes("mutation khatian")) {
+      plaintiffHasRegisteredTitle = true;
+    } else if (lower.includes("unregistered") || lower.includes("no registered title")) {
+      plaintiffHasRegisteredTitle = false;
+    }
+
+    let dispossessionProven: boolean | "unspecified" = "unspecified";
+    if (lower.includes("dispossession") || lower.includes("dispossessed") || lower.includes("ouster") || lower.includes("ousted") || lower.includes("trespass") || lower.includes("forcefully")) {
+      dispossessionProven = true;
+    } else if (lower.includes("not dispossessed") || lower.includes("always in possession")) {
+      dispossessionProven = false;
+    }
 
     // Fallback sequential timeline if no calendar dates are found
     if (dates.length === 0) {
@@ -719,6 +1025,8 @@ COMPUTED JURISDICTIONAL MAPPING:
       contractDetails,
       isRegisteredBainapatra,
       isBalanceDeposited,
+      plaintiffHasRegisteredTitle,
+      dispossessionProven
     };
   }
 
@@ -913,7 +1221,7 @@ COMPUTED JURISDICTIONAL MAPPING:
     return parties;
   }
 
-  private extractContractDetails(text: string): { total: number; advance: number; balance: number } {
+  private extractContractDetails(text: string): { total: number; advance: number; balance: number; isUsingDefaultAmounts?: boolean } {
     const numbers: number[] = [];
     const regex = /(?:Tk\.?|BDT|Taka|taka)\s*([\d,]+)|([\d,]+)\s*(?:Taka|taka|Tk\.?|BDT)/gi;
     let match;
@@ -929,19 +1237,23 @@ COMPUTED JURISDICTIONAL MAPPING:
     
     let total = 1200000; // Default BDT 12 Lakh
     let advance = 500000; // Default BDT 5 Lakh
+    let isUsingDefaultAmounts = true;
     
     if (numbers.length >= 2) {
       total = numbers[0];
       advance = numbers[1];
+      isUsingDefaultAmounts = false;
     } else if (numbers.length === 1) {
       total = numbers[0];
       advance = Math.floor(total * 0.4); // Assume 40% advance
+      isUsingDefaultAmounts = false;
     }
     
     return {
       total,
       advance,
-      balance: total - advance
+      balance: total - advance,
+      isUsingDefaultAmounts
     };
   }
 
@@ -1041,6 +1353,11 @@ COMPUTED JURISDICTIONAL MAPPING:
           isBarred = (Date.now() - accrualDate.getTime()) > twelveYearsMs;
         }
       }
+    } else if (facts.category === "INHERITANCE_CONSULTATION") {
+      article = "None (No accrued right)";
+      period = "Not running";
+      accrualDateStr = "Not triggered (Ancestor is alive)";
+      isBarred = false;
     } else {
       article = "Article 120";
       period = "6 Years";
@@ -1055,7 +1372,9 @@ COMPUTED JURISDICTIONAL MAPPING:
     }
     
     let preliminaryAnalysis = "";
-    if (accrualDate) {
+    if (facts.category === "INHERITANCE_CONSULTATION") {
+      preliminaryAnalysis = "Limitation has not commenced because no enforceable cause of action presently exists. Since the father is alive and succession has not opened, no right of inheritance has vested, and therefore no limitation period has begun to run.";
+    } else if (accrualDate) {
       const diffDays = Math.floor((Date.now() - accrualDate.getTime()) / (24 * 60 * 60 * 1000));
       if (isBarred) {
         preliminaryAnalysis = `The cause of action is TIME-BARRED. The suit was analyzed ${diffDays} days after accrual, which exceeds the prescribed statutory period of ${period} under ${article} of the Limitation Act 1908.`;
@@ -1211,6 +1530,29 @@ COMPUTED JURISDICTIONAL MAPPING:
           }
         ];
       }
+    } else if (facts.category === "INHERITANCE_CONSULTATION") {
+      return [
+        {
+          title: "Whether the suit is maintainable in its present form under Section 9 CPC and Section 42 of the Specific Relief Act 1877",
+          type: "Law",
+          burden: "Plaintiff",
+          evidence: "None can be produced (premature suit)",
+          plaintiffPosition: "The sons assert they have an interest in their father's property and that his newspaper disowning notice has created a cloud on their future rights.",
+          defendantPosition: "The suit is legally incompetent. The father is alive and succession has not opened. There is no justiciable civil cause of action.",
+          courtAnalysis: "A declaratory suit requires a present vested legal character or right to property under Section 42 of the Specific Relief Act 1877. A son has no vested right in his parent's estate while the parent is alive, only a mere expectation of succession (spes successionis), which cannot be declared by a court of law. The suit fails at the threshold.",
+          projectedFinding: "Decided AGAINST Plaintiff (Plaint rejected under Order VII Rule 11 CPC)."
+        },
+        {
+          title: "Whether any actionable legal injury has been caused to the Plaintiffs by the Defendant's unilateral affidavit or newspaper 'disowning' declaration",
+          type: "Mixed",
+          burden: "Plaintiff",
+          evidence: "Copy of disowning affidavit or newspaper notice",
+          plaintiffPosition: "The disowning declaration publicly castigated the sons and threatened to deprive them of their inheritance.",
+          defendantPosition: "The disowning notice is a declaration of parental displeasure, carries no legal weight to disinherit, and creates no present civil liability.",
+          courtAnalysis: "Under Muslim law, a parent cannot legally disinherit their natural heirs through a disowning notice or affidavit. The natural lines of succession will operate automatically under the Muslim Personal Law (Shariat) Application Act 1937 upon the ancestor's death. Thus, the notice has zero legal effect, creates no legal injury, and cannot form the basis of a civil cause of action.",
+          projectedFinding: "Decided AGAINST Plaintiff (The notice is legally ineffective and non-actionable)."
+        }
+      ];
     } else {
       return [
         {
@@ -1293,6 +1635,23 @@ COMPUTED JURISDICTIONAL MAPPING:
           admissibilityChallenge: "Subject to cross-examination; corroborates physical ouster and fence erection."
         }
       );
+    } else if (facts.category === "INHERITANCE_CONSULTATION") {
+      evidence.push(
+        {
+          item: "Affidavit or Newspaper Notice disowning the sons",
+          source: "Defendant (Father)",
+          type: "Documentary",
+          governingSection: "Section 61 of the Evidence Act 1872",
+          admissibilityChallenge: "Admissible as proof of parent's declaration of displeasure, but legally irrelevant to title ownership or disinheriting heirs under Muslim Law."
+        },
+        {
+          item: "Title Deeds / Land Registry records of Father's properties",
+          source: "Sub-Registry / Father",
+          type: "Documentary",
+          governingSection: "Section 62 of the Evidence Act 1872",
+          admissibilityChallenge: "Admissible — confirms the father holds absolute title and dominion during his lifetime, reinforcing that no shares have vested in his children."
+        }
+      );
     } else {
       evidence.push({
         item: "Oral and Pleading assertions",
@@ -1308,6 +1667,7 @@ COMPUTED JURISDICTIONAL MAPPING:
 
   private assignBurdens(facts: ParsedFacts): string[] {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
     const pName = facts.parties.find(p => p.side === "plaintiff")?.name || "Plaintiff";
     const dName = facts.parties.find(p => p.side === "defendant")?.name || "Defendant";
 
@@ -1315,6 +1675,11 @@ COMPUTED JURISDICTIONAL MAPPING:
       return [
         `${pName} bears the burden of proving valid execution and registration of Bainapatra, payment of advance, and readiness (Section 101 Evidence Act).`,
         `${dName} bears the burden of proving any assertions of fraud, coercion, or lack of consideration (Section 102 Evidence Act).`
+      ];
+    } else if (isInheritance) {
+      return [
+        `${pName} (the sons) bear the absolute burden of establishing that they possess a present, vested legal character or interest in the suit properties, which is impossible during the ancestor's lifetime (Section 101 Evidence Act).`,
+        `${dName} (the father) bears no burden to defend his absolute title, but has the burden to show that the disowning notice was an exercise of his personal parental discretion, not an actionable legal injury (Section 102 Evidence Act).`
       ];
     } else {
       return [
@@ -1326,6 +1691,7 @@ COMPUTED JURISDICTIONAL MAPPING:
 
   private findPresumptions(facts: ParsedFacts): any[] {
     const isSP = facts.category === "SPECIFIC_PERFORMANCE";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
 
     if (isSP) {
       return [
@@ -1340,6 +1706,19 @@ COMPUTED JURISDICTIONAL MAPPING:
           statuteSection: "Section 114 of the Evidence Act 1872",
           presumptionStyle: "May presume course of business",
           effectOnCase: "The Court will presume legal notices sent by registered post reached the Defendant in due course."
+        }
+      ];
+    } else if (isInheritance) {
+      return [
+        {
+          statuteSection: "Section 114 of the Evidence Act 1872",
+          presumptionStyle: "May presume absolute ownership from title deeds",
+          effectOnCase: "The Court will presume that a living person recorded on valid, uncancelled registered title deeds retains absolute and exclusive power of disposal over their property."
+        },
+        {
+          statuteSection: "Muslim Personal Law / Shariat Presumptions",
+          presumptionStyle: "Shall presume no disinheritance by disowning notice",
+          effectOnCase: "Under Muslim law, there is a strong presumption that all natural heirs retain their legal right of succession upon the death of the ancestor. A disowning notice cannot legally override Shariat-mandated inheritance shares."
         }
       ];
     } else {
@@ -1389,21 +1768,30 @@ COMPUTED JURISDICTIONAL MAPPING:
     return disputed;
   }
 
-  private extractInferredFacts(text: string, category: string, isRegistered: boolean, isDeposited: boolean): string[] {
+  private extractInferredFacts(text: string, category: string, isRegistered: boolean | "unspecified", isDeposited: boolean | "unspecified"): string[] {
     const isSP = category === "SPECIFIC_PERFORMANCE";
     if (isSP) {
       const inferred: string[] = [];
-      if (!isRegistered) {
+      if (isRegistered === false) {
         inferred.push("INFERRED VULNERABILITY: The Bainapatra was executed as a written private document, but was NOT registered.");
+      } else if (isRegistered === "unspecified") {
+        inferred.push("INFERRED RISK: Registration status of the Bainapatra is unspecified, placing specific performance at major legal risk.");
       } else {
         inferred.push("The Bainapatra is registered and legally operative.");
       }
-      if (!isDeposited) {
+      if (isDeposited === false) {
         inferred.push("INFERRED VULNERABILITY: The Plaintiff did NOT deposit the remaining balance consideration in the Court treasury.");
+      } else if (isDeposited === "unspecified") {
+        inferred.push("INFERRED RISK: Treasury deposit of the remaining balance is unspecified, violating Section 21A SRA mandates if unproven.");
       } else {
         inferred.push("The Plaintiff has demonstrated ready-to-pay status by depositing the remaining consideration in court.");
       }
       return inferred;
+    } else if (category === "INHERITANCE_CONSULTATION") {
+      return [
+        "The unilateral disowning notice carries no legal force to alter the fixed Shariat lines of inheritance.",
+        "The father retains full ownership, alienation, and possession rights over his properties during his entire lifetime."
+      ];
     } else {
       return ["Defendant occupies the land solely as a trespasser, lacking any registered conveyance or mutation records."];
     }
@@ -1467,10 +1855,12 @@ interface ParsedFacts {
   triggers: Array<{ domain: string; fact: string; trigger: string }>;
   primarySubject: string;
   location?: string;
-  category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL";
-  contractDetails: { total: number; advance: number; balance: number };
-  isRegisteredBainapatra: boolean;
-  isBalanceDeposited: boolean;
+  category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION";
+  contractDetails: { total: number; advance: number; balance: number; isUsingDefaultAmounts?: boolean };
+  isRegisteredBainapatra: boolean | "unspecified";
+  isBalanceDeposited: boolean | "unspecified";
+  plaintiffHasRegisteredTitle: boolean | "unspecified";
+  dispossessionProven: boolean | "unspecified";
 }
 
 interface ParsedParty {
