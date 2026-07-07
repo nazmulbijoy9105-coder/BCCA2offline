@@ -41,8 +41,8 @@ async function startServer() {
       // Generate content using gemini-3.5-flash
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: `You are a high-level Senior legal counsel and Advocate at the Supreme Court of Bangladesh.
-You are comparing a deterministic rule-based offline legal analysis of a fact pattern with your own expert analysis.
+        contents: `You are a Senior Counsel and Advocate at the Supreme Court of Bangladesh.
+You are passed a JSON deterministic baseline from a rule engine.
 
 FACT PATTERN:
 "${factPattern}"
@@ -50,20 +50,27 @@ FACT PATTERN:
 DETERMINISTIC ENGINE FINDINGS:
 ${JSON.stringify(engineAnalysis, null, 2)}
 
-Provide your expert civil legal counsel. Format your response clearly with markdown sections:
+### CRITICAL RULES & CONSTRAINTS:
+1. YOU ARE STRICTLY FORBIDDEN from altering or contradicting the mathematical shares (e.g., 2/7ths to sons, 1/7th to daughter, or any other Sharia ratios calculated by the engine), the limitation dates (e.g., 15 January 2026), or the limitation verdict (e.g., WITHIN LIMITATION). Treat these deterministic rule-engine findings as absolute, non-negotiable legal baselines.
+2. YOUR TARGET TASK is to apply:
+   - **Order XXXIX (39) CPC Injunction Strategy**: Detail the prima facie case, balance of convenience, and irreparable loss. Focus on preventing hostile third-party sales (such as the threatened sale discovered on 20 June 2026), preserving joint possession, and maintaining the status quo of the undivided suit land.
+   - **Specific Relief Act 1877 Equitable Doctrines**: Address Section 42 (declarations of legal character/right), Section 54 (perpetual injunctions), and equitable doctrines (such as estoppel, laches, and spes successionis under Section 6 of Transfer of Property Act / Shariat application). Address how Tejya Putro (disowning) has zero legal effect on vested inheritance under Sunni Hanafi law.
+   - **Court Fees Act 1870 & Suits Valuation Act 1887 Optimization**: Outline the exact valuation and court fees strategy. Since the property is valued at BDT 1,80,00,000, discuss pecuniary jurisdiction of the Joint District Judge, fixed court fees for partition under Schedule II Article 17(vi) of Court Fees Act (if joint possession is claimed), versus ad valorem court fees under Section 7(iv)(c) if ouster/dispossession is found or if declaration is coupled with consequential relief of possession.
+
+Provide your expert civil legal counsel. Format your response clearly with these markdown sections:
 1. ## FACTUAL VERITY & SUFFICIENCY AUDIT
-Check if the fact pattern has sufficient particulars to sustain a civil action in Bangladesh (e.g. registry details, specific dates, monetary values for ad valorem court fees, precise locations, and ouster timeline). List any factual deficiencies.
+Check if the fact pattern has sufficient particulars to sustain a civil action in Bangladesh (e.g. registration details, specific dates, exact locations of Mouza Shibpur, Gazipur). Focus on the disowning affidavit (10 Sept 2025) and its total nullity under the Muslim Personal Law (Shariat) Application Act 1937.
 
 2. ## DETAILED LEGAL ANALYSIS (ACTS & APPLICABILITY)
-Analyze applicable statutory laws (such as the Specific Relief Act 1877, Limitation Act 1908, Civil Procedure Code 1908, Court Fees Act 1870, etc.). Explain how they apply to these facts.
+Apply the Specific Relief Act 1877 (declarations of co-ownership, partition, and injunctions), Transfer of Property Act 1882, and Sunni Sharia law. Analyze why the "disowned" sons are full legal heirs.
 
-3. ## DETERMINISTIC VS. AI COMPARISON MATRIX
-Provide a side-by-side or point-by-point comparison with the engine's findings (e.g. Domain, Court Forum, Limitation, Maintainability). Identify if you agree or if you detect a nuanced legal exception (such as Section 5, 14, or 19 of the Limitation Act, or equity rules like estoppel or laches).
+3. ## DETERMINISTIC VS. AI COMPARISON MATRIX (CONSTRAINED)
+Reiterate the engine's findings exactly (Mathematical Shares, Accrual Date, Limitation Verdict) as immutable, and supplement them with Supreme Court of Bangladesh precedents (e.g., that mutation enures to the benefit of all co-sharers, and disowning is void).
 
-4. ## TACTICAL COURTROOM STRATEGY & COUNSEL NOTE
-Deliver actionable advice for the pleader to patch factual gaps, secure temporary injunctions, deposit treasury balances, or structure their pleadings (e.g. Order VII Rule 11 CPC risk mitigation).
+4. ## TACTICAL COURTROOM STRATEGY & COURT FEES ACT OPTIMIZATION
+Detail the Order 39 CPC temporary injunction application draft and strategy. Detail how to optimize court fees (fixed partition court fees of BDT 500/1000 under the amended Court Fees Act for Bangladesh if joint constructive possession is pleaded, versus the risk of ad valorem fees on the full BDT 1,80,00,000 valuation). Deliver Order VII Rule 11 CPC risk mitigation.
 
-Write in a highly authoritative, professional, and sophisticated judicial tone. Keep it structured and precise.`,
+Write in a highly authoritative, professional, and sophisticated judicial tone. Keep it structured, legally precise, and deeply rooted in Bangladeshi civil jurisprudence.`,
       });
 
       res.json({ text: response.text });
