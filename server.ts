@@ -12,16 +12,114 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Initialize Gemini client (server-side)
-  const apiKey = process.env.GEMINI_API_KEY;
-  const ai = new GoogleGenAI({
-    apiKey: apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
+  // Lazy initialization helper for Gemini client (server-side)
+  let aiClient: GoogleGenAI | null = null;
+  const getGoogleGenAI = () => {
+    if (!aiClient) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is not configured. Please add your key in Settings > Secrets.");
+      }
+      aiClient = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+    }
+    return aiClient;
+  };
+
+  // Helper to clean up verbose or raw JSON error responses from the Gemini API
+  const cleanGeminiErrorMessage = (err: any): string => {
+    if (!err) return "An unknown error occurred.";
+    
+    let msg = "";
+    if (typeof err === "object") {
+      msg = err.message || JSON.stringify(err);
+    } else {
+      msg = String(err);
+    }
+
+    // Check for Quota / Rate Limit (429 / RESOURCE_EXHAUSTED)
+    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate-limits")) {
+      return "Gemini API Quota Limit Exceeded: The free tier of the Gemini API has a daily limit of 20 requests. Please wait a few minutes for the limit to reset, or add a paid API key via the 'Settings > Secrets' menu in AI Studio to continue without limits.";
+    }
+
+    // Check for 503 / Service Unavailable / Overloaded
+    if (msg.includes("503") || msg.includes("UNAVAILABLE") || msg.toLowerCase().includes("overloaded") || msg.toLowerCase().includes("busy") || msg.toLowerCase().includes("high demand")) {
+      return "The Gemini API is currently experiencing extremely high demand. Please wait a few seconds and try again.";
+    }
+
+    // Try parsing potential JSON error payload embedded in the message
+    try {
+      const jsonMatch = msg.match(/\{.*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.error && parsed.error.message) {
+          return parsed.error.message;
+        }
+      }
+    } catch (e) {
+      // ignore parsing error
+    }
+
+    return msg;
+  };
+
+  // Helper to call Gemini with robust retries and fallback models
+  const generateContentWithRetryAndFallback = async (
+    prompt: string,
+    maxCycles = 3
+  ) => {
+    const models = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
+    let lastError: any = null;
+
+    // Retrieve lazy loaded client
+    const ai = getGoogleGenAI();
+
+    let delay = 1000; // Delay between cycles
+
+    for (let cycle = 1; cycle <= maxCycles; cycle++) {
+      console.log(`[AI Engine] Starting Cycle ${cycle}/${maxCycles} of model attempts`);
+      
+      for (const model of models) {
+        try {
+          console.log(`[AI Engine] Cycle ${cycle}: Attempting generation with model: ${model}`);
+          const result = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+          });
+          
+          if (result && result.text) {
+            console.log(`[AI Engine] Successfully generated content using model: ${model} on Cycle ${cycle}`);
+            return result;
+          }
+          throw new Error("Empty response received from Gemini API");
+        } catch (err: any) {
+          const errMsg = err && typeof err === "object" ? (err.message || JSON.stringify(err)) : String(err);
+          console.warn(`[AI Engine] Cycle ${cycle} with model ${model} failed:`, errMsg);
+          lastError = err;
+
+          const isBadRequest = err && typeof err === "object" && (err.status === 400 || err.statusCode === 400);
+          if (isBadRequest) {
+            console.log(`[AI Engine] Bad Request (400) encountered for model ${model}. Sparing further attempts for this model.`);
+          }
+        }
+      }
+
+      if (cycle < maxCycles) {
+        console.log(`[AI Engine] Cycle ${cycle} exhausted all models. Waiting ${delay}ms before starting Cycle ${cycle + 1}...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay *= 2; // exponential backoff
       }
     }
-  });
+    
+    // If we exhausted all models and retries
+    throw lastError || new Error("Failed to generate content with all available Gemini models.");
+  };
 
   // API Route: Compare offline facts analysis with Gemini AI
   app.post("/api/ai/compare", async (req, res) => {
@@ -32,16 +130,13 @@ async function startServer() {
       }
 
       // Check if API key is configured
-      if (!apiKey) {
+      if (!process.env.GEMINI_API_KEY) {
         return res.status(500).json({ 
           error: "GEMINI_API_KEY is not configured. Please add your key in Settings > Secrets." 
         });
       }
 
-      // Generate content using gemini-3.5-flash
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `You are a Senior Counsel and Advocate at the Supreme Court of Bangladesh.
+      const prompt = `You are a Senior Counsel and Advocate at the Supreme Court of Bangladesh.
 You are passed a JSON deterministic baseline from a rule engine.
 
 FACT PATTERN:
@@ -70,13 +165,18 @@ Reiterate the engine's findings exactly (Mathematical Shares, Accrual Date, Limi
 4. ## TACTICAL COURTROOM STRATEGY & COURT FEES ACT OPTIMIZATION
 Detail the Order 39 CPC temporary injunction application draft and strategy. Detail how to optimize court fees (fixed partition court fees of BDT 500/1000 under the amended Court Fees Act for Bangladesh if joint constructive possession is pleaded, versus the risk of ad valorem fees on the full BDT 1,80,00,000 valuation). Deliver Order VII Rule 11 CPC risk mitigation.
 
-Write in a highly authoritative, professional, and sophisticated judicial tone. Keep it structured, legally precise, and deeply rooted in Bangladeshi civil jurisprudence.`,
-      });
+Write in a highly authoritative, professional, and sophisticated judicial tone. Keep it structured, legally precise, and deeply rooted in Bangladeshi civil jurisprudence.`;
+
+      // Call our robust retry & fallback handler
+      const response = await generateContentWithRetryAndFallback(prompt);
 
       res.json({ text: response.text });
     } catch (error: any) {
-      console.error("Gemini API error:", error);
-      res.status(500).json({ error: error.message || "An error occurred during AI comparison" });
+      console.error("Gemini API ultimate failure:", error);
+      const cleanMessage = cleanGeminiErrorMessage(error);
+      res.status(500).json({ 
+        error: cleanMessage
+      });
     }
   });
 
