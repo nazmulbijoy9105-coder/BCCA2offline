@@ -2,7 +2,5 @@
   "name": "Bangladesh Civil Case Analysis Architecture",
   "description": "Secure offline legal analysis engine for property, land title, and civil disputes in the jurisdiction of Bangladesh.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": []
 }

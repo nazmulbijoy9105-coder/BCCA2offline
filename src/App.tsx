@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Scale, FileText, BookOpen, ShieldAlert, Sparkles, Hammer, History, RotateCcw, Copy, Check, X } from "lucide-react";
+import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X } from "lucide-react";
 import { useAuth } from "./auth/AuthContext";
 import { BCCAAEngine } from "./engine/BCCAAEngine";
 import { generateWatermark } from "./utils/watermark";
@@ -8,7 +8,7 @@ import { logAudit } from "./utils/audit";
 import { CaseAnalysisResponse, CaseHistoryItem } from "./types/types";
 import StageExplorer from "./components/StageExplorer";
 import MissingEvidenceAlert from "./components/MissingEvidenceAlert";
-import AIComparePanel from "./components/AIComparePanel";
+import LegalAnalysisPanel from "./components/LegalAnalysisPanel";
 import LoginPage from "./auth/LoginPage";
 import SuperAdminDashboard from "./admin/SuperAdminDashboard";
 
@@ -317,7 +317,7 @@ export default function App() {
                           </>
                         ) : (
                           <>
-                            <Sparkles className="h-4 w-4 text-[#C5A059]" />
+                            <Scale className="h-4 w-4 text-[#C5A059]" />
                             Analyze Civil Case Pattern
                           </>
                         )}
@@ -476,8 +476,8 @@ export default function App() {
             {/* Missing Evidence Alert Panel */}
             <MissingEvidenceAlert analysis={analysisResult} />
 
-            {/* AI Comparison Panel */}
-            <AIComparePanel factPattern={factPattern} analysisResult={analysisResult} />
+            {/* Statutory Drafting & Analysis Panel */}
+            <LegalAnalysisPanel factPattern={factPattern} analysisResult={analysisResult} />
 
             {/* Stage-by-Stage Explorer */}
             <StageExplorer analysis={analysisResult} />
