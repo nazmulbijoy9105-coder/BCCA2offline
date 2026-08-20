@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2, Download } from "lucide-react";
+import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2, Download, ShieldCheck } from "lucide-react";
 import { useAuth } from "./auth/AuthContext";
 import { BCCAAEngine } from "./engine/BCCAAEngine";
 import { generateWatermark } from "./utils/watermark";
@@ -13,6 +13,7 @@ import LegalAnalysisPanel from "./components/LegalAnalysisPanel";
 import DocumentUploader from "./components/DocumentUploader";
 import LoginPage from "./auth/LoginPage";
 import SuperAdminDashboard from "./admin/SuperAdminDashboard";
+import LegalReliabilityStandardModal from "./components/LegalReliabilityStandardModal";
 
 export default function App() {
   const { state, getCurrentUser, getLicense, logout, hasPermission } = useAuth();
@@ -27,6 +28,7 @@ export default function App() {
   const [history, setHistory] = useState<CaseHistoryItem[]>([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showStandardModal, setShowStandardModal] = useState(false);
 
   const user = getCurrentUser();
   const license = getLicense();
@@ -252,6 +254,13 @@ export default function App() {
               <span className="inline-flex items-center gap-2 bg-[#FDFBF7]/10 px-2.5 py-1 border border-[#FDFBF7]/20 text-[#E5E1D8]">
                 <strong>Role:</strong> {user?.role?.toUpperCase()}
               </span>
+              <button
+                onClick={() => setShowStandardModal(true)}
+                className="inline-flex items-center gap-1.5 bg-[#C5A059]/20 hover:bg-[#C5A059] text-[#C5A059] hover:text-[#1E252B] border border-[#C5A059] px-2.5 py-1 font-bold uppercase tracking-wider text-[10px] transition cursor-pointer"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Deterministic AI Standard
+              </button>
               {hasPermission("admin:dashboard") && (
                 <button
                   onClick={() => setShowAdmin(true)}
@@ -604,6 +613,12 @@ export default function App() {
           </div>
         </>
       )}
+
+      {/* Legal Reliability Standard Modal */}
+      <LegalReliabilityStandardModal
+        isOpen={showStandardModal}
+        onClose={() => setShowStandardModal(false)}
+      />
 
       {/* Footer Status Bar (Geometric Balance layout) */}
       <footer className="w-full bg-[#F9F7F2] border-t-2 border-[#1E252B] py-5 px-6 sm:px-10 mt-auto z-10 flex flex-col md:flex-row items-center justify-between gap-4">
