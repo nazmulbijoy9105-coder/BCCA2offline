@@ -243,7 +243,7 @@ export async function downloadSecurePDF(
             <th style="width: 15%;">Date</th>
             <th style="width: 35%;">Event Description</th>
             <th style="width: 20%;">Parties Involved</th>
-            <th style="width: 30%;">Statutory Significance</th>
+            <th style="width: 30%;">Factual / Evidentiary Source</th>
           </tr>
         </thead>
         <tbody>
@@ -252,7 +252,7 @@ export async function downloadSecurePDF(
               <td><strong>${c.date}</strong></td>
               <td>${c.event}</td>
               <td>${c.partiesInvolved}</td>
-              <td>${c.statutorySignificance}</td>
+              <td>${c.factualSource}</td>
             </tr>
           `).join('')}
         </tbody>

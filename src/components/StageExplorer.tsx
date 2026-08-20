@@ -93,25 +93,32 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
               {/* STAGE 0 */}
               {activeStage === 0 && (
                 <div className="space-y-4">
+                  {analysis.stage0.factualSummary && (
+                    <div className="p-3.5 bg-[#FDFBF7] border border-[#E5E1D8] rounded-md">
+                      <div className="font-mono text-[10px] font-bold text-[#C5A059] uppercase tracking-wider mb-1">Gateway 0 Factual Narrative Summary</div>
+                      <p className="text-xs text-[#1E252B] leading-relaxed font-sans">{analysis.stage0.factualSummary}</p>
+                    </div>
+                  )}
+
                   <div>
-                    <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider mb-2">Stabilized Chronology of Dispute</h4>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider mb-2 text-xs">Factual Chronology of Events</h4>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse border border-[#E5E1D8]">
                         <thead>
                           <tr className="bg-[#FDFBF7] font-mono text-[10px] font-bold text-[#1E252B] border-b border-[#E5E1D8]">
-                            <th className="p-2 border border-[#E5E1D8]">Date</th>
-                            <th className="p-2 border border-[#E5E1D8]">Litigation Event</th>
-                            <th className="p-2 border border-[#E5E1D8]">Parties Inherent</th>
-                            <th className="p-2 border border-[#E5E1D8]">Statutory Importance</th>
+                            <th className="p-2 border border-[#E5E1D8]">Date / Timing</th>
+                            <th className="p-2 border border-[#E5E1D8]">Factual Event</th>
+                            <th className="p-2 border border-[#E5E1D8]">Parties Involved</th>
+                            <th className="p-2 border border-[#E5E1D8]">Factual / Evidentiary Source</th>
                           </tr>
                         </thead>
                         <tbody>
                           {analysis.stage0.chronology.map((c, i) => (
                             <tr key={i} className="border-b border-[#E5E1D8]">
-                              <td className="p-2 font-mono font-bold text-[#1E252B]">{c.date}</td>
-                              <td className="p-2">{c.event}</td>
-                              <td className="p-2">{c.partiesInvolved}</td>
-                              <td className="p-2 text-neutral-500 italic">{c.statutorySignificance}</td>
+                              <td className="p-2 font-mono font-bold text-[#1E252B] text-xs whitespace-nowrap">{c.date}</td>
+                              <td className="p-2 text-xs">{c.event}</td>
+                              <td className="p-2 text-xs font-medium text-neutral-700">{c.partiesInvolved}</td>
+                              <td className="p-2 text-xs text-neutral-500 italic">{c.factualSource}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -120,23 +127,71 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-[#FDFBF7] p-3 border border-[#E5E1D8] rounded">
-                      <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1.5">Admitted Facts Matrix</h4>
-                      <ul className="list-disc pl-4 space-y-1">
+                    <div className="bg-[#FDFBF7] p-3 border border-[#E5E1D8] rounded-md">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Admitted / Conceded Facts</h4>
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1.5 text-xs text-neutral-700">
                         {analysis.stage0.admittedFacts.map((f, i) => (
                           <li key={i}>{f}</li>
                         ))}
                       </ul>
                     </div>
-                    <div className="bg-red-50/40 p-3 border border-red-200/50 rounded">
-                      <h4 className="font-bold text-[#991b1b] font-mono uppercase text-[10px] tracking-wider mb-1.5">Disputed Contested Facts</h4>
-                      <ul className="list-disc pl-4 space-y-1">
+                    <div className="bg-amber-50/40 p-3 border border-amber-200/50 rounded-md">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                        <h4 className="font-bold text-amber-900 font-mono uppercase text-[10px] tracking-wider">Disputed Contested Facts</h4>
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1.5 text-xs text-neutral-700">
                         {analysis.stage0.disputedFacts.map((f, i) => (
                           <li key={i}>{f}</li>
                         ))}
                       </ul>
                     </div>
                   </div>
+
+                  {analysis.stage0.unknownFacts && analysis.stage0.unknownFacts.length > 0 && (
+                    <div className="bg-slate-50 p-3.5 border border-slate-200 rounded-md">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                        <h4 className="font-bold text-slate-800 font-mono uppercase text-[10px] tracking-wider">Unknown & Missing Evidentiary Facts</h4>
+                      </div>
+                      <div className="space-y-2 mt-2">
+                        {analysis.stage0.unknownFacts.map((uf, i) => (
+                          <div key={i} className="p-2.5 bg-white border border-slate-200 rounded text-xs flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                            <div className="space-y-1 flex-1">
+                              <div className="font-semibold text-slate-900 flex items-center gap-2">
+                                <span>{uf.category}</span>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase ${
+                                  uf.status === "MISSING_FROM_RECORD" ? "bg-red-50 text-red-700 border-red-200" :
+                                  uf.status === "AMBIGUOUS_ASSERTION" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                  "bg-blue-50 text-blue-700 border-blue-200"
+                                }`}>
+                                  {uf.status.replace(/_/g, " ")}
+                                </span>
+                              </div>
+                              <p className="text-neutral-700">{uf.factDescription}</p>
+                              <p className="text-[11px] text-neutral-500 italic">{uf.recordSignificance}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysis.stage0.quantumFacts && analysis.stage0.quantumFacts.length > 0 && (
+                    <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded-md">
+                      <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Quantum & Physical Dimensions</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {analysis.stage0.quantumFacts.map((q, i) => (
+                          <div key={i} className="p-2 bg-white border border-[#E5E1D8] rounded text-xs text-neutral-700 font-mono">
+                            {q}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

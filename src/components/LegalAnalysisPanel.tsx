@@ -31,7 +31,7 @@ const generateLegalMemo = (factPattern: string, result: CaseAnalysisResponse): s
 
   // Chronology section
   const chronologyLines = (result.stage0?.chronology && result.stage0.chronology.length > 0)
-    ? result.stage0.chronology.map(c => `- **${c.date}**: ${c.event} (Parties: ${c.partiesInvolved || "N/A"}) - *Significance*: ${c.statutorySignificance || "N/A"}`).join("\n")
+    ? result.stage0.chronology.map(c => `- **${c.date}**: ${c.event} (Parties: ${c.partiesInvolved || "N/A"}) - *Source*: ${c.factualSource || "N/A"}`).join("\n")
     : "- No key dates extracted from the fact pattern.";
 
   // Precedents section

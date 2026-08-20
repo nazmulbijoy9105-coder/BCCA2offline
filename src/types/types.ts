@@ -23,16 +23,21 @@ export interface CaseHistoryItem {
 
 export interface CaseAnalysisResponse {
   stage0: {
+    factualSummary: string;
     chronology: Array<{
       date: string;
       event: string;
       partiesInvolved: string;
-      statutorySignificance: string;
+      factualSource: string;
     }>;
     admittedFacts: string[];
     disputedFacts: string[];
-    inferredFacts: string[];
-    liabilityFacts: string[];
+    unknownFacts: Array<{
+      category: string;
+      factDescription: string;
+      status: "MISSING_FROM_RECORD" | "AMBIGUOUS_ASSERTION" | "UNVERIFIED_ORAL_CLAIM";
+      recordSignificance: string;
+    }>;
     quantumFacts: string[];
     factsMeta?: {
       category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION";

@@ -85,17 +85,19 @@ export class BCCAAEngine {
 
   // ─── STAGE 0: FACT MATRIX ───
   private buildFactMatrix(facts: ParsedFacts) {
+    const unknownFacts = this.extractUnknownFacts(facts);
+    const factualSummary = this.generateFactualSummary(facts);
     return {
+      factualSummary,
       chronology: facts.dates.map((d) => ({
         date: d.date,
         event: d.event,
         partiesInvolved: d.parties,
-        statutorySignificance: d.statutorySignificance,
+        factualSource: d.factualSource || d.statutorySignificance || "Dispute narrative assertion",
       })),
       admittedFacts: facts.admitted,
       disputedFacts: facts.disputed,
-      inferredFacts: facts.inferred,
-      liabilityFacts: facts.liability,
+      unknownFacts,
       quantumFacts: facts.quantum,
       factsMeta: {
         category: facts.category,
@@ -999,34 +1001,34 @@ A court of law cannot grant a declaration of future inheritance shares or partit
             date: "T=0 (Execution Date Not Specified)",
             event: "Execution of the written agreement to sell (Bainapatra) between Plaintiff and Defendant.",
             parties: "Plaintiff and Defendant",
-            statutorySignificance: "Establishes a contract under Section 54 of the Transfer of Property Act 1882. Subject to mandatory registration under Section 17A of the Registration Act 1908."
+            statutorySignificance: "Recital in executed writing / Agreement clause"
           },
           {
             date: "T + Implied Performance Window",
             event: "Stipulated deadline/duration for registration of sale deed under contract terms.",
             parties: "Plaintiff and Defendant",
-            statutorySignificance: "Defines performance window. Triggers limitation period under Article 54 of the Limitation Act 1908 if breach occurs."
+            statutorySignificance: "Contract clause stipulation"
           },
           {
             date: "T + Refusal (Later Date)",
             event: "Defendant's refusal to perform contract and execute final registered sale deed.",
             parties: "Defendant",
-            statutorySignificance: "Constitutes breach of reciprocal promise and triggers cause of action for Specific Performance under Section 12 SRA 1877."
+            statutorySignificance: "Dispute narrative assertion / Oral encounter"
           }
         ];
       } else if (category === "DECLARATION_AND_POSSESSION") {
         dates = [
           {
             date: "T=0 (Prior Registered Title)",
-            event: "Plaintiff acquires legal ownership of property via registered sale deed, mutation, and dakhilas.",
+            event: "Plaintiff acquires property via registered sale deed, mutation, and dakhilas.",
             parties: "Plaintiff",
-            statutorySignificance: "Establishes absolute registered title chain under Section 54 of the Transfer of Property Act 1882."
+            statutorySignificance: "Deed and revenue record assertion"
           },
           {
             date: "T + Dispossession Date (Not Specified)",
-            event: "Wrongful and forceful dispossession of the Plaintiff from the suit land by the Defendant.",
+            event: "Alleged physical entry and erection of boundary fencing on the suit land by the Defendant.",
             parties: "Defendant",
-            statutorySignificance: "Causes ouster. Triggers 12-year recovery window under Article 142 of the Limitation Act or 6-month summary remedy under Section 9 SRA 1877."
+            statutorySignificance: "Pleadings narrative assertion"
           }
         ];
       } else if (category === "INHERITANCE_CONSULTATION") {
@@ -1034,54 +1036,54 @@ A court of law cannot grant a declaration of future inheritance shares or partit
           dates = [
             {
               date: "10 September 2025",
-              event: "Execution of a unilateral disowning affidavit by the ancestor Abdul Karim attempting to disinherit his heirs.",
+              event: "Execution of a unilateral disowning affidavit by the ancestor Abdul Karim.",
               parties: "Abdul Karim (Ancestor)",
-              statutorySignificance: "Under Muslim law, a parent cannot legally disinherit their natural heirs through a disowning notice or affidavit. The natural lines of succession will operate automatically upon death."
+              statutorySignificance: "Notarized affidavit recital"
             },
             {
               date: "15 September 2025",
               event: "Publication of a disowning notice in a daily newspaper by the ancestor.",
               parties: "Abdul Karim (Ancestor)",
-              statutorySignificance: "A unilateral disowning newspaper notice is unrecognized under Shariat law and has zero legal force."
+              statutorySignificance: "Daily newspaper clipping assertion"
             },
             {
               date: "15 January 2026",
-              event: "Demise of the ancestor Abdul Karim, dying intestate. Succession opens automatically.",
+              event: "Demise of the ancestor Abdul Karim, leaving immovable property.",
               parties: "Abdul Karim (Deceased)",
-              statutorySignificance: "Succession vests immediately and automatically in the legal heirs (sons and daughter) at the moment of death under Muslim law."
+              statutorySignificance: "Death record assertion / Burial record"
             },
             {
               date: "10 March 2026",
-              event: "Completion of land mutation (namjari) in the Upazila Land Office by co-heir Fatema for exclusive record updates.",
+              event: "Land mutation (namjari) in the Upazila Land Office recorded in the name of co-heir Fatema.",
               parties: "Fatema (Defendant)",
-              statutorySignificance: "A mutation entry in the name of a single co-sharer does not convey title or divest other co-sharers of their inherited shares."
+              statutorySignificance: "Upazila Land Office Namjari entry"
             },
             {
               date: "05 May 2026",
-              event: "Sending of legal notice demanding partition of the joint property and distribution of inherited shares.",
+              event: "Delivery of written notice requesting partition of the family property.",
               parties: "Sons (Plaintiffs)",
-              statutorySignificance: "Establishes a clear demand for partition and formal refusal, consolidating the cause of action for a partition suit under the Partition Act 1893."
+              statutorySignificance: "Postal AD registered notice recital"
             },
             {
               date: "10 May 2026",
-              event: "Dispute arises due to attempts and negotiations by Fatema to sell the undivided joint property to third parties.",
+              event: "Alleged negotiations by Fatema to transfer portions of the family land to third parties.",
               parties: "Fatema (Defendant)",
-              statutorySignificance: "Triggers an urgent necessity to seek temporary and ad-interim injunctions under Order 39 Rules 1 & 2 CPC to prevent irreversible alienation."
+              statutorySignificance: "Witness testimony of local negotiations"
             }
           ];
         } else {
           dates = [
             {
               date: "10 September 2025",
-              event: "Execution of an affidavit by the living father attempting to disown the sons.",
+              event: "Execution of an affidavit by the living father concerning the sons.",
               parties: "Abdul Karim (Father)",
-              statutorySignificance: "Under Muslim law, a child does not acquire any interest in their parent's property during the parent's lifetime. No right of inheritance can vest or be declared while the father is alive."
+              statutorySignificance: "Notarized affidavit recital"
             },
             {
               date: "15 September 2025",
-              event: "Publication of a disowning notice in a daily newspaper by the living father.",
+              event: "Publication of a notice in a daily newspaper by the living father.",
               parties: "Abdul Karim (Father)",
-              statutorySignificance: "A unilateral disowning notice carries no legal force to alter the fixed Shariat lines of inheritance, but remains non-justiciable during his lifetime."
+              statutorySignificance: "Daily newspaper clipping assertion"
             }
           ];
         }
@@ -1089,9 +1091,9 @@ A court of law cannot grant a declaration of future inheritance shares or partit
         dates = [
           {
             date: "T=0 (Civil Dispute Emergence)",
-            event: "Occurrence of primary dispute and infringement of civil rights.",
+            event: "Occurrence of dispute and contesting assertions over property.",
             parties: "Pleading Parties",
-            statutorySignificance: "Establishes cause of action for a civil suit under Section 9 of the Code of Civil Procedure 1908."
+            statutorySignificance: "Pleadings narrative assertion"
           }
         ];
       }
@@ -1114,10 +1116,8 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       dates,
       parties,
       keywords,
-      admitted: this.extractAdmittedFacts(text, category, contractDetails),
-      disputed: this.extractDisputedFacts(text, category),
-      inferred: this.extractInferredFacts(text, category, isRegisteredBainapatra, isBalanceDeposited),
-      liability: this.extractLiabilityFacts(text, category),
+      admitted: this.extractAdmittedFacts(text, category, contractDetails, isAncestorDeceased),
+      disputed: this.extractDisputedFacts(text, category, isAncestorDeceased),
       quantum: this.extractQuantumFacts(text, category, contractDetails),
       triggers: this.extractTriggers(text, category, contractDetails),
       primarySubject: this.detectPrimarySubject(category),
@@ -1205,7 +1205,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 1. DEMISE / DEATH (Check narrow context first to avoid cross-contamination from nearby dates)
       if (narrowContext.includes("died") || narrowContext.includes("demise") || narrowContext.includes("passed away") || narrowContext.includes("death") || narrowContext.includes("expired") || narrowContext.includes("intestate")) {
         return {
-          event: "Demise of Abdul Karim (ancestor), dying intestate. Succession opens automatically under Muslim personal law.",
+          event: "Demise of Abdul Karim (ancestor), dying intestate.",
           type: "INHERITANCE_DEATH"
         };
       }
@@ -1213,7 +1213,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 2. DISOWN AFFIDAVIT
       if (narrowContext.includes("affidavit") || narrowContext.includes("notarized")) {
         return {
-          event: "Execution of a disowning affidavit by the ancestor Abdul Karim attempting to disinherit his heirs.",
+          event: "Execution of a notarized affidavit by the ancestor Abdul Karim concerning the sons.",
           type: "DISOWN_AFFIDAVIT"
         };
       }
@@ -1221,7 +1221,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 3. NEWSPAPER NOTICE
       if (narrowContext.includes("newspaper") || narrowContext.includes("published")) {
         return {
-          event: "Publication of a disowning notice in a daily newspaper by the ancestor.",
+          event: "Publication of a notice in a daily newspaper by the ancestor.",
           type: "NEWSPAPER_NOTICE"
         };
       }
@@ -1229,7 +1229,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 4. MUTATION / NAMJARI RECORDING
       if (narrowContext.includes("mutation") || narrowContext.includes("namjari") || narrowContext.includes("khatian") || narrowContext.includes("recorded")) {
         return {
-          event: "Completion of or attempt at land mutation (namjari) in the Upazila Land Office by one of the co-heirs.",
+          event: "Land mutation (namjari) recording in the Upazila Land Office in the name of co-heir Fatema.",
           type: "MUTATION_ATTEMPT"
         };
       }
@@ -1237,7 +1237,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 5. LEGAL NOTICE / FORMAL PARTITION DEMAND
       if (narrowContext.includes("legal notice") || narrowContext.includes("served a legal notice") || (narrowContext.includes("notice") && (narrowContext.includes("demand") || narrowContext.includes("served")))) {
         return {
-          event: "Sending of legal notice demanding partition of the joint property and distribution of inherited shares.",
+          event: "Delivery of written notice requesting partition of the joint family property.",
           type: "PARTITION_NOTICE"
         };
       }
@@ -1245,7 +1245,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 6. THIRD PARTY SALE THREAT
       if (narrowContext.includes("sell") || narrowContext.includes("alienate") || narrowContext.includes("negotiations") || narrowContext.includes("third party") || narrowContext.includes("transfer")) {
         return {
-          event: "Defendant attempts or negotiates to sell the undivided joint property to third parties without consent.",
+          event: "Alleged attempts and negotiations by Fatema to transfer portions of the undivided family land to third parties.",
           type: "THIRD_PARTY_SALE_THREAT"
         };
       }
@@ -1253,7 +1253,7 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // 7. AMICABLE REQUEST / DISCUSSION (PARTITION REQUEST)
       if (narrowContext.includes("requested") || narrowContext.includes("request") || narrowContext.includes("recognition")) {
         return {
-          event: "Plaintiffs request amicable partition and recognition of inheritance rights, which Defendant refuses.",
+          event: "Plaintiffs request amicable partition of family properties, which Defendant refuses.",
           type: "PARTITION_NOTICE"
         };
       }
@@ -1261,37 +1261,37 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       // Fallback to wide context with same prioritized checks if narrow context didn't hit
       if (context.includes("died") || context.includes("demise") || context.includes("passed away") || context.includes("death") || context.includes("expired") || context.includes("intestate")) {
         return {
-          event: "Demise of Abdul Karim (ancestor), dying intestate. Succession opens automatically under Muslim personal law.",
+          event: "Demise of Abdul Karim (ancestor), dying intestate.",
           type: "INHERITANCE_DEATH"
         };
       }
       if (context.includes("affidavit") || context.includes("disown")) {
         return {
-          event: "Execution of a disowning affidavit by the ancestor Abdul Karim attempting to disinherit his heirs.",
+          event: "Execution of a notarized affidavit by the ancestor Abdul Karim concerning the sons.",
           type: "DISOWN_AFFIDAVIT"
         };
       }
       if (context.includes("newspaper") || context.includes("notice")) {
         if (context.includes("legal") || context.includes("partition") || context.includes("demand") || context.includes("share") || context.includes("served")) {
           return {
-            event: "Sending of legal notice demanding partition of the joint property and distribution of inherited shares.",
+            event: "Delivery of written notice requesting partition of the joint family property.",
             type: "PARTITION_NOTICE"
           };
         }
         return {
-          event: "Publication of a disowning notice in a daily newspaper by the ancestor.",
+          event: "Publication of a notice in a daily newspaper by the ancestor.",
           type: "NEWSPAPER_NOTICE"
         };
       }
       if (context.includes("mutation") || context.includes("namjari") || context.includes("khatian")) {
         return {
-          event: "Completion of or attempt at land mutation (namjari) in the Upazila Land Office by one of the co-heirs.",
+          event: "Land mutation (namjari) recording in the Upazila Land Office in the name of co-heir Fatema.",
           type: "MUTATION_ATTEMPT"
         };
       }
       if (context.includes("sell") || context.includes("alienate") || context.includes("transfer") || context.includes("third party")) {
         return {
-          event: "Defendant attempts or negotiates to sell the undivided joint property to third parties without consent.",
+          event: "Alleged attempts and negotiations by Fatema to transfer portions of the undivided family land to third parties.",
           type: "THIRD_PARTY_SALE_THREAT"
         };
       }
@@ -1312,13 +1312,13 @@ A court of law cannot grant a declaration of future inheritance shares or partit
     }
     if (narrowContext.includes("refused") || narrowContext.includes("refusal") || narrowContext.includes("breach") || narrowContext.includes("failed") || narrowContext.includes("denied") || narrowContext.includes("demanded")) {
       return {
-        event: "Defendant's refusal to execute and register the final sale deed despite demands",
+        event: "Defendant's alleged refusal to execute and register the final sale deed despite demands",
         type: "CONTRACT_BREACH"
       };
     }
     if (narrowContext.includes("dispossessed") || narrowContext.includes("dispossession") || narrowContext.includes("ouster") || narrowContext.includes("ousted") || narrowContext.includes("trespass") || narrowContext.includes("evicted") || narrowContext.includes("fence") || narrowContext.includes("wall")) {
       return {
-        event: "Wrongful dispossession of the Plaintiff from the suit land by the Defendant",
+        event: "Alleged physical entry and erection of boundary fencing on the suit land by the Defendant",
         type: "DISPOSSESSION"
       };
     }
@@ -1350,13 +1350,13 @@ A court of law cannot grant a declaration of future inheritance shares or partit
     }
     if (context.includes("refused") || context.includes("refusal") || context.includes("breach") || context.includes("failed") || context.includes("denied") || context.includes("demanded")) {
       return {
-        event: "Defendant's refusal to execute and register the final sale deed despite demands",
+        event: "Defendant's alleged refusal to execute and register the final sale deed despite demands",
         type: "CONTRACT_BREACH"
       };
     }
     if (context.includes("dispossessed") || context.includes("dispossession") || context.includes("ouster") || context.includes("ousted") || context.includes("trespass") || context.includes("evicted") || context.includes("fence") || context.includes("wall")) {
       return {
-        event: "Wrongful dispossession of the Plaintiff from the suit land by the Defendant",
+        event: "Alleged physical entry and erection of boundary fencing on the suit land by the Defendant",
         type: "DISPOSSESSION"
       };
     }
@@ -1382,31 +1382,31 @@ A court of law cannot grant a declaration of future inheritance shares or partit
   private getStatutorySignificance(type: string): string {
     switch (type) {
       case "CONTRACT_EXECUTION":
-        return "Establishes a valid contract of sale under Section 54 of the Transfer of Property Act 1882. Subject to mandatory registration under Section 17A of the Registration Act 1908.";
+        return "Recital in executed written agreement (Bainapatra)";
       case "ADVANCE_PAYMENT":
-        return "Demonstrates part-performance and readiness of the purchaser. Validates consideration under Section 2(d) of the Contract Act 1872.";
+        return "Endorsement / Money receipt recital in agreement";
       case "CONTRACT_BREACH":
-        return "Constitutes a breach of reciprocal promises (Section 39 Contract Act 1872) and triggers cause of action for Specific Performance under Section 12 SRA 1877.";
+        return "Dispute narrative assertion / Oral encounter";
       case "DISPOSSESSION":
-        return "Triggers right of recovery of possession of immovable property based on title (Section 8 SRA 1877, 12 years limitation) or summary dispossession (Section 9 SRA 1877, 6 months limitation).";
+        return "Pleading assertion of physical entry & fencing";
       case "REGISTRATION":
-        return "Conveys absolute title under Section 54 of the Transfer of Property Act 1882 and satisfies the public notice rule under Section 49 of the Registration Act 1908.";
+        return "Sub-Registry ledger assertion";
       case "MUTATION":
-        return "Provides strong corroborative evidence of possession and updates revenue record-of-rights under Section 143 of the State Acquisition and Tenancy Act 1950.";
+        return "Upazila Land Office revenue record assertion";
       case "INHERITANCE_DEATH":
-        return "Succession vests immediately and automatically in the legal heirs at the moment of death under Muslim law. The heirs become Class I Quranic/agnatic heirs.";
+        return "Death record assertion / Burial certificate";
       case "DISOWN_AFFIDAVIT":
-        return "Under Muslim law, lifetime disinheritance by unilateral declaration is legally ineffective. It has no force to alter the statutory lines of succession.";
+        return "Notarized affidavit recital";
       case "NEWSPAPER_NOTICE":
-        return "No legal validity. A unilateral disowning newspaper notice is unrecognized under Shariat law and cannot deprive heirs of their lawful inheritance.";
+        return "Daily newspaper clipping assertion";
       case "MUTATION_ATTEMPT":
-        return "Subject to challenge. A mutation entry in the name of a single co-sharer does not convey title or divest other co-sharers of their inherited shares.";
+        return "Upazila Land Office Namjari entry";
       case "PARTITION_NOTICE":
-        return "Establishes a clear demand for partition and formal refusal, consolidating the cause of action for a partition suit under the Partition Act 1893.";
+        return "Registered postal AD receipt / Written demand";
       case "THIRD_PARTY_SALE_THREAT":
-        return "Triggers an urgent necessity to seek temporary and ad-interim injunctions under Order 39 Rules 1 & 2 CPC to prevent irreversible alienation.";
+        return "Witness testimony of local sale negotiations";
       default:
-        return "Material fact establishing the chronology of civil rights and cause of action under Section 9 CPC.";
+        return "Dispute narrative assertion";
     }
   }
 
@@ -2144,72 +2144,238 @@ A court of law cannot grant a declaration of future inheritance shares or partit
     }
   }
 
-  private extractAdmittedFacts(text: string, category: string, details: any): string[] {
+  private extractAdmittedFacts(text: string, category: string, details: any, isAncestorDeceased?: boolean): string[] {
     const admitted: string[] = [];
     const isSP = category === "SPECIFIC_PERFORMANCE";
+    const isInheritance = category === "INHERITANCE_CONSULTATION";
 
     if (isSP) {
-      admitted.push("Execution of a written agreement/contract of sale (Bainapatra) between the parties.");
-      admitted.push(`Receipt of BDT ${details.advance.toLocaleString("en-US")} as advance/earnest money by the Defendant.`);
+      admitted.push("Execution of a written document titled 'Bainapatra' (Agreement to Sell) between the parties.");
+      admitted.push(`Payment and receipt of BDT ${details.advance.toLocaleString("en-US")} as advance/earnest money by the Defendant.`);
+      admitted.push("Mutual identification of the subject land parcel described in the agreement.");
+    } else if (isInheritance) {
+      if (isAncestorDeceased) {
+        admitted.push("Biological relationship of the parties as the lawful children of late Abdul Karim.");
+        admitted.push("Demise of Abdul Karim leaving immovable family property.");
+        admitted.push("Execution of a disowning affidavit and newspaper publication by the ancestor during his lifetime.");
+        admitted.push("Defendant Fatema currently holds recorded mutation in the Upazila Land Office.");
+      } else {
+        admitted.push("Biological relationship between Abdul Karim (father) and the two sons.");
+        admitted.push("Execution of the affidavit and publication of the newspaper notice by the living father.");
+        admitted.push("Father is currently alive and in possession of the self-acquired property.");
+      }
     } else {
-      admitted.push("Plaintiff holds a chain of title deeds.");
-      admitted.push("Defendant is currently in physical occupation of the disputed land parcel.");
+      admitted.push("Plaintiff holds registered title deed documentation.");
+      admitted.push("Defendant is currently in physical possession/occupation of the disputed land parcel.");
     }
     return admitted;
   }
 
-  private extractDisputedFacts(text: string, category: string): string[] {
+  private extractDisputedFacts(text: string, category: string, isAncestorDeceased?: boolean): string[] {
     const disputed: string[] = [];
     const isSP = category === "SPECIFIC_PERFORMANCE";
+    const isInheritance = category === "INHERITANCE_CONSULTATION";
 
     if (isSP) {
-      disputed.push("Whether the Defendant willfully neglected to execute and register the final sale deed.");
-      disputed.push("Whether the Bainapatra is registered in compliance with Section 17A of the Registration Act 1908.");
-      disputed.push("Whether the Plaintiff was continuously ready and willing to perform the contract.");
-      disputed.push("Whether the remaining balance consideration has been deposited in court as required by Section 21A SRA.");
+      disputed.push("Whether the Defendant received written notice demanding registration of the final sale deed.");
+      disputed.push("Whether the Bainapatra was registered before the Sub-Registrar under statutory formalities.");
+      disputed.push("Whether physical possession of the suit land was delivered to Plaintiff at contract execution.");
+      disputed.push("Whether Plaintiff tendered or deposited the balance consideration of BDT " + (detailsSummary(text)));
+    } else if (isInheritance) {
+      if (isAncestorDeceased) {
+        disputed.push("Whether the ancestral property remains joint and undivided among the heirs.");
+        disputed.push("Whether Defendant Fatema is negotiating to sell specific physical portions of the undivided estate to third parties.");
+        disputed.push("Whether amicable partition was formally requested and refused prior to litigation.");
+        disputed.push("The exact list and physical boundaries of all immovable properties left by the deceased.");
+      } else {
+        disputed.push("Whether the disowning publication caused actionable damage or civil injury.");
+        disputed.push("Whether the sons contributed financially to the acquisition or development of the father's properties.");
+      }
     } else {
-      disputed.push("Whether the Plaintiff has absolute legal title or if Defendant has any hostile independent right.");
-      disputed.push("Whether the Defendant forcefully dispossessed the Plaintiff and built unauthorized fences.");
-      disputed.push("The exact date and time of the dispossession/encroachment.");
+      disputed.push("The exact date and physical manner of the alleged dispossession/fencing by Defendant.");
+      disputed.push("Whether the Defendant entered the land with permission, under an independent claim, or forcefully.");
+      disputed.push("The exact boundary line demarcating Plaintiff's title and Defendant's occupation.");
     }
     return disputed;
   }
 
-  private extractInferredFacts(text: string, category: string, isRegistered: boolean | "unspecified", isDeposited: boolean | "unspecified"): string[] {
-    const isSP = category === "SPECIFIC_PERFORMANCE";
+  private extractUnknownFacts(facts: ParsedFacts): Array<{
+    category: string;
+    factDescription: string;
+    status: "MISSING_FROM_RECORD" | "AMBIGUOUS_ASSERTION" | "UNVERIFIED_ORAL_CLAIM";
+    recordSignificance: string;
+  }> {
+    const list: Array<{
+      category: string;
+      factDescription: string;
+      status: "MISSING_FROM_RECORD" | "AMBIGUOUS_ASSERTION" | "UNVERIFIED_ORAL_CLAIM";
+      recordSignificance: string;
+    }> = [];
+
+    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
+    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
+
     if (isSP) {
-      const inferred: string[] = [];
-      if (isRegistered === false) {
-        inferred.push("INFERRED VULNERABILITY: The Bainapatra was executed as a written private document, but was NOT registered.");
-      } else if (isRegistered === "unspecified") {
-        inferred.push("INFERRED RISK: Registration status of the Bainapatra is unspecified, placing specific performance at major legal risk.");
-      } else {
-        inferred.push("The Bainapatra is registered and legally operative.");
+      if (facts.isRegisteredBainapatra === "unspecified") {
+        list.push({
+          category: "Registration & Formalities",
+          factDescription: "Whether the written Bainapatra was formally registered before the Sub-Registrar or executed as an unregistered private writing.",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "The factual record does not provide Sub-Registry volume/page numbers or a registration endorsement."
+        });
+      } else if (facts.isRegisteredBainapatra === false) {
+        list.push({
+          category: "Registration & Formalities",
+          factDescription: "Factual status confirms document is an unregistered private writing; whether any certified notary endorsement exists is unstated.",
+          status: "UNVERIFIED_ORAL_CLAIM",
+          recordSignificance: "Private contract without public registration endorsement."
+        });
       }
-      if (isDeposited === false) {
-        inferred.push("INFERRED VULNERABILITY: The Plaintiff did NOT deposit the remaining balance consideration in the Court treasury.");
-      } else if (isDeposited === "unspecified") {
-        inferred.push("INFERRED RISK: Treasury deposit of the remaining balance is unspecified, violating Section 21A SRA mandates if unproven.");
-      } else {
-        inferred.push("The Plaintiff has demonstrated ready-to-pay status by depositing the remaining consideration in court.");
+
+      if (facts.isBalanceDeposited === "unspecified") {
+        list.push({
+          category: "Consideration & Treasury Deposit",
+          factDescription: "Whether the remaining balance consideration (BDT " + facts.contractDetails.balance.toLocaleString("en-US") + ") was tendered via bank draft, treasury challan, or remains in purchaser's custody.",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "No bank receipt or treasury deposit challan is referenced in the factual narrative."
+        });
       }
-      return inferred;
-    } else if (category === "INHERITANCE_CONSULTATION") {
-      return [
-        "The unilateral disowning notice carries no legal force to alter the fixed Shariat lines of inheritance.",
-        "The father retains full ownership, alienation, and possession rights over his properties during his entire lifetime."
-      ];
+
+      const hasBreachDate = facts.dates.some(d => d.event.toLowerCase().includes("refusal") || d.event.toLowerCase().includes("breach"));
+      if (!hasBreachDate) {
+        list.push({
+          category: "Chronology & Demand Precision",
+          factDescription: "Exact calendar date when the Plaintiff formally tendered balance consideration or when Defendant communicated refusal.",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "Factual record omits calendar dates for verbal demand and subsequent refusal."
+        });
+      }
+
+      list.push({
+        category: "Property Cadastral Identification",
+        factDescription: "Specific CS/SA/RS khatian numbers, plot/dag numbers, and boundary mauza sheet coordinates for the contract land.",
+        status: "MISSING_FROM_RECORD",
+        recordSignificance: "Dispute narrative specifies land area/value but lacks formal cadastral schedule descriptions."
+      });
+
+      list.push({
+        category: "Physical Possession Status",
+        factDescription: "Whether physical possession of the land was delivered to the purchaser at signing or remains with the vendor.",
+        status: "AMBIGUOUS_ASSERTION",
+        recordSignificance: "Pleadings narrative is silent on current actual physical occupancy and cultivation."
+      });
+    } else if (isDP) {
+      if (facts.plaintiffHasRegisteredTitle === "unspecified") {
+        list.push({
+          category: "Title & Conveyance Chain",
+          factDescription: "Certified particulars of the registered Saf Kabala deed (volume number, deed number, registration year).",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "The narrative asserts ownership without citing deed registration registry numbers."
+        });
+      }
+
+      if (facts.dispossessionProven === "unspecified") {
+        list.push({
+          category: "Dispossession & Ouster Fact",
+          factDescription: "Exact calendar date, hour, and physical mechanism of alleged eviction and fence erection.",
+          status: "AMBIGUOUS_ASSERTION",
+          recordSignificance: "Record relies on general assertions without police general diary (GD) or local demarcation report."
+        });
+      }
+
+      list.push({
+        category: "Cadastral Survey & Mutation Records",
+        factDescription: "Mutation Khatian, DCR number, and latest Land Development Tax (Dakhila) receipt dates.",
+        status: "MISSING_FROM_RECORD",
+        recordSignificance: "Upazila Land Office mutation records are asserted but specific revenue receipts are not catalogued."
+      });
+
+      list.push({
+        category: "Defendant Occupation Origin",
+        factDescription: "Factual basis of Defendant's entry (alleged oral permission, disputed tenancy, or forceful entry).",
+        status: "UNVERIFIED_ORAL_CLAIM",
+        recordSignificance: "Defendant's version of how physical occupation commenced is unstated in the factual summary."
+      });
+    } else if (isInheritance) {
+      if (facts.isAncestorDeceased) {
+        list.push({
+          category: "Demise & Death Certification",
+          factDescription: "Documentary proof of death (Municipal / Union Parishad Death Certificate, registry entry number).",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "Date of death is stated in narrative, but formal death registration certificate is omitted."
+        });
+
+        list.push({
+          category: "Pedigree & Heirship Verification (Waris)",
+          factDescription: "Certified Warisan Sanad / Legal Heirship Certificate establishing complete genealogy.",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "Factual record does not verify if there are any other surviving spouses, pre-deceased heirs, or daughters."
+        });
+
+        list.push({
+          category: "Mutation Record Proceedings",
+          factDescription: "Certified records of the Namjari Miss Case through which exclusive mutation was granted to Defendant.",
+          status: "MISSING_FROM_RECORD",
+          recordSignificance: "The factual record states exclusive mutation occurred, but the case number and notice service proof are omitted."
+        });
+
+        list.push({
+          category: "Estate Schedule & Demarcations",
+          factDescription: "Complete schedule of all ancestral properties (mouza, khatian, dag, total area) left by the deceased.",
+          status: "AMBIGUOUS_ASSERTION",
+          recordSignificance: "The exact land parcels forming the estate corpus require a comprehensive schedule of partition."
+        });
+      } else {
+        list.push({
+          category: "Ancestor Living Status",
+          factDescription: "Verification of ancestor's current status, physical custody of original title deeds, and testamentary documents.",
+          status: "AMBIGUOUS_ASSERTION",
+          recordSignificance: "Dispute centers on statements made during ancestor's lifetime without verification of underlying title deeds."
+        });
+
+        list.push({
+          category: "Genealogy & Pedigree Confirmation",
+          factDescription: "Certified birth records and national identification confirming father-son relationship.",
+          status: "UNVERIFIED_ORAL_CLAIM",
+          recordSignificance: "Relationship is asserted in narrative, but official family registry records are not appended."
+        });
+      }
     } else {
-      return ["Defendant occupies the land solely as a trespasser, lacking any registered conveyance or mutation records."];
+      list.push({
+        category: "Chronology & Dates",
+        factDescription: "Exact calendar dates for the sequence of transactions and emergence of dispute.",
+        status: "MISSING_FROM_RECORD",
+        recordSignificance: "Narrative lacks specific day/month/year timestamps."
+      });
+      list.push({
+        category: "Evidentiary Documents",
+        factDescription: "List of primary written instruments, correspondence, or revenue records.",
+        status: "MISSING_FROM_RECORD",
+        recordSignificance: "Record relies on summary factual statements without document annexures."
+      });
     }
+
+    return list;
   }
 
-  private extractLiabilityFacts(text: string, category: string): string[] {
-    const isSP = category === "SPECIFIC_PERFORMANCE";
+  private generateFactualSummary(facts: ParsedFacts): string {
+    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
+    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
+
     if (isSP) {
-      return ["Defendant is contractually liable to execute and register the final Sale Deed, subject to statutory conditions being met."];
+      return `The dispute arises from a written agreement to sell (Bainapatra) concerning immovable property for a total consideration of BDT ${facts.contractDetails.total.toLocaleString("en-US")}, with BDT ${facts.contractDetails.advance.toLocaleString("en-US")} acknowledged as advance payment. The parties contest whether performance was properly demanded, whether registration formalities were completed, and whether balance consideration was tendered.`;
+    } else if (isDP) {
+      return `The dispute involves a parcel of land where the Plaintiff claims ownership through registered deeds and revenue records, while the Defendant is in physical occupation and is asserted to have erected boundary fencing without consent.`;
+    } else if (isInheritance) {
+      if (facts.isAncestorDeceased) {
+        return `The dispute concerns the estate of late Abdul Karim, who died intestate leaving two sons and one daughter. Prior to his demise, an affidavit and newspaper notice disowning the sons were published. Following his death, the daughter obtained exclusive revenue mutation, while the sons demanded amicable partition and distribution of their inherited shares.`;
+      } else {
+        return `The dispute arises from a living father (Abdul Karim) executing an affidavit and publishing a newspaper notice disowning his two sons regarding his self-acquired property during his lifetime.`;
+      }
     } else {
-      return ["Defendant is liable for wrongful dispossession, civil trespass, and must dismantle encroaching fences."];
+      return `The factual record outlines a civil dispute between the parties concerning property rights and possession.`;
     }
   }
 
@@ -2219,14 +2385,14 @@ A court of law cannot grant a declaration of future inheritance shares or partit
       return [
         `Total agreed consideration: BDT ${details.total.toLocaleString("en-US")}`,
         `Advance paid under Bainapatra: BDT ${details.advance.toLocaleString("en-US")}`,
-        `Remaining balance to be deposited: BDT ${details.balance.toLocaleString("en-US")}`
+        `Remaining balance consideration: BDT ${details.balance.toLocaleString("en-US")}`
       ];
     } else {
       const match = text.match(/(\d+)\s*decimals/i);
       const decimals = match ? match[1] : "Disputed";
       return [
         `Subject matter: ${decimals} decimals of land`,
-        "Entitlement to mesne profits for wrongful ouster"
+        "Claimed possession period: Current disputed occupation"
       ];
     }
   }
@@ -2248,16 +2414,19 @@ A court of law cannot grant a declaration of future inheritance shares or partit
   }
 }
 
+function detailsSummary(text: string): string {
+  const match = text.match(/(\d+[\d,]*)\s*(?:taka|bdt|lac|crore)/i);
+  return match ? match[0] : "the stipulated remaining sum";
+}
+
 // ─── PARSED FACTS INTERFACE ───
 interface ParsedFacts {
   rawText: string;
-  dates: Array<{ date: string; event: string; parties: string; statutorySignificance: string }>;
+  dates: Array<{ date: string; event: string; parties: string; statutorySignificance?: string; factualSource?: string }>;
   parties: ParsedParty[];
   keywords: string[];
   admitted: string[];
   disputed: string[];
-  inferred: string[];
-  liability: string[];
   quantum: string[];
   triggers: Array<{ domain: string; fact: string; trigger: string }>;
   primarySubject: string;
