@@ -7,6 +7,58 @@ export interface EngineInput {
   license: LicenseData;
 }
 
+export interface AtomicFact {
+  factId: string;
+  proposition: string;
+  value: unknown;
+  sourceDocumentId?: string;
+  sourcePage?: number;
+  sourceParagraph?: string;
+  assertedBy?: string;
+  factStatus: "ADMITTED" | "DISPUTED" | "ALLEGED" | "PROVED" | "UNKNOWN" | "CONTRADICTED";
+  temporalStatus: "PAST" | "CURRENT" | "FUTURE" | "UNKNOWN";
+  confidence: number;
+  materiality: "CRITICAL" | "MATERIAL" | "SECONDARY";
+  supersedes?: string;
+}
+
+export interface FactConflict {
+  conflictId: string;
+  conflictType:
+    | "TEMPORAL_STATUS_CONTRADICTION"
+    | "CHRONOLOGY_DATE_CLASH"
+    | "CAUSE_OF_ACTION_MUTUAL_EXCLUSION"
+    | "PARTY_ROLE_INCONSISTENCY"
+    | "PROPERTY_STATUS_COLLISION"
+    | "EVIDENTIARY_ABSENCE";
+  severity: "CRITICAL" | "MATERIAL" | "SECONDARY";
+  factIdA: string;
+  factIdB?: string;
+  description: string;
+  affectedGateways: number[];
+  resolutionRequirement: string;
+}
+
+export interface FactConsistencyGateOutput {
+  gateStatus: "CONSISTENT" | "CONDITIONALLY_CONSISTENT" | "HALT_CRITICAL_CONFLICT";
+  certification: "GREEN" | "AMBER" | "RED" | "BLACK";
+  summary: string;
+  atomicFacts: AtomicFact[];
+  conflicts: FactConflict[];
+  criticalConflictCount: number;
+  materialConflictCount: number;
+  missingDocumentsCount: number;
+  verifiedRulesCount: number;
+  verifiedAuthoritiesCount: number;
+  readinessScore: number;
+  auditTrail: Array<{
+    checkId: string;
+    checkName: string;
+    status: "PASS" | "WARN" | "FAIL";
+    details: string;
+  }>;
+}
+
 export interface CaseHistoryItem {
   id: string;
   timestamp: number;
@@ -22,6 +74,7 @@ export interface CaseHistoryItem {
 }
 
 export interface CaseAnalysisResponse {
+  gateF0?: FactConsistencyGateOutput;
   stage0: {
     factualSummary: string;
     chronology: Array<{

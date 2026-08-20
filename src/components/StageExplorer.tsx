@@ -3,7 +3,8 @@ import { CaseAnalysisResponse } from "../types/types";
 import TimelineValidation from "./TimelineValidation";
 import { 
   Briefcase, Scale, Calendar, AlertTriangle, Users, MapPin, 
-  FileCheck, List, Shield, Eye, HelpCircle, GitCommit, CornerRightDown, Layers
+  FileCheck, List, Shield, Eye, HelpCircle, GitCommit, CornerRightDown, Layers,
+  CheckCircle2, AlertOctagon, ChevronDown, ChevronUp
 } from "lucide-react";
 
 interface StageExplorerProps {
@@ -12,6 +13,9 @@ interface StageExplorerProps {
 
 export default function StageExplorer({ analysis }: StageExplorerProps) {
   const [activeStage, setActiveStage] = useState<number>(0);
+  const [showAuditDetails, setShowAuditDetails] = useState<boolean>(false);
+
+  const gateF0 = analysis.gateF0;
 
   const stagesList = [
     { num: 0, title: "Fact Matrix & Chronology", icon: Briefcase },
@@ -30,8 +34,125 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
     { num: 13, title: "Synthesis & Final Execution", icon: Scale },
   ];
 
+  const getCertColorClasses = (cert?: string) => {
+    switch (cert) {
+      case "GREEN":
+        return "bg-emerald-50 text-emerald-800 border-emerald-600";
+      case "AMBER":
+        return "bg-amber-50 text-amber-800 border-amber-500";
+      case "RED":
+        return "bg-rose-50 text-rose-800 border-rose-600";
+      case "BLACK":
+        return "bg-neutral-900 text-neutral-100 border-neutral-700";
+      default:
+        return "bg-blue-50 text-blue-800 border-blue-600";
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 font-sans">
+    <div className="space-y-6 font-sans">
+      {/* Enterprise Case Readiness & Consistency Banner */}
+      {gateF0 && (
+        <div className={`p-4 border-2 rounded-none transition-all ${
+          gateF0.gateStatus === "HALT_CRITICAL_CONFLICT"
+            ? "bg-rose-50/80 border-rose-700 text-rose-950"
+            : gateF0.gateStatus === "CONDITIONALLY_CONSISTENT"
+            ? "bg-amber-50/70 border-amber-600 text-amber-950"
+            : "bg-[#FDFBF7] border-[#1E252B] text-[#1E252B]"
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              {gateF0.gateStatus === "HALT_CRITICAL_CONFLICT" ? (
+                <AlertOctagon className="w-6 h-6 text-rose-600 flex-shrink-0 mt-0.5" />
+              ) : gateF0.gateStatus === "CONDITIONALLY_CONSISTENT" ? (
+                <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 bg-[#1E252B] text-white">
+                    GATEWAY F0 &bull; FACT CONSISTENCY GATE
+                  </span>
+                  <span className={`text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 border ${getCertColorClasses(gateF0.certification)}`}>
+                    CERTIFICATION: {gateF0.certification}
+                  </span>
+                  <span className="text-xs font-mono font-bold">
+                    Readiness Score: {gateF0.readinessScore}%
+                  </span>
+                </div>
+                <p className="text-xs font-medium mt-1 font-sans">
+                  {gateF0.summary}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="text-right hidden sm:block">
+                <div className="text-[10px] font-mono text-neutral-600">
+                  Critical Conflicts: <strong className={gateF0.criticalConflictCount > 0 ? "text-rose-600" : "text-emerald-700"}>{gateF0.criticalConflictCount}</strong>
+                </div>
+                <div className="text-[10px] font-mono text-neutral-600">
+                  Missing Docs: <strong>{gateF0.missingDocumentsCount}</strong> &bull; Verified Rules: <strong>{gateF0.verifiedRulesCount}</strong>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAuditDetails(!showAuditDetails)}
+                className="px-3 py-1.5 text-xs font-mono font-bold bg-[#1E252B] text-white hover:bg-neutral-800 flex items-center gap-1.5 transition-colors"
+              >
+                <span>{showAuditDetails ? "Hide Audit" : "Forensic Audit"}</span>
+                {showAuditDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Expandable Forensic Audit Trail */}
+          {showAuditDetails && (
+            <div className="mt-4 pt-4 border-t border-current/20 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {gateF0.auditTrail.map((item, idx) => (
+                  <div key={idx} className="p-2.5 bg-white/90 border border-[#E5E1D8] text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-[10px] text-[#1E252B]">{item.checkId} &bull; {item.checkName}</span>
+                      <span className={`px-1.5 py-0.5 font-mono text-[9px] font-bold ${
+                        item.status === "PASS" ? "bg-emerald-100 text-emerald-800" :
+                        item.status === "WARN" ? "bg-amber-100 text-amber-800" :
+                        "bg-rose-100 text-rose-800"
+                      }`}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-700">{item.details}</p>
+                  </div>
+                ))}
+              </div>
+
+              {gateF0.conflicts.length > 0 && (
+                <div className="p-3 bg-rose-100/70 border border-rose-300 rounded-none space-y-2">
+                  <span className="font-mono font-bold text-[10px] text-rose-900 uppercase tracking-wider block">
+                    Detected Contradictions & Conflict Resolution Requirements
+                  </span>
+                  <div className="space-y-2">
+                    {gateF0.conflicts.map((conf, ci) => (
+                      <div key={ci} className="p-2 bg-white border border-rose-200 text-xs">
+                        <div className="font-mono font-bold text-rose-700 text-[10px] uppercase">
+                          [{conf.conflictType}] &bull; Severity: {conf.severity}
+                        </div>
+                        <p className="text-neutral-800 mt-0.5">{conf.description}</p>
+                        <div className="mt-1 pt-1 border-t border-rose-100 text-neutral-600 text-[11px]">
+                          <strong>Remedial Resolution:</strong> {conf.resolutionRequirement}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 font-sans">
       {/* Sidebar Navigation */}
       <div className="lg:col-span-1 space-y-3">
         <div className="border-b-2 border-[#1E252B] pb-2 mb-4">
@@ -43,6 +164,8 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
           {stagesList.map((stage) => {
             const Icon = stage.icon;
             const isActive = activeStage === stage.num;
+            const isHaltedSynthesis = stage.num === 13 && gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT";
+
             return (
               <button
                 key={stage.num}
@@ -50,17 +173,28 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                 className={`w-full text-left px-3 py-2.5 rounded-none text-xs font-bold font-mono flex items-center gap-3 transition-all duration-300 border-2 ${
                   isActive
                     ? "bg-[#1E252B] text-white border-[#1E252B]"
+                    : isHaltedSynthesis
+                    ? "bg-rose-50 text-rose-900 border-rose-300 hover:border-rose-600"
                     : "bg-white text-[#1E252B] border-[#E5E1D8] hover:bg-[#F9F7F2] hover:border-[#1E252B]"
                 }`}
               >
                 <span className={`flex-shrink-0 w-5 h-5 flex items-center justify-center font-mono text-[10px] font-bold border ${
                   isActive 
                     ? "bg-[#C5A059] text-[#1E252B] border-[#C5A059]" 
+                    : isHaltedSynthesis
+                    ? "bg-rose-600 text-white border-rose-600"
                     : "bg-[#FDFBF7] text-[#1E252B] border-[#E5E1D8]"
                 }`}>
                   {stage.num}
                 </span>
-                <span className="truncate tracking-wider uppercase text-[11px]">{stage.title}</span>
+                <span className="truncate tracking-wider uppercase text-[11px] flex-1">
+                  {stage.title}
+                </span>
+                {isHaltedSynthesis && (
+                  <span className="text-[9px] px-1 py-0.5 bg-rose-600 text-white font-mono uppercase font-bold">
+                    HALT
+                  </span>
+                )}
               </button>
             );
           })}
@@ -92,11 +226,49 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
               
               {/* STAGE 0 */}
               {activeStage === 0 && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {analysis.stage0.factualSummary && (
                     <div className="p-3.5 bg-[#FDFBF7] border border-[#E5E1D8] rounded-md">
                       <div className="font-mono text-[10px] font-bold text-[#C5A059] uppercase tracking-wider mb-1">Gateway 0 Factual Narrative Summary</div>
                       <p className="text-xs text-[#1E252B] leading-relaxed font-sans">{analysis.stage0.factualSummary}</p>
+                    </div>
+                  )}
+
+                  {/* Gateway F0: Atomic Facts Table */}
+                  {gateF0 && gateF0.atomicFacts.length > 0 && (
+                    <div className="border border-[#E5E1D8] p-3.5 bg-[#FDFBF7]">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider text-xs">
+                          Immutable Atomic Facts (F0 Normalized Units)
+                        </h4>
+                        <span className="text-[10px] font-mono font-bold text-[#C5A059]">
+                          {gateF0.atomicFacts.length} Atomic Propositions
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto max-h-48 overflow-y-auto">
+                        <table className="w-full text-left border-collapse border border-[#E5E1D8] text-[11px]">
+                          <thead>
+                            <tr className="bg-white font-mono text-[10px] font-bold text-[#1E252B] border-b border-[#E5E1D8]">
+                              <th className="p-1.5 border border-[#E5E1D8]">Fact ID</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Proposition</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Status</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Temporal</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Materiality</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {gateF0.atomicFacts.map((af, i) => (
+                              <tr key={i} className="border-b border-[#E5E1D8] bg-white/70">
+                                <td className="p-1.5 font-mono font-bold text-[#1E252B] whitespace-nowrap">{af.factId}</td>
+                                <td className="p-1.5">{af.proposition}</td>
+                                <td className="p-1.5 font-mono font-bold text-[10px]">{af.factStatus}</td>
+                                <td className="p-1.5 font-mono text-[10px]">{af.temporalStatus}</td>
+                                <td className="p-1.5 font-mono text-[10px]">{af.materiality}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
 
@@ -751,32 +923,54 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
               {/* STAGE 13 */}
               {activeStage === 13 && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-[#FDFBF7] border border-[#C5A059] rounded border-l-8 text-xs">
-                    <span className="text-[9px] font-mono font-bold text-[#C5A059] uppercase tracking-wider block">Overview Analysis Synthesized</span>
-                    <p className="mt-1 font-sans italic text-[#1E252B] font-medium leading-relaxed">
-                      "{analysis.stage13.overview}"
+                  {gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" && (
+                    <div className="p-4 bg-rose-50 border-2 border-rose-600 rounded-none text-rose-950 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertOctagon className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                        <span className="font-mono font-bold text-xs uppercase tracking-widest text-rose-700">
+                          BCCAA FAIL-CLOSED PROTOCOL: LEGAL SYNTHESIS HALTED
+                        </span>
+                      </div>
+                      <p className="text-xs leading-relaxed font-medium">
+                        Gateway F0 has locked final synthesis because the input narrative contains irreconcilable factual contradictions. Synthesizing a cause of action or legal relief from mutually contradictory facts would create an invalid pleading liable to threshold dismissal under Order VII Rule 11 CPC.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className={`p-4 rounded border-l-8 text-xs ${
+                    gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" 
+                      ? "bg-rose-50/60 border-rose-600 border" 
+                      : "bg-[#FDFBF7] border-[#C5A059] border"
+                  }`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-wider block ${
+                      gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" ? "text-rose-700" : "text-[#C5A059]"
+                    }`}>
+                      {gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" ? "Conflict Audit & Synthesis Halt Report" : "Overview Analysis Synthesized"}
+                    </span>
+                    <p className="mt-1 font-sans text-[#1E252B] font-medium leading-relaxed whitespace-pre-line">
+                      {analysis.stage13.overview}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
                     <div className="p-3 bg-white border border-[#E5E1D8] rounded">
                       <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-1">Proposed Decree & reliefs</strong>
-                      <p>{analysis.stage13.reliefDecree}</p>
+                      <p className="whitespace-pre-line">{analysis.stage13.reliefDecree}</p>
                     </div>
                     <div className="p-3 bg-white border border-[#E5E1D8] rounded">
                       <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-1">Execution pathway (Order XXI)</strong>
-                      <p>{analysis.stage13.executionPathway}</p>
+                      <p className="whitespace-pre-line">{analysis.stage13.executionPathway}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] pt-1">
                     <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded">
                       <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-0.5">Costs Apportionment (s.35)</strong>
-                      <p className="text-neutral-500">{analysis.stage13.costsApportionment}</p>
+                      <p className="text-neutral-500 whitespace-pre-line">{analysis.stage13.costsApportionment}</p>
                     </div>
                     <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded">
                       <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-0.5">Equitable Bars & Laches</strong>
-                      <p className="text-neutral-500">{analysis.stage13.equitableBars}</p>
+                      <p className="text-neutral-500 whitespace-pre-line">{analysis.stage13.equitableBars}</p>
                     </div>
                   </div>
                 </div>
@@ -797,6 +991,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
-import { CaseAnalysisResponse, EngineInput } from "../types/types";
+import { CaseAnalysisResponse, EngineInput, FactConsistencyGateOutput } from "../types/types";
 import { AuthUser } from "../types/auth.types";
 import { generateSecureId, generateHash } from "../utils/crypto";
 import { generateWatermark } from "../utils/watermark";
 import { logAudit } from "../utils/audit";
 import { CitationValidator, VerifiedPrecedentOutput } from "./CitationValidator";
+import { FactConsistencyGate } from "./FactConsistencyGate";
 
 /**
  * BCCAA Offline Engine v2.5
@@ -40,9 +41,22 @@ export class BCCAAEngine {
     // Parse fact pattern dynamically
     const facts = this.parseFacts(input.factPattern, input.focusDomain);
 
+    // Build G0 Fact Matrix
+    const stage0 = this.buildFactMatrix(facts);
+
+    // Run FACT_CONSISTENCY_GATE (F0) before Gateway 1
+    const gateF0 = FactConsistencyGate.evaluate(
+      input.factPattern,
+      stage0.chronology,
+      facts.category,
+      facts.isAncestorDeceased
+    );
+    facts.gateF0 = gateF0;
+
     // Run all 14 stages deterministically
     const response: CaseAnalysisResponse = {
-      stage0: this.buildFactMatrix(facts),
+      gateF0,
+      stage0,
       stage1: this.classifyDomain(facts, input.focusDomain),
       stage2: this.mapLegislation(facts),
       stage3: this.checkLimitation(facts),
@@ -773,21 +787,78 @@ COMPUTED JURISDICTIONAL MAPPING:
     let equitableBars = "";
     let executionPathway = "";
 
+    // ─────────────────────────────────────────────────────────────
+    // FAIL-CLOSED GATE OVERRIDE: Check F0 Gate Status
+    // ─────────────────────────────────────────────────────────────
+    if (facts.gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT") {
+      const conflictList = facts.gateF0.conflicts.map((c, i) => 
+        `[CONFLICT ${i + 1}: ${c.conflictType}]\n${c.description}\n→ Mandatory Remedial Action: ${c.resolutionRequirement}`
+      ).join("\n\n");
+
+      overview = `CASE STATUS: MATERIAL FACTUAL CONFLICT — FINAL SYNTHESIS BLOCKED.
+Under the BCCAA Fail-Closed Architecture, Gateway F0 has identified ${facts.gateF0.criticalConflictCount} critical contradiction(s) in the factual foundation. Reliable legal synthesis is mathematically impossible without first reconciling these contradictory assertions.
+
+FORENSIC CONFLICT AUDIT:
+${conflictList}
+
+GATEWAY PROPAGATION AUDIT:
+• Gateway 3 (Limitation): Calculation halted due to contradictory date predicates.
+• Gateway 4 (Parties & Heirship): Legal capacities suspended pending verification of vital status.
+• Gateway 5 (Jurisdiction): Forum selection marked UNDETERMINED.
+• Gateway 13 (Synthesis): Legal drafting is STRICTLY BLOCKED to prevent generation of defective or contradictory pleadings.`;
+
+      reliefDecree = `NO DECREE CAN BE FORMULATED (Legal Synthesis Halted).
+Under fail-closed legal engineering standards, a court cannot entertain or formulate a decree based on mutually contradictory factual premises. Filing a plaint with these uncorrected contradictions will result in threshold dismissal or rejection under Order VII Rule 11 CPC with punitive costs under Section 35A CPC.`;
+
+      equitableBars = `Pleading mutually contradictory factual assertions violates the doctrine of candid disclosure and the clean hands doctrine. A litigant who blows hot and cold (approbate and reprobate) is barred from receiving discretionary relief under Section 42 of the Specific Relief Act 1877.`;
+
+      executionPathway = `Execution Blocked. No execution proceedings under Order XXI CPC can arise from a halted or conflicted synthesis.`;
+
+      const costsApportionment = "Not applicable (Legal synthesis blocked under fail-closed consistency gate).";
+
+      return {
+        overview,
+        reliefDecree,
+        costsApportionment,
+        equitableBars,
+        executionPathway,
+      };
+    }
+
     const lim = this.computeLimitation(facts);
 
     if (isInheritance) {
-      overview = `MATTER CLASSIFIED: Inheritance / Succession Consultation (Muslim Personal Law).
+      if (facts.isAncestorDeceased) {
+        overview = `MATTER CLASSIFIED: Intestate Muslim Succession & Partition Suit (Muslim Personal Law / Partition Act 1893).
+Upon the demise of the ancestor Abdul Karim, his estate automatically vested in his surviving legal heirs as tenants-in-common under the Muslim Personal Law (Shariat) Application Act 1937. Under Islamic jurisprudence (Faraizi), each heir became the absolute owner of their specific Quranic/agnatic fractional share in every parcel of the estate.
+The unilateral 'disowning' affidavit and newspaper notice executed prior to demise are legally void and of no legal effect under Muslim law, which prohibits disinheriting legal heirs.
+The unilateral mutation obtained by Defendant Fatema does not extinguish the Plaintiffs' title, as a revenue record (Namjari) creates no title and cannot override the law of succession.
+The Plaintiffs have an accrued, present civil cause of action to seek a declaration of their inherited shares, cancellation/correction of wrongful mutation, partition by metes and bounds under Order XX Rule 18 CPC, and an interim injunction restraining alienation.`;
+
+        reliefDecree = `Preliminary Partition Decree Recommended.
+1. Declaration that Plaintiffs and Defendant are co-sharer heirs holding their respective lawful shares under Muslim Shariat law.
+2. Directing partition of the suit properties by metes and bounds according to respective shares, with appointment of a Pleader Commissioner under Order XXVI Rule 13 CPC to prepare the allotment (Saham).
+3. Temporary and permanent injunction restraining Defendant from alienating or creating third-party encumbrances on undivided parcels.
+4. Direction to Upazila Land Office (AC Land) to correct mutation khatians to record all co-sharers.`;
+
+        equitableBars = `No equitable bars apply against the Plaintiffs. The Plaintiffs are asserting their statutory inheritance rights as co-sharers in constructive possession. The Defendant is barred from claiming exclusive ownership based on a void unilateral disowning notice or administrative mutation.`;
+
+        executionPathway = `Execution via Final Decree Proceedings (Order XX Rule 18 and Order XXI CPC).
+Upon passing of the preliminary decree, a Civil Court Commissioner is appointed under Order XXVI Rule 13 CPC to survey the land, prepare a map, and carve out separate allotments (Saham). Upon confirmation of the Commissioner's report, a final decree is drawn up and registered under the Registration Act 1908. Physical delivery of separate demarcated possession is executed under Order XXI Rule 35 CPC.`;
+      } else {
+        overview = `MATTER CLASSIFIED: Inheritance / Succession Consultation (Muslim Personal Law).
 The facts describe a family dispute where a living father has executed an affidavit or newspaper notice 'disowning' his sons and declaring they have no claim to his estate.
 Under the Muslim Personal Law (Shariat) Application Act 1937, inheritance only opens upon the death of the owner. While the father is alive, the sons hold no vested legal right or interest in his property, but a mere expectation of succession (spes successionis).
 Furthermore, a unilateral disowning declaration by affidavit is legally ineffective under Muslim law to alter the statutory lines of succession or strip an heir of their future entitlement.
 Therefore, there is no present civil cause of action, no accrued legal injury, and no maintainable lawsuit at this stage.`;
 
-      reliefDecree = `No Decree / Dismissal recommended if a suit is filed. 
+        reliefDecree = `No Decree / Dismissal recommended if a suit is filed. 
 A court of law cannot grant a declaration of future inheritance shares or partition during the lifetime of the ancestor. Any suit instituted on these facts alone lacks a justiciable cause of action and is liable to be rejected under Order VII Rule 11(a) CPC.`;
 
-      equitableBars = `A declaratory suit is barred under Section 42 of the Specific Relief Act 1877 because the Plaintiffs have no present vested legal character or right to property. Equity follows the law and will not grant a declaration in the air for a future contingent right.`;
+        equitableBars = `A declaratory suit is barred under Section 42 of the Specific Relief Act 1877 because the Plaintiffs have no present vested legal character or right to property. Equity follows the law and will not grant a declaration in the air for a future contingent right.`;
 
-      executionPathway = `None. Since no decree can be passed on these facts, no execution proceedings under Order XXI CPC can be initiated.`;
+        executionPathway = `None. Since no decree can be passed on these facts, no execution proceedings under Order XXI CPC can be initiated.`;
+      }
     } else if (isSP) {
       if (facts.isRegisteredBainapatra === false || facts.isBalanceDeposited === false || lim.isTimeBarred) {
         let defects: string[] = [];
@@ -2421,6 +2492,7 @@ function detailsSummary(text: string): string {
 
 // ─── PARSED FACTS INTERFACE ───
 interface ParsedFacts {
+  gateF0?: FactConsistencyGateOutput;
   rawText: string;
   dates: Array<{ date: string; event: string; parties: string; statutorySignificance?: string; factualSource?: string }>;
   parties: ParsedParty[];
