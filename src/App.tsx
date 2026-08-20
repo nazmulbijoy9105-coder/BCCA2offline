@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2 } from "lucide-react";
+import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2, Download } from "lucide-react";
 import { useAuth } from "./auth/AuthContext";
 import { BCCAAEngine } from "./engine/BCCAAEngine";
 import { generateWatermark } from "./utils/watermark";
 import { downloadSecurePDF } from "./utils/pdfGeneratorSecure";
+import { downloadCaseBriefDOCX } from "./utils/docxGenerator";
 import { logAudit } from "./utils/audit";
 import { CaseAnalysisResponse, CaseHistoryItem } from "./types/types";
 import StageExplorer from "./components/StageExplorer";
@@ -20,6 +21,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingDOCX, setExportingDOCX] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<CaseAnalysisResponse | null>(null);
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<CaseHistoryItem[]>([]);
@@ -164,6 +166,28 @@ export default function App() {
       console.error("Failed to export PDF:", err);
     } finally {
       setExportingPDF(false);
+    }
+  };
+
+  const handleExportDOCX = async () => {
+    if (!analysisResult || !user || !license) return;
+    setExportingDOCX(true);
+    try {
+      const watermark = generateWatermark(user, license, `BCCAA-${Date.now()}`);
+      await downloadCaseBriefDOCX(analysisResult, factPattern, watermark);
+      logAudit({
+        action: "EXPORT_DOCX",
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        resourceType: "CASE",
+        resourceId: watermark.caseId,
+        outcome: "SUCCESS",
+      });
+    } catch (err) {
+      console.error("Failed to export DOCX:", err);
+    } finally {
+      setExportingDOCX(false);
     }
   };
 
@@ -466,9 +490,19 @@ export default function App() {
                   {copied ? "Copied" : "Copy JSON"}
                 </button>
                 <button 
+                  onClick={handleExportDOCX} 
+                  disabled={exportingDOCX}
+                  className="px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest bg-[#2B579A] hover:bg-[#1E3E6E] text-white border border-[#2B579A] flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                  title="Export complete 14-stage analytical brief to Microsoft Word (.docx)"
+                >
+                  {exportingDOCX ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  {exportingDOCX ? "Generating Word..." : "Export Brief DOCX"}
+                </button>
+                <button 
                   onClick={handleExportPDF} 
                   disabled={exportingPDF}
                   className="px-4 py-2 text-xs font-mono font-bold uppercase tracking-widest bg-[#C5A059] hover:bg-[#1E252B] hover:text-[#FDFBF7] text-[#1E252B] border border-[#1E252B] flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  title="Export complete 14-stage analytical brief to PDF"
                 >
                   {exportingPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                   {exportingPDF ? "Generating PDF..." : "Export Secure PDF"}

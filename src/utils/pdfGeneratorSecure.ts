@@ -580,6 +580,138 @@ export async function downloadSecurePDF(
 }
 
 /**
+ * Generates a clean, beautifully formatted PDF document for an edited Legal Memorandum / Plaint Draft.
+ */
+export async function downloadDraftPDF(
+  title: string,
+  contentMarkdown: string,
+  watermark?: Watermark | null
+): Promise<void> {
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  container.style.top = "-9999px";
+  container.style.width = "800px";
+  container.style.backgroundColor = "#ffffff";
+  container.style.color = "#1E252B";
+  container.style.fontFamily = "'Georgia', serif";
+  container.style.fontSize = "12px";
+  container.style.lineHeight = "1.6";
+  container.style.padding = "35px 40px";
+  container.style.boxSizing = "border-box";
+
+  const formattedDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  // Convert markdown to clean HTML paragraphs
+  const lines = contentMarkdown.split("\n");
+  let bodyHtml = "";
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      bodyHtml += `<div style="height: 10px;"></div>`;
+      return;
+    }
+
+    if (trimmed.startsWith("# ")) {
+      bodyHtml += `<h1 style="font-size: 18px; color: #1E252B; border-bottom: 2px solid #1E252B; padding-bottom: 6px; margin: 18px 0 10px 0; text-transform: uppercase;">${trimmed.replace("# ", "")}</h1>`;
+    } else if (trimmed.startsWith("## ")) {
+      bodyHtml += `<h2 style="font-size: 14px; color: #1E252B; border-bottom: 1px solid #C5A059; padding-bottom: 4px; margin: 14px 0 8px 0; text-transform: uppercase;">${trimmed.replace("## ", "")}</h2>`;
+    } else if (trimmed.startsWith("### ")) {
+      bodyHtml += `<h3 style="font-size: 12px; color: #C5A059; margin: 12px 0 6px 0; text-transform: uppercase; font-family: monospace;">${trimmed.replace("### ", "")}</h3>`;
+    } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      const item = trimmed.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      bodyHtml += `<div style="margin: 4px 0 4px 15px; color: #374151;">• ${item}</div>`;
+    } else {
+      const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
+      if (numMatch) {
+        const item = numMatch[2].replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        bodyHtml += `<div style="margin: 6px 0; color: #374151;"><strong style="color: #C5A059;">${numMatch[1]}.</strong> ${item}</div>`;
+      } else {
+        const item = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        bodyHtml += `<p style="margin: 6px 0; color: #374151;">${item}</p>`;
+      }
+    }
+  });
+
+  container.innerHTML = `
+    <div style="border-bottom: 2px solid #C5A059; padding-bottom: 12px; margin-bottom: 20px;">
+      <div style="font-family: monospace; font-size: 10px; font-weight: bold; color: #C5A059; text-transform: uppercase; letter-spacing: 1px;">
+        NEUMLEX BCCAA Engine &bull; Statutory Synthesis
+      </div>
+      <div style="font-size: 20px; font-weight: bold; color: #1E252B; margin-top: 4px;">
+        ${title || "LEGAL MEMORANDUM & COURTROOM DRAFT"}
+      </div>
+      <div style="font-size: 10px; color: #6B7280; margin-top: 4px;">
+        Synthesized: ${formattedDate} | Jurisdiction: Bangladesh Civil Judicature
+      </div>
+    </div>
+
+    <div style="font-family: 'Georgia', serif;">
+      ${bodyHtml}
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed #CCCCCC; font-family: monospace; font-size: 9px; color: #6B7280; display: flex; justify-content: space-between;">
+      <span>Integrity Hash: ${watermark ? watermark.forensicHash.slice(0, 24) : "SECURE_OFFLINE_DRAFT"}</span>
+      <span>Page 1 of Legal Draft</span>
+    </div>
+  `;
+
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvasHeight * pdfWidth) / canvasWidth;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+    }
+
+    const cleanTitle = (title || "Legal_Draft").replace(/[^a-zA-Z0-9]/g, "_");
+    pdf.save(`${cleanTitle}_${Date.now()}.pdf`);
+  } catch (error) {
+    console.error("Draft PDF export failed:", error);
+    openPrintableFallback(container.innerHTML);
+  } finally {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
+  }
+}
+
+/**
  * Fallback to open printable window if canvas PDF rendering fails in restricted environment.
  */
 function openPrintableFallback(htmlBody: string): void {

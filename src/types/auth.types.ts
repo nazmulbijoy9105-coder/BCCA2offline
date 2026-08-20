@@ -67,6 +67,7 @@ export type AuditAction =
   | "ANALYZE_COMPLETE"
   | "ANALYZE_FAILED"
   | "EXPORT_PDF"
+  | "EXPORT_DOCX"
   | "LICENSE_VIOLATION";
 
 export interface AuditEvent {
