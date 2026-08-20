@@ -199,18 +199,94 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     </div>
                   </div>
 
+                  {/* Deterministic Citation Validation Audit Box */}
+                  {analysis.stage2.citationValidationAudit && (
+                    <div className="p-3.5 bg-[#F4F9F4] border border-emerald-300/80 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] bg-emerald-800 text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                            ✓ Citation Validation Layer
+                          </span>
+                          <span className="font-bold text-emerald-950 text-[11px]">
+                            {analysis.stage2.citationValidationAudit.verifiedCount}/{analysis.stage2.citationValidationAudit.totalCitations} Precedents Authoritatively Verified
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-emerald-800 mt-1">
+                          {analysis.stage2.citationValidationAudit.validationStandard}
+                        </p>
+                      </div>
+                      <code className="text-[9px] font-mono text-emerald-900 bg-emerald-100/80 px-2 py-1 rounded border border-emerald-300">
+                        {analysis.stage2.citationValidationAudit.registrySignature.substring(0, 32)}
+                      </code>
+                    </div>
+                  )}
+
                   {analysis.stage2.precedents.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">High Court / Appellate Division Precedents</h4>
-                      <div className="space-y-2">
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">
+                          High Court / Appellate Division Precedents (Authoritatively Verified)
+                        </h4>
+                        <span className="text-[9px] font-mono text-[#C5A059] font-bold">
+                          Fully Deterministic Registry
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-3">
                         {analysis.stage2.precedents.map((p, i) => (
-                          <div key={i} className="p-3 border border-[#E5E1D8] bg-white rounded">
-                            <div className="flex justify-between items-center text-[11px] font-bold text-[#1E252B]">
-                              <span className="font-mono text-[#C5A059] font-bold uppercase tracking-wider">{p.citation}</span>
-                              <span className="bg-[#1E252B]/10 px-1.5 py-0.5 rounded text-[10px] text-[#1E252B]">{p.court}</span>
+                          <div key={i} className="p-3.5 border border-[#E5E1D8] bg-white rounded shadow-sm hover:border-[#C5A059] transition-colors">
+                            <div className="flex flex-wrap justify-between items-center gap-1.5 text-[11px] font-bold text-[#1E252B] border-b border-[#F0ECE1] pb-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[#C5A059] font-bold text-xs uppercase tracking-wider">
+                                  {p.citation}
+                                </span>
+                                {p.decisionYear && (
+                                  <span className="text-[10px] text-neutral-500 font-mono">({p.decisionYear})</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="bg-[#1E252B]/10 px-2 py-0.5 rounded text-[10px] text-[#1E252B] font-medium">
+                                  {p.court}
+                                </span>
+                                {p.verificationStatus === "VERIFIED_CANONICAL" && (
+                                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-300">
+                                    ✓ VERIFIED
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <p className="font-medium text-[#1E252B] mt-1">Holding: "{p.holding}"</p>
-                            <p className="text-[10px] text-neutral-500 italic mt-0.5">Relevance: {p.relevance}</p>
+
+                            {p.caseTitle && (
+                              <p className="text-[11px] font-bold text-[#1E252B] italic mb-1">
+                                {p.caseTitle}
+                              </p>
+                            )}
+
+                            {p.statutorySubject && (
+                              <div className="text-[10px] text-neutral-600 mb-1.5">
+                                <span className="font-mono font-bold text-neutral-700 uppercase">Interpreted Provision: </span>
+                                <code>{p.statutorySubject}</code>
+                              </div>
+                            )}
+
+                            <div className="bg-[#FDFBF7] p-2.5 rounded border border-[#EBE7DF] text-[11px] space-y-1 mb-2">
+                              <div>
+                                <span className="font-bold text-[#1E252B] font-mono text-[10px] uppercase">Ratio Decidendi: </span>
+                                <span className="text-[#333E48] font-medium">"{p.holding}"</span>
+                              </div>
+                            </div>
+
+                            <p className="text-[10px] text-neutral-600">
+                              <span className="font-bold font-mono uppercase text-[9px] text-[#C5A059]">Application to this Suit: </span>
+                              {p.relevance}
+                            </p>
+
+                            {p.verificationHash && (
+                              <div className="mt-2 pt-1.5 border-t border-[#F5F2EA] flex items-center justify-between text-[9px] font-mono text-neutral-400">
+                                <span>Registry Token: {p.securityHashToken || p.citation}</span>
+                                <span>Forensic Seal: {p.verificationHash}</span>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

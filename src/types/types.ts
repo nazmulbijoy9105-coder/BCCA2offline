@@ -61,10 +61,30 @@ export interface CaseAnalysisResponse {
     }>;
     precedents: Array<{
       citation: string;
+      caseTitle?: string;
       court: string;
+      decisionYear?: number;
+      reporter?: string;
+      volume?: number;
+      page?: number;
+      bench?: string;
+      statutorySubject?: string;
       holding: string;
       relevance: string;
+      ratioDecidendi?: string;
+      verificationStatus: "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED";
+      verificationHash: string;
+      isDeterministic?: boolean;
+      securityHashToken?: string;
     }>;
+    citationValidationAudit?: {
+      totalCitations: number;
+      verifiedCount: number;
+      rejectedCount: number;
+      validationStandard: string;
+      auditStatus: "PASS_100_PERCENT_DETERMINISTIC" | "FAIL_UNVERIFIED_DETECTED";
+      registrySignature: string;
+    };
     equityPrinciples: string[];
   };
   stage3: {
