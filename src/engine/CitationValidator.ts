@@ -503,8 +503,8 @@ export class CitationValidator {
         )
       );
     } else if (category === "INHERITANCE_CONSULTATION") {
-      if (options.isAncestorDeceased) {
-        // 45 DLR (AD) 124, 55 DLR (AD) 180, 39 DLR (AD) 162, 51 DLR (AD) 234
+      if (options.isAncestorDeceased === true) {
+        // Ancestor explicitly evaluated as deceased — load partition/succession precedents
         selected.push(
           this.validate(
             "45 DLR (AD) 124",
@@ -523,8 +523,8 @@ export class CitationValidator {
             "Mandates that all surviving co-heirs are indispensable necessary parties in the partition suit under Order XX Rule 18 CPC."
           )
         );
-      } else {
-        // Living ancestor
+      } else if (options.isAncestorDeceased === false) {
+        // Ancestor explicitly evaluated as living — spes successionis bar applies
         selected.push(
           this.validate(
             "30 DLR (SC) 115",
@@ -533,6 +533,23 @@ export class CitationValidator {
           this.validate(
             "55 DLR (AD) 180",
             "Confirms that the father's disowning affidavit is a legal nullity in Shariat, but no cause of action exists to seek declaration until succession opens upon death."
+          )
+        );
+      } else {
+        // Ancestor vital status NOT DETERMINED — fail-closed: load only precedents
+        // that apply regardless of vital status, plus a diagnostic note.
+        selected.push(
+          this.validate(
+            "55 DLR (AD) 180",
+            "Unilateral disowning affidavits are a legal nullity in Shariat regardless of whether the ancestor is living or deceased. However, the justiciability of partition claims depends on succession having opened."
+          ),
+          this.validate(
+            "42 DLR (AD) 289",
+            "Mandatory statutory limitation audit under Section 3 of the Limitation Act 1908 applies to all civil suits regardless of subject matter."
+          ),
+          this.validate(
+            "43 DLR (AD) 21",
+            "Fundamental civil burden of proof (onus probandi) under Sections 101-103 of the Evidence Act 1872."
           )
         );
       }
