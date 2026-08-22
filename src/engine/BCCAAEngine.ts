@@ -3736,20 +3736,21 @@ export class BCCAAEngine {
     );
     return match?.eventDate ?? null;
   }
+}
 
-  private getConflictModeFromFacts(
-    ctx: ExecutionContext,
-    subject: string,
-    predicate: string,
-  ): PredicateConflictMode {
-    return getConflictMode(ctx, subject, predicate);
-  }
+function getConflictModeFromFacts(
+  ctx: ExecutionContext,
+  subject: string,
+  predicate: string,
+): PredicateConflictMode {
+  return getConflictMode(ctx, subject, predicate);
+}
 
-  private rp_authorityIds(rule: LegalRule): string[] {
-    const ids: string[] = [];
-    for (const p of rule.predicates) {
-      if (p.authorityIds) ids.push(...p.authorityIds);
-    }
-    if (rule.authority.authorityId) ids.push(rule.authority.authorityId);
-    return [...new Set(ids)];
+function rp_authorityIds(rule: LegalRule): string[] {
+  const ids: string[] = [];
+  for (const p of rule.predicates) {
+    if (p.authorityIds) ids.push(...p.authorityIds);
   }
+  if (rule.authority.authorityId) ids.push(rule.authority.authorityId);
+  return [...new Set(ids)];
+}
