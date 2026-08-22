@@ -1,26 +1,328 @@
 import { AuthUser, LicenseData } from "./auth.types";
 
+// ============================================================================
+// 4.4.0-HARDENED CORE TYPES
+// ============================================================================
+
 export interface EngineInput {
   factPattern: string;
   focusDomain: string;
-  user: AuthUser;
-  license: LicenseData;
+}
+
+export enum Tristate { TRUE = "TRUE", FALSE = "FALSE", UNKNOWN = "UNKNOWN" }
+
+export enum AssertionType {
+  ASSERTED = "ASSERTED",
+  ADMITTED = "ADMITTED",
+  DENIED = "DENIED",
+  ALLEGED = "ALLEGED",
+  INFERRED = "INFERRED",
+}
+
+export enum AssertionPolarity {
+  POSITIVE = "POSITIVE",
+  NEGATIVE = "NEGATIVE",
+  DISPUTED = "DISPUTED",
+  UNKNOWN = "UNKNOWN",
+}
+
+export enum ValidationStatus {
+  UNVERIFIED = "UNVERIFIED",
+  VERIFIED = "VERIFIED",
+  CONTRADICTED = "CONTRADICTED",
+  REQUIRES_HUMAN_REVIEW = "REQUIRES_HUMAN_REVIEW",
+}
+
+export enum ExtractionStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  EXTRACTED = "EXTRACTED",
+  PARTIAL = "PARTIAL",
+  FAILED = "FAILED",
+}
+
+export enum SourceStatus {
+  UNRESOLVED = "UNRESOLVED",
+  IDENTIFIED = "IDENTIFIED",
+  SOURCE_VERIFIED = "SOURCE_VERIFIED",
+}
+
+export enum AuthenticationStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  UNAUTHENTICATED = "UNAUTHENTICATED",
+  AUTHENTICATED = "AUTHENTICATED",
+  REQUIRES_HUMAN_REVIEW = "REQUIRES_HUMAN_REVIEW",
+}
+
+export enum CorroborationStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  UNCORROBORATED = "UNCORROBORATED",
+  CORROBORATED = "CORROBORATED",
+  CONTRADICTED = "CONTRADICTED",
+}
+
+export enum HumanValidationStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  NOT_VALIDATED = "NOT_VALIDATED",
+  VALIDATED = "VALIDATED",
+  REQUIRES_REVIEW = "REQUIRES_REVIEW",
+}
+
+export enum FactConfidence { CANDIDATE = "CANDIDATE", SUPPORTED = "SUPPORTED", VERIFIED = "VERIFIED" }
+export enum GateStatus { PASS = "PASS", FAIL = "FAIL", INDETERMINATE = "INDETERMINATE", HALT = "HALT" }
+
+export type RuleExecutionStatus = "NOT_EXECUTED" | "BLOCKED" | "UNKNOWN" | "FAILED" | "SATISFIED";
+
+export type CitationState =
+  | "NOT_EXECUTED"
+  | "UNRESOLVED"
+  | "RESOLVED"
+  | "TEXT_VERIFIED"
+  | "PROPOSITION_SUPPORTED"
+  | "TEMPORALLY_VALID"
+  | "JURISDICTION_VALID";
+
+export type ClaimType =
+  | "SPECIFIC_PERFORMANCE"
+  | "DECLARATION_AND_POSSESSION"
+  | "INHERITANCE_CONSULTATION"
+  | "GENERAL_CIVIL";
+
+// ============================================================================
+// PROVENANCE / SEMANTIC OBJECTS (P1 — ILRMF)
+// ============================================================================
+
+export interface SourceSpan {
+  documentId: string;
+  segment: string;
+  page?: number;
+  paragraph?: number;
+  lineStart?: number;
+  lineEnd?: number;
+  charStart?: number;
+  charEnd?: number;
+  sourceType?: "INPUT_NARRATIVE" | "PLEADING" | "DOCUMENT" | "ORDER" | "JUDGMENT" | "OTHER";
+  extractionMethod?: "PATTERN" | "STRUCTURED_INPUT" | "MANUAL_VALIDATION" | "DOCUMENT_VALIDATION";
+}
+
+export interface Proposition {
+  propositionId: string;
+  subject: string;
+  predicate: string;
+  object: string | null;
+  canonicalKey: string;
+  text: string;
+}
+
+export interface Assertion {
+  assertionId: string;
+  propositionId: string;
+  assertionType: AssertionType;
+  polarity: AssertionPolarity;
+  truth: Tristate;
+  assertedBy?: string;
+  sourceSpan: SourceSpan;
+}
+
+export interface ValidationDimensions {
+  extractionStatus: ExtractionStatus;
+  sourceStatus: SourceStatus;
+  authenticationStatus: AuthenticationStatus;
+  corroborationStatus: CorroborationStatus;
+  humanValidationStatus: HumanValidationStatus;
 }
 
 export interface AtomicFact {
   factId: string;
+  propositionId: string;
+  assertionId: string;
   proposition: string;
-  value: unknown;
-  sourceDocumentId?: string;
-  sourcePage?: number;
-  sourceParagraph?: string;
+  subject: string;
+  predicate: string;
+  object: string | null;
+  truth: Tristate;
+  polarity: AssertionPolarity;
+  source: SourceSpan;
+  assertionType: AssertionType;
+  validationStatus: ValidationStatus;
+  confidence: FactConfidence;
   assertedBy?: string;
-  factStatus: "ADMITTED" | "DISPUTED" | "ALLEGED" | "PROVED" | "UNKNOWN" | "CONTRADICTED";
-  temporalStatus: "PAST" | "CURRENT" | "FUTURE" | "UNKNOWN";
-  confidence: number;
-  materiality: "CRITICAL" | "MATERIAL" | "SECONDARY";
-  supersedes?: string;
+  eventDate?: string | null;
+  normalizedValue?: string | number | boolean | null;
+  contradicts?: string[];
+  supports?: string[];
+  disputedProposition?: string;
+  validation: ValidationDimensions;
 }
+
+export interface ContradictionEdge {
+  edgeId: string;
+  propositionKey: string;
+  leftFactId: string;
+  rightFactId: string;
+  relation: "DIRECT_TRUTH_CONFLICT";
+  status: "CRITICAL" | "PENDING_VALIDATION";
+}
+
+// ============================================================================
+// AUTHORITY / RULE GRAPH (P2)
+// ============================================================================
+
+export interface AuthorityRef {
+  authorityId?: string;
+  act: string;
+  section: string;
+  citation?: string;
+}
+
+export interface RulePredicate {
+  predicateId: string;
+  subject: string;
+  predicate: string;
+  object?: string;
+  requiredTruth: Tristate;
+  requireVerified: boolean;
+  authorityIds?: string[];
+}
+
+export interface LegalRule {
+  ruleId: string;
+  ruleVersion: string;
+  jurisdiction: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  claimTypes: ClaimType[];
+  ruleType:
+    | "ELEMENT" | "BAR" | "EXCEPTION" | "BURDEN" | "PRESUMPTION"
+    | "LIMITATION" | "JURISDICTION" | "PROCEDURE" | "RELIEF";
+  predicates: RulePredicate[];
+  logicalOperator: "ALL" | "ANY" | "AT_LEAST_N";
+  atLeastN?: number;
+  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
+  outcomeIfSatisfied: string;
+  outcomeIfFailed: string;
+  legalEffect?: string;
+  authority: AuthorityRef;
+  supersedes?: string[];
+  exceptions?: string[];
+  priority?: number;
+}
+
+export interface RuleGraphIdentity {
+  corpusId: string;
+  corpusVersion: string;
+  corpusDigest: string;
+  authorityRegistryVersion: string;
+  authorityRegistryDigest: string;
+  ruleGraphVersion: string;
+  ruleGraphDigest: string;
+}
+
+export interface RuleRegistry {
+  version: string;
+  identity: RuleGraphIdentity;
+  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
+  getLegislationMapping(claimType: ClaimType): {
+    primaryAct: string;
+    relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }>;
+  };
+}
+
+// ============================================================================
+// EXECUTION RESULTS
+// ============================================================================
+
+export interface PredicateExecutionResult {
+  predicateSubject: string;
+  predicateId: string;
+  status: "TRUE" | "FALSE" | "UNKNOWN";
+  factIds: string[];
+}
+
+export interface RuleExecutionResult {
+  ruleId: string;
+  status: RuleExecutionStatus;
+  predicateResults: PredicateExecutionResult[];
+  authorityIds: string[];
+  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
+  legalEffect?: string;
+  explanationCode: string;
+}
+
+export interface CitationValidationAudit {
+  totalCitations: number;
+  verifiedCount: number;
+  rejectedCount: number;
+  validationStandard: string;
+  auditStatus: CitationState;
+  registrySignature: string;
+  note: string;
+  citationStates: Array<{ citation: string; state: CitationState }>;
+}
+
+// ============================================================================
+// AUDIT / FORENSIC CHAIN (P4)
+// ============================================================================
+
+export interface AuditRecordPayload {
+  caseId: string;
+  rawInputHash: string;
+  extractionHash: string;
+  inputHash: string;
+  factRegistryHash: string;
+  timelineHash: string;
+  eventTimelineHash: string;
+  corpusIdentity: RuleGraphIdentity;
+  corpusDigest: string;
+  ruleRegistryVersion: string;
+  ruleRegistryHash: string;
+  executionTraceHash: string;
+  outputHash: string;
+  manifest: {
+    engineVersion: string;
+    factSchemaVersion: string;
+    ruleGraphVersion: string;
+    ruleSetVersion: string;
+    lawCorpusVersion: string;
+    citationRegistryVersion: string;
+    executionMode: string;
+    statelessExecution: boolean;
+    defaultFactsAllowed: boolean;
+    unknownCollapseToFalse: boolean;
+    autonomousDecreeAuthorization: boolean;
+    corpusMode: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
+    auditMode: string;
+  };
+  executionMilliseconds: number;
+  analyzedByUserId: string;
+  outcome: "SUCCESS" | "INDETERMINATE" | "HALTED" | "ERROR";
+}
+
+export interface AuditRecord extends AuditRecordPayload {
+  previousHash: string | null;
+  recordHash: string;
+}
+
+export interface AuditSink {
+  append(payload: AuditRecordPayload): Promise<AuditRecord>;
+}
+
+export interface LicenseValidator {
+  validate(user: AuthUser, license: { licenseId: string; issuedTo: string }): Promise<{ valid: boolean; reason?: string }>;
+  isProductionReady?: boolean;
+}
+
+export interface FactValidationProvider {
+  validateFacts(input: {
+    facts: AtomicFact[];
+    propositions: Proposition[];
+    assertions: Assertion[];
+  }): Promise<AtomicFact[]>;
+  isProductionReady?: boolean;
+}
+
+// ============================================================================
+// BACKWARD-COMPATIBLE UI TYPES (v2.x → 4.4.0 bridge)
+// ============================================================================
 
 export interface FactConflict {
   conflictId: string;
@@ -43,7 +345,16 @@ export interface FactConsistencyGateOutput {
   gateStatus: "CONSISTENT" | "CONDITIONALLY_CONSISTENT" | "HALT_CRITICAL_CONFLICT";
   certification: "GREEN" | "AMBER" | "RED" | "BLACK";
   summary: string;
-  atomicFacts: AtomicFact[];
+  atomicFacts: Array<{
+    factId: string;
+    proposition: string;
+    value: unknown;
+    sourceParagraph?: string;
+    factStatus: string;
+    temporalStatus: string;
+    confidence: number;
+    materiality: string;
+  }>;
   conflicts: FactConflict[];
   criticalConflictCount: number;
   materialConflictCount: number;
@@ -100,6 +411,13 @@ export interface CaseAnalysisResponse {
       dispossessionProven: boolean | "unspecified";
       isUsingDefaultAmounts?: boolean;
     };
+    // 4.4.0 forensic extensions (optional in UI)
+    atomicFacts?: any[];
+    propositions?: any[];
+    assertions?: any[];
+    contradictionGraph?: any[];
+    eventTimeline?: any[];
+    provenance?: any[];
   };
   stage1: {
     primaryDomain: string;
@@ -140,7 +458,7 @@ export interface CaseAnalysisResponse {
       verifiedCount: number;
       rejectedCount: number;
       validationStandard: string;
-      auditStatus: "PASS_100_PERCENT_DETERMINISTIC" | "FAIL_UNVERIFIED_DETECTED";
+      auditStatus: CitationState | "PASS_100_PERCENT_DETERMINISTIC" | "FAIL_UNVERIFIED_DETECTED";
       registrySignature: string;
     };
     equityPrinciples: string[];
@@ -274,5 +592,6 @@ export interface CaseAnalysisResponse {
     licenseId: string;
     forensicHash: string;
     engineVersion: string;
+    caseId?: string;
   };
 }
