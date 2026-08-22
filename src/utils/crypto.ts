@@ -1,5 +1,6 @@
 /**
- * Crypto and hashing utilities for client-side and CLI environments.
+ * BCCAA 4.4.0 Cryptographic Utilities
+ * One canonical serialization / hash path for all forensic payloads.
  */
 
 export function generateHash(str: string): string {
@@ -8,10 +9,9 @@ export function generateHash(str: string): string {
   for (let i = 0; i < str.length; i++) {
     const chr = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + chr;
-    hash |= 0; // Convert to 32-bit integer
+    hash |= 0;
   }
   const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  // Add a simple secondary cascade to simulate longer forensic hashes
   let hash2 = 17;
   for (let i = str.length - 1; i >= 0; i--) {
     hash2 = (hash2 * 31 + str.charCodeAt(i)) | 0;
@@ -21,7 +21,6 @@ export function generateHash(str: string): string {
 }
 
 export function hashPassword(password: string): string {
-  // Simple client-side pseudo-hash that is fully portable
   return "BCCAA_HASH_PBKDF_" + generateHash(password + "_neum_lex_salt_2026_");
 }
 
@@ -36,4 +35,28 @@ export function generateSecureId(): string {
     Math.random().toString(36).substring(2, 6)
   ];
   return parts.join("-").toUpperCase();
+}
+
+// ============================================================================
+// 4.4.0 CANONICAL SERIALIZATION / HASH PATH
+// ============================================================================
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      out[key] = canonicalize((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+export function canonicalStringify(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
+}
+
+export function canonicalHash(value: unknown): string {
+  return generateHash(canonicalStringify(value));
 }
