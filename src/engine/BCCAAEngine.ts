@@ -1081,35 +1081,65 @@ function normalizeText(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function isStrictDate(raw: string): boolean {
-  if (!raw || typeof raw !== "string") return false;
-  const s = raw.trim();
+// ============================================================================
+// DATE PARSING — Hardened for Bangladeshi Legal Narratives
+// ============================================================================
+
+const MONTH_MAP: Record<string, number> = {
+  jan: 0, january: 0,
+  feb: 1, february: 1,
+  mar: 2, march: 2,
+  apr: 3, april: 3,
+  may: 4,
+  jun: 5, june: 5,
+  jul: 6, july: 6,
+  aug: 7, august: 7,
+  sep: 8, september: 8,
+  oct: 9, october: 9,
+  nov: 10, november: 10,
+  dec: 11, december: 11,
+};
+
+function parseNaturalDate(raw: string): { iso: string; ts: number } | null {
+  if (!raw || typeof raw !== "string") return null;
+  const s = raw.trim().toLowerCase().replace(/(\d+)(st|nd|rd|th)/, "$1");
   let y: number, m: number, d: number;
 
-  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(s)) {
-    const parts = s.split(/[-\/]/);
-    [y, m, d] = parts.map(Number);
-  } else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/.test(s)) {
-    const parts = s.split(/[-\/]/);
-    d = Number(parts[0]);
-    m = Number(parts[1]);
-    y = Number(parts[2]);
-    if (y < 100) y += y < 50 ? 2000 : 1900;
-  } else {
-    return false;
+  const dmy = s.match(/^(\d{1,2})\s+([a-z]{3,})\s*,?\s*(\d{4})$/);
+  if (dmy) { d = Number(dmy[1]); m = MONTH_MAP[dmy[2]]; y = Number(dmy[3]); }
+  else if ((s.match(/^([a-z]{3,})\s+(\d{1,2})\s*,?\s*(\d{4})$/))) {
+    const mdy = s.match(/^([a-z]{3,})\s+(\d{1,2})\s*,?\s*(\d{4})$/)!;
+    m = MONTH_MAP[mdy[1]]; d = Number(mdy[2]); y = Number(mdy[3]);
   }
+  else if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(s)) {
+    const p = s.split(/[-\/]/); [y, m, d] = p.map(Number); m -= 1;
+  }
+  else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}$/.test(s)) {
+    const p = s.split(/[-\/]/); d = Number(p[0]); m = Number(p[1]) - 1; y = Number(p[2]);
+    if (y < 100) y += y < 50 ? 2000 : 1900;
+  }
+  else { return null; }
 
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d))
-    return false;
-  if (y < 1 || m < 1 || m > 12 || d < 1 || d > 31) return false;
-
-  const utc = Date.UTC(y, m - 1, d, 0, 0, 0, 0);
+  if ([y, m, d].some(isNaN) || y < 1 || m < 0 || m > 11 || d < 1 || d > 31) return null;
+  const utc = Date.UTC(y, m, d);
   const check = new Date(utc);
-  return (
-    check.getUTCFullYear() === y &&
-    check.getUTCMonth() === m - 1 &&
-    check.getUTCDate() === d
-  );
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m || check.getUTCDate() !== d) return null;
+  return { iso: `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, ts: utc };
+}
+
+/** Backwards-compatible: now accepts "18 July 2018" */
+function isStrictDate(raw: string): boolean {
+  return parseNaturalDate(raw) !== null;
+}
+
+/** Backwards-compatible timestamp extractor */
+function strictDateTimestamp(raw: string | null): number {
+  return raw ? (parseNaturalDate(raw)?.ts ?? Infinity) : Infinity;
+}
+
+/** Normalize any recognized date to ISO-8601 */
+function normalizeDate(raw: string): string {
+  return parseNaturalDate(raw)?.iso ?? raw;
 }
 
 function isAmbiguousDate(raw: string): boolean {
@@ -1120,23 +1150,6 @@ function isAmbiguousDate(raw: string): boolean {
   const d = Number(parts[0]);
   const m = Number(parts[1]);
   return d >= 1 && d <= 12 && m >= 1 && m <= 12;
-}
-
-function strictDateTimestamp(raw: string | null): number {
-  if (!raw || !isStrictDate(raw)) return Infinity;
-  const s = raw.trim();
-  let y: number, m: number, d: number;
-  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(s)) {
-    const p = s.split(/[-\/]/);
-    [y, m, d] = p.map(Number);
-  } else {
-    const p = s.split(/[-\/]/);
-    d = Number(p[0]);
-    m = Number(p[1]);
-    y = Number(p[2]);
-    if (y < 100) y += y < 50 ? 2000 : 1900;
-  }
-  return Date.UTC(y, m - 1, d, 0, 0, 0, 0);
 }
 
 function parseMoney(token: string): number | null {
@@ -1429,7 +1442,7 @@ export class BCCAAEngine {
 
     // ── P1 stages ──
     const domain = this.classifyDomain(ctx, claimType);
-    const legislation = this.mapLegislation(claimType);
+    const legislation = this.mapLegislation(ctx, claimType);
     const limitation = this.executeLimitationEngine(ctx, claimType);
     const elementGate = this.executeElementCompletenessGate(ctx, claimType);
 
@@ -1666,11 +1679,47 @@ export class BCCAAEngine {
   // ========================================================================
 
   private segmentDocument(rawText: string): string[] {
-    return rawText
-      .replace(/\r\n/g, "\n")
-      .split(/(?<=[.!?])\s+|\n+/g)
-      .map((x) => x.trim())
+    let text = rawText.replace(/\r\n/g, "\n");
+
+    // ── Protect abbreviation periods from being treated as sentence ends ──
+    const abbreviations = [
+      "Mr", "Mrs", "Ms", "Dr", "vs", "v", "BDT", "Tk", "Taka", "taka",
+      "No", "Art", "Sec", "Ord", "SRA", "CPC", "St", "Lt", "Col", "Gen",
+      "Prof", "Hon", "Jr", "Sr", "ALR", "BLD", "BLC", "DLR", "MLR",
+      "AD", "SC", "HC", "Vol", "pp", "etc", "i.e", "e.g",
+    ];
+
+    const protectedMarks: string[] = [];
+    for (const abbr of abbreviations) {
+      const regex = new RegExp(`\\b${abbr}\\.`, "gi");
+      text = text.replace(regex, (match) => {
+        const mark = `\x00P${protectedMarks.length}\x00`;
+        protectedMarks.push(match);
+        return mark;
+      });
+    }
+
+    // ── Also protect decimal numbers like "8,000,000." ──
+    text = text.replace(/(\d[\d,]*)\./g, (_match, num: string) => {
+      const mark = `\x00P${protectedMarks.length}\x00`;
+      protectedMarks.push(`${num}.`);
+      return mark;
+    });
+
+    // Split on sentence-ending punctuation followed by whitespace or end
+    const sentences = text
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
       .filter(Boolean);
+
+    // Restore all protected marks
+    return sentences.map((s) => {
+      let result = s;
+      for (let i = protectedMarks.length - 1; i >= 0; i--) {
+        result = result.replace(`\x00P${i}\x00`, protectedMarks[i]);
+      }
+      return result;
+    });
   }
 
   private segmentClauses(sentence: string): string[] {
@@ -1690,16 +1739,16 @@ export class BCCAAEngine {
     const candidates: FactCandidate[] = [];
     const lower = clause.toLowerCase();
 
-    // Death events
+    // ── DEATH: allow up to 6 intervening words (e.g. "died intestate on ...") ──
     const deathMatch = clause.match(
-      /(?:died|passed away|demise|death of|expired)\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i,
+      /(?:died|passed away|demise|death of|expired)(?:\s+\w+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,},?\s*[0-9]{4}|[A-Za-z]{3,}\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i,
     );
     if (deathMatch) {
       candidates.push({
         subject: "Ancestor",
         predicate: "Vital Status",
         object: "DECEASED",
-        eventDate: deathMatch[1].trim(),
+        eventDate: normalizeDate(deathMatch[1].trim()),
       });
     } else if (/\b(?:died|passed away|demise|death of|expired)\b/i.test(lower)) {
       candidates.push({
@@ -1709,43 +1758,26 @@ export class BCCAAEngine {
       });
     }
 
-    // Living ancestor
-    if (
-      /\b(?:father is alive|living father|during his lifetime|ancestor is living|while the father is alive)\b/i.test(
-        lower,
-      )
-    ) {
-      candidates.push({
-        subject: "Ancestor",
-        predicate: "Vital Status",
-        object: "ALIVE",
-      });
+    // ── LIVING ANCESTOR ──
+    if (/\b(?:father is alive|living father|during his lifetime|ancestor is living)\b/i.test(lower)) {
+      candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "ALIVE" });
     }
 
-    // Registration status
+    // ── INTESTATE ──
+    if (/\bintestate\b/i.test(lower)) {
+      candidates.push({ subject: "Ancestor", predicate: "Succession Type", object: "INTESTATE" });
+    }
+
+    // ── REGISTRATION STATUS ──
     if (/\b(?:unregistered)\s+(?:bainapatra|agreement|contract)\b/i.test(lower)) {
-      candidates.push({
-        subject: "Bainapatra",
-        predicate: "Registration Status",
-        object: "UNREGISTERED",
-      });
-    } else if (
-      /\b(?:registered)\s+(?:bainapatra|agreement|contract)\b/i.test(lower)
-    ) {
-      candidates.push({
-        subject: "Bainapatra",
-        predicate: "Registration Status",
-        object: "REGISTERED",
-      });
+      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "UNREGISTERED" });
+    } else if (/\b(?:registered)\s+(?:bainapatra|agreement|contract)\b/i.test(lower)) {
+      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "REGISTERED" });
     } else if (/\b(?:bainapatra|agreement for sale|sale agreement)\b/i.test(lower)) {
-      candidates.push({
-        subject: "Bainapatra",
-        predicate: "Registration Status",
-        object: null,
-      });
+      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: null });
     }
 
-    // Deposit status
+    // ── DEPOSIT STATUS ──
     if (/\b(?:deposited|deposit)\s+(?:the\s+)?(?:balance|remaining|money|amount)\b/i.test(lower) ||
         /\btreasury\s+(?:challan|deposit)\b/i.test(lower)) {
       const amountMatch = clause.match(/(?:tk\.?|taka|bd\s*taka)\s*([\d,]+(?:\.\d+)?)/i);
@@ -1756,115 +1788,89 @@ export class BCCAAEngine {
         normalizedValue: amountMatch ? parseMoney(amountMatch[1]) : null,
       });
     } else if (/\b(?:not\s+deposited|no\s+deposit|failed\s+to\s+deposit)\b/i.test(lower)) {
-      candidates.push({
-        subject: "Treasury Deposit",
-        predicate: "Payment Status",
-        object: "NOT_DEPOSITED",
-      });
+      candidates.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "NOT_DEPOSITED" });
     }
 
-    // Possession / dispossession
-    if (/\b(?:dispossessed|ousted|ouster|fence|encroached|trespass)/i.test(lower)) {
-      candidates.push({
-        subject: "Plaintiff",
-        predicate: "Possession Status",
-        object: "DISPOSSESSED",
-      });
+    // ── POSSESSION / DISPOSSESSION ──
+    if (/\b(?:dispossessed|ousted|ouster|fence|encroached|trespass)\b/i.test(lower) ||
+        /\bdenied\s+(?:the\s+)?(?:plaintiff|co[-\s]?sharers?)\s+access\b/i.test(lower) ||
+        /\bprevented\s+(?:the\s+)?(?:plaintiff|co[-\s]?sharers?)\s+from\s+entering\b/i.test(lower)) {
+      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "DISPOSSESSED" });
     }
     if (/\b(?:in\s+(?:peaceful|continuous)\s+possession|possessing)\b/i.test(lower)) {
-      candidates.push({
-        subject: "Plaintiff",
-        predicate: "Possession Status",
-        object: "IN_POSSESSION",
-      });
+      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "IN_POSSESSION" });
     }
 
-    // Agreement execution date
+    // ── AGREEMENT / SALE DEED EXECUTION DATE ──
     const agreeDateMatch = clause.match(
-      /(?:agreement|bainapatra|contract)\s+(?:executed|made|signed)\s+(?:on\s+)?([0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i,
+      /(?:agreement|bainapatra|contract|sale deed)\s+(?:executed|made|signed|registration|finalized|upon)\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,},?\s*[0-9]{4}|[A-Za-z]{3,}\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i,
     );
     if (agreeDateMatch) {
-      candidates.push({
-        subject: "Bainapatra",
-        predicate: "Execution Date",
-        object: agreeDateMatch[1].trim(),
-        eventDate: agreeDateMatch[1].trim(),
-      });
+      const nd = normalizeDate(agreeDateMatch[1].trim());
+      candidates.push({ subject: "Bainapatra", predicate: "Execution Date", object: nd, eventDate: nd });
     }
 
-    // Refusal date
-    const refusalMatch = clause.match(
-      /(?:refused|refusal|denied)\s+(?:on\s+)?([0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4})/i,
+    // ── DEMAND / REFUSAL / PARTITION DATE ──
+    const demandMatch = clause.match(
+      /(?:demanded|demand|refused|refusal|denied)\b.*?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,},?\s*[0-9]{4}|[A-Za-z]{3,}\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i,
     );
-    if (refusalMatch) {
-      candidates.push({
-        subject: "Defendant",
-        predicate: "Refusal Date",
-        object: refusalMatch[1].trim(),
-        eventDate: refusalMatch[1].trim(),
-      });
+    if (demandMatch) {
+      const nd = normalizeDate(demandMatch[1].trim());
+      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: nd, eventDate: nd });
     }
 
-    // Title status
+    // ── DEMAND DATE (explicit "demanded ... on DATE") ──
+    const demandDateMatch = clause.match(
+      /(?:demanded|demand)\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,},?\s*[0-9]{4}|[A-Za-z]{3,}\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i,
+    );
+    if (demandDateMatch) {
+      const nd = normalizeDate(demandDateMatch[1].trim());
+      candidates.push({ subject: "Plaintiff", predicate: "Demand Date", object: nd, eventDate: nd });
+    }
+
+    // ── TITLE STATUS ──
     if (/\b(?:registered\s+(?:owner|title|kabala|sale\s+deed))\b/i.test(lower)) {
-      candidates.push({
-        subject: "Plaintiff",
-        predicate: "Title Status",
-        object: "REGISTERED_OWNER",
-      });
+      candidates.push({ subject: "Plaintiff", predicate: "Title Status", object: "REGISTERED_OWNER" });
     }
 
-    // Disowning
+    // ── DISOWNING ──
     if (/\b(?:disown|disowned|disowning)\b/i.test(lower)) {
-      candidates.push({
-        subject: "Ancestor",
-        predicate: "Disowning Declaration",
-        object: "DECLARED",
-      });
+      candidates.push({ subject: "Ancestor", predicate: "Disowning Declaration", object: "DECLARED" });
     }
 
-    // Mutation
+    // ── MUTATION ──
     if (/\b(?:mutation|namjari|khatian)\b/i.test(lower)) {
-      if (/\bexclusive\s+(?:mutation|namjari)\b/i.test(lower)) {
-        candidates.push({
-          subject: "Property",
-          predicate: "Mutation Status",
-          object: "EXCLUSIVE_MUTATION",
-        });
+      if (/\b(?:exclusive|solely\s+in\s+the\s+name\s+of)\b/i.test(lower)) {
+        candidates.push({ subject: "Property", predicate: "Mutation Status", object: "EXCLUSIVE_MUTATION" });
       } else {
-        candidates.push({
-          subject: "Property",
-          predicate: "Mutation Status",
-          object: "MUTATED",
-        });
+        candidates.push({ subject: "Property", predicate: "Mutation Status", object: "MUTATED" });
       }
     }
 
-    // Monetary amounts (quantum facts)
+    // ── UNAUTHORIZED CONSTRUCTION ──
+    if (/\b(?:unauthorized\s+construction|constructing\s+without)\b/i.test(lower)) {
+      candidates.push({ subject: "Defendant", predicate: "Construction Status", object: "UNAUTHORIZED" });
+    }
+
+    // ── CO-SHARER / JOINT OWNERSHIP ──
+    if (/\b(?:co-?sharers?|joint\s+owner|joint\s+ownership|jointly\s+owned)\b/i.test(lower)) {
+      candidates.push({ subject: "Property", predicate: "Ownership Structure", object: "JOINT" });
+    }
+
+    // ── MONETARY AMOUNTS ──
     const moneyMatches = clause.matchAll(
       /(?:tk\.?|taka|bd\s*taka|bdt)\s*([\d,]+(?:\.\d+)?)/gi,
     );
     for (const mm of moneyMatches) {
       const val = parseMoney(mm[1]);
       if (val !== null) {
-        candidates.push({
-          subject: "Claim",
-          predicate: "Quantum Amount",
-          object: mm[0].trim(),
-          normalizedValue: val,
-        });
+        candidates.push({ subject: "Claim", predicate: "Quantum Amount", object: mm[0].trim(), normalizedValue: val });
       }
     }
 
     return candidates;
   }
 
-  // ========================================================================
-  // P0 HELPERS: ASSERTION CONTEXT
-  // ========================================================================
-
-  /** FIX: Parameter is `clause: string`, not a mangled object type. */
-  private detectAssertionContext(
     clause: string,
   ): { type: AssertionType; polarity: AssertionPolarity } {
     if (
@@ -1948,6 +1954,9 @@ export class BCCAAEngine {
       requiredPairs.push(["Plaintiff", "Possession Status"]);
     } else if (claimType === "INHERITANCE_CONSULTATION") {
       requiredPairs.push(["Ancestor", "Vital Status"]);
+      requiredPairs.push(["Ancestor", "Succession Type"]);
+      requiredPairs.push(["Property", "Ownership Structure"]);
+      requiredPairs.push(["Property", "Mutation Status"]);
     }
 
     for (const [subject, predicate] of requiredPairs) {
@@ -2006,10 +2015,6 @@ export class BCCAAEngine {
       }
     }
   }
-
-  // ========================================================================
-  // CONTRADICTION GRAPH — FIX #5: ENUM_EXCLUSIVE and conflict modes
-  // ========================================================================
 
   private buildContradictionGraph(ctx: ExecutionContext): void {
     const facts = Array.from(ctx.factRegistry.values());
@@ -2123,26 +2128,24 @@ export class BCCAAEngine {
       (f) => f.eventDate && isStrictDate(f.eventDate),
     );
 
-    // Sort by date
     factsWithDates.sort(
-      (a, b) =>
-        strictDateTimestamp(a.eventDate!) - strictDateTimestamp(b.eventDate!),
+      (a, b) => strictDateTimestamp(a.eventDate!) - strictDateTimestamp(b.eventDate!),
     );
 
     let eventCounter = 1;
     for (const fact of factsWithDates) {
       const eventType = this.inferEventType(fact);
-      const dateStr = fact.eventDate!;
+      const parsed = parseNaturalDate(fact.eventDate!);
+      const dateStr = parsed ? parsed.iso : fact.eventDate!;
       ctx.eventTimeline.push({
         eventId: `EVT-${String(eventCounter++).padStart(5, "0")}`,
         type: eventType,
         date: dateStr,
-        datePrecision: isAmbiguousDate(dateStr) ? "AMBIGUOUS" : "EXACT",
+        datePrecision: isAmbiguousDate(fact.eventDate!) ? "AMBIGUOUS" : "EXACT",
         sourceFactIds: [fact.factId],
       });
     }
 
-    // If no events extracted, add a placeholder
     if (ctx.eventTimeline.length === 0) {
       ctx.eventTimeline.push({
         eventId: "EVT-00001",
@@ -2157,22 +2160,27 @@ export class BCCAAEngine {
   private inferEventType(fact: AtomicFact): LegalEventType {
     if (fact.predicate === "Vital Status" && fact.object === "DECEASED")
       return "ANCESTOR_DEATH";
-    if (fact.predicate === "Execution Date") return "AGREEMENT_EXECUTION";
-    if (fact.predicate === "Refusal Date") return "REFUSAL";
+    if (fact.predicate === "Execution Date")
+      return "AGREEMENT_EXECUTION";
+    if (fact.predicate === "Refusal Date")
+      return "REFUSAL";
+    if (fact.predicate === "Demand Date")
+      return "DEMAND";
     if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED")
       return "PAYMENT";
     if (fact.predicate === "Possession Status" && fact.object === "DISPOSSESSED")
       return "DISPOSSESSION";
-    if (fact.predicate === "Registration Status") return "REGISTRATION";
+    if (fact.predicate === "Registration Status")
+      return "REGISTRATION";
+    if (fact.predicate === "Mutation Status")
+      return "AMENDMENT";
+    if (fact.predicate === "Construction Status" && fact.object === "UNAUTHORIZED")
+      return "ENCROACHMENT";
+    if (fact.predicate === "Ownership Structure" && fact.object === "JOINT")
+      return "OTHER";
     return "OTHER";
   }
 
-  // ========================================================================
-  // FIX #3 & #6: FACT EVALUATION — rich result, verified means VERIFIED
-  // ========================================================================
-
-  private evaluateFact(
-    ctx: ExecutionContext,
     subject: string,
     predicate: string,
     object: string | null,
@@ -2357,14 +2365,38 @@ export class BCCAAEngine {
     };
   }
 
-  private mapLegislation(claimType: ClaimType): StageExecutionResult {
+  private mapLegislation(
+    ctx: ExecutionContext,
+    claimType: ClaimType,
+  ): StageExecutionResult {
     const legislation = this.ruleRegistry.getLegislationMapping(claimType);
-    const precedents = CitationValidator.getVerifiedPrecedentsForContext(claimType);
+
+    // Evaluate ancestor vital status for context-aware precedent selection
+    const ancestorResult = this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", {
+      requireVerified: false,
+      objectFilter: null,
+    });
+    const isAncestorDeceased = ancestorResult.status === Tristate.TRUE;
+    const isAncestorLiving = ancestorResult.status === Tristate.FALSE;
+    const ancestorStatusDetermined =
+      ancestorResult.status === Tristate.TRUE || ancestorResult.status === Tristate.FALSE;
+
+    const precedents = CitationValidator.getVerifiedPrecedentsForContext(claimType, {
+      isAncestorDeceased: ancestorStatusDetermined ? isAncestorDeceased : undefined,
+    });
+
+    recordTrace(ctx, {
+      layer: "P1_RULE",
+      description: `Precedent selection: category=${claimType}, ancestorDeceased=${isAncestorDeceased}, determined=${ancestorStatusDetermined}, precedents=${precedents.length}`,
+      dependsOnFacts: ancestorResult.supportingFactIds,
+      dependsOnRules: [],
+      result: `PRECEDENTS_SELECTED:${precedents.length}`,
+    });
 
     return {
       stageName: "Legislation Mapping",
       status: "SATISFIED",
-      details: `Primary act: ${legislation.primaryAct}. Verified precedents: ${precedents.length}.`,
+      details: `Primary act: ${legislation.primaryAct}. Verified precedents: ${precedents.length}. Ancestor deceased: ${ancestorStatusDetermined ? isAncestorDeceased : "UNDETERMINED"}.`,
       data: { legislation, precedents },
     };
   }
@@ -2375,7 +2407,6 @@ export class BCCAAEngine {
   ): StageExecutionResult {
     const facts = Array.from(ctx.factRegistry.values());
 
-    // Find relevant dates
     const agreementDate = this.findDateFact(facts, "Bainapatra", "Execution Date");
     const refusalDate = this.findDateFact(facts, "Defendant", "Refusal Date");
     const deathDate = this.findDateFact(facts, "Ancestor", "Vital Status", "DECEASED");
@@ -2384,7 +2415,7 @@ export class BCCAAEngine {
     let prescribedPeriod = "N/A";
     let limitationArticle = "N/A";
     let isTimeBarred = false;
-    let calculationType: "real_refusal" | "heuristic_6_months" | "missing_dates" | "other_category" = "missing_dates";
+    let calculationType: "real_refusal" | "real_death" | "heuristic_6_months" | "missing_dates" | "other_category" = "missing_dates";
     let validationStatus: "valid" | "heuristic_applied" | "invalid_gaps" = "invalid_gaps";
     let explanation = "";
 
@@ -2417,14 +2448,14 @@ export class BCCAAEngine {
 
       if (deathDate && isStrictDate(deathDate)) {
         accrualDate = deathDate;
-        calculationType = "real_refusal";
+        calculationType = "real_death";
         const deathTs = strictDateTimestamp(deathDate);
         const limitTs = deathTs + 12 * 365.25 * 24 * 60 * 60 * 1000;
         isTimeBarred = Date.now() > limitTs;
         validationStatus = "valid";
         explanation = `Limitation computed from death date ${deathDate}. 12-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else {
-        explanation = "Death date not extracted. Limitation cannot be computed.";
+        explanation = "Death date not extracted or not parseable. Limitation cannot be computed.";
       }
     } else if (claimType === "DECLARATION_AND_POSSESSION") {
       limitationArticle = "Article 65, Limitation Act 1908";
@@ -2434,15 +2465,15 @@ export class BCCAAEngine {
 
     recordTrace(ctx, {
       layer: "P1_TEMPORAL",
-      description: `Limitation: article=${limitationArticle}, barred=${isTimeBarred}, type=${calculationType}`,
+      description: `Limitation: article=${limitationArticle}, barred=${isTimeBarred}, type=${calculationType}, accrual=${accrualDate ?? "NULL"}`,
       dependsOnFacts: [],
       dependsOnRules: [],
-      result: isTimeBarred ? "TIME_BARRED" : "WITHIN_LIMITATION",
+      result: accrualDate ? (isTimeBarred ? "TIME_BARRED" : "WITHIN_LIMITATION") : "INDETERMINATE",
     });
 
     return {
       stageName: "Limitation Engine",
-      status: "SATISFIED",
+      status: accrualDate ? "SATISFIED" : "UNKNOWN",
       details: explanation,
       data: {
         accrualDate,
@@ -2451,22 +2482,28 @@ export class BCCAAEngine {
         isTimeBarred,
         exceptionsOrExtensions: "",
         preliminaryAnalysis: explanation,
-        timelineValidation: {
-          agreementDate,
-          refusalDate,
-          isAgreementDateExtracted: agreementDate !== null && isStrictDate(agreementDate),
-          isRefusalDateExtracted: refusalDate !== null && isStrictDate(refusalDate),
-          calculationType,
-          validationStatus,
-          explanation,
-        },
+        timelineValidation: claimType === "INHERITANCE_CONSULTATION"
+          ? {
+              agreementDate: null,
+              refusalDate: null,
+              isAgreementDateExtracted: false,
+              isRefusalDateExtracted: false,
+              calculationType,
+              validationStatus,
+              explanation,
+            }
+          : {
+              agreementDate,
+              refusalDate,
+              isAgreementDateExtracted: agreementDate !== null && isStrictDate(agreementDate),
+              isRefusalDateExtracted: refusalDate !== null && isStrictDate(refusalDate),
+              calculationType,
+              validationStatus,
+              explanation,
+            },
       },
     };
   }
-
-  // ========================================================================
-  // ELEMENT COMPLETENESS GATE
-  // ========================================================================
 
   private executeElementCompletenessGate(
     ctx: ExecutionContext,
@@ -3696,11 +3733,6 @@ export class BCCAAEngine {
     );
     return match?.eventDate ?? null;
   }
-}
-
-// ============================================================================
-// MODULE-LEVEL HELPERS (not class methods)
-// ============================================================================
 
 function getConflictModeFromFacts(
   ctx: ExecutionContext,
