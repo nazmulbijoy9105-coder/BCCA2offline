@@ -1,2528 +1,1126 @@
+// src/engine/BCCAAEngine.ts
+// BCCAA 4.4.0-Hardened
+//
+// Design target:
+//   FACT -> PROPOSITION -> ASSERTION -> VALIDATION -> RULE PREDICATE
+//   -> LOGICAL OPERATOR -> RULE RESULT -> LEGAL CONCLUSION -> AUDIT
+//
+// IMPORTANT: this engine does not manufacture validated law. Production
+// authority must be supplied through a validated RuleRegistry/CorpusProvider.
+
 import { CaseAnalysisResponse, EngineInput, FactConsistencyGateOutput } from "../types/types";
 import { AuthUser } from "../types/auth.types";
 import { generateSecureId, generateHash } from "../utils/crypto";
-import { generateWatermark } from "../utils/watermark";
-import { logAudit } from "../utils/audit";
-import { CitationValidator, VerifiedPrecedentOutput } from "./CitationValidator";
+import { CitationValidator } from "./CitationValidator";
 import { FactConsistencyGate } from "./FactConsistencyGate";
 
-/**
- * BCCAA Offline Engine v2.5
- * Pure client-side dynamic rule-based analytical engine
- * No API calls. No Gemini. Fully deterministic and reactive to input fact patterns.
- */
-export class BCCAAEngine {
-  private user: AuthUser;
-  private license: { licenseId: string; issuedTo: string };
+// ============================================================================
+// MANIFEST / HARD LIMITS
+// ============================================================================
 
-  constructor(user: AuthUser, license: { licenseId: string; issuedTo: string }) {
-    this.user = user;
-    this.license = license;
+export const ENGINE_MANIFEST = Object.freeze({
+  engineVersion: "4.4.0-Hardened",
+  factSchemaVersion: "4.0.0",
+  ruleGraphVersion: "3.0.0",
+  ruleSetVersion: "3.0.0",
+  lawCorpusVersion: "BD-2026.08",
+  citationRegistryVersion: "BD-SC-2026.08",
+  executionMode: "FAIL_CLOSED",
+  statelessExecution: true,
+  defaultFactsAllowed: false,
+  unknownCollapseToFalse: false,
+  autonomousDecreeAuthorization: false,
+  corpusMode: "DEVELOPMENT" as "DEVELOPMENT" | "VALIDATED_PRODUCTION",
+  auditMode: "ATOMIC_APPEND_REQUIRED" as "ATOMIC_APPEND_REQUIRED" | "DEVELOPMENT",
+});
+
+const MAX_INPUT_LENGTH = 100_000;
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+export enum Tristate { TRUE = "TRUE", FALSE = "FALSE", UNKNOWN = "UNKNOWN" }
+
+export enum AssertionType {
+  ASSERTED = "ASSERTED",
+  ADMITTED = "ADMITTED",
+  DENIED = "DENIED",
+  ALLEGED = "ALLEGED",
+  INFERRED = "INFERRED",
+}
+
+export enum AssertionPolarity {
+  POSITIVE = "POSITIVE",
+  NEGATIVE = "NEGATIVE",
+  DISPUTED = "DISPUTED",
+  UNKNOWN = "UNKNOWN",
+}
+
+export enum ValidationStatus {
+  UNVERIFIED = "UNVERIFIED",
+  VERIFIED = "VERIFIED",
+  CONTRADICTED = "CONTRADICTED",
+  REQUIRES_HUMAN_REVIEW = "REQUIRES_HUMAN_REVIEW",
+}
+
+export enum ExtractionStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  EXTRACTED = "EXTRACTED",
+  PARTIAL = "PARTIAL",
+  FAILED = "FAILED",
+}
+
+export enum SourceStatus {
+  UNRESOLVED = "UNRESOLVED",
+  IDENTIFIED = "IDENTIFIED",
+  SOURCE_VERIFIED = "SOURCE_VERIFIED",
+}
+
+export enum AuthenticationStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  UNAUTHENTICATED = "UNAUTHENTICATED",
+  AUTHENTICATED = "AUTHENTICATED",
+  REQUIRES_HUMAN_REVIEW = "REQUIRES_HUMAN_REVIEW",
+}
+
+export enum CorroborationStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  UNCORROBORATED = "UNCORROBORATED",
+  CORROBORATED = "CORROBORATED",
+  CONTRADICTED = "CONTRADICTED",
+}
+
+export enum HumanValidationStatus {
+  NOT_EXECUTED = "NOT_EXECUTED",
+  NOT_VALIDATED = "NOT_VALIDATED",
+  VALIDATED = "VALIDATED",
+  REQUIRES_REVIEW = "REQUIRES_REVIEW",
+}
+
+export enum FactConfidence { CANDIDATE = "CANDIDATE", SUPPORTED = "SUPPORTED", VERIFIED = "VERIFIED" }
+export enum GateStatus { PASS = "PASS", FAIL = "FAIL", INDETERMINATE = "INDETERMINATE", HALT = "HALT" }
+
+export type RuleExecutionStatus = "NOT_EXECUTED" | "BLOCKED" | "UNKNOWN" | "FAILED" | "SATISFIED";
+
+export type CitationState =
+  | "NOT_EXECUTED"
+  | "UNRESOLVED"
+  | "RESOLVED"
+  | "TEXT_VERIFIED"
+  | "PROPOSITION_SUPPORTED"
+  | "TEMPORALLY_VALID"
+  | "JURISDICTION_VALID";
+
+export type ClaimType =
+  | "SPECIFIC_PERFORMANCE"
+  | "DECLARATION_AND_POSSESSION"
+  | "INHERITANCE_CONSULTATION"
+  | "GENERAL_CIVIL";
+
+// ============================================================================
+// PROVENANCE / SEMANTIC OBJECTS
+// ============================================================================
+
+export interface SourceSpan {
+  documentId: string;
+  segment: string;
+  page?: number;
+  paragraph?: number;
+  lineStart?: number;
+  lineEnd?: number;
+  charStart?: number;
+  charEnd?: number;
+  sourceType?: "INPUT_NARRATIVE" | "PLEADING" | "DOCUMENT" | "ORDER" | "JUDGMENT" | "OTHER";
+  extractionMethod?: "PATTERN" | "STRUCTURED_INPUT" | "MANUAL_VALIDATION" | "DOCUMENT_VALIDATION";
+}
+
+export type FactSource = SourceSpan;
+
+export interface Proposition {
+  propositionId: string;
+  subject: string;
+  predicate: string;
+  object: string | null;
+  canonicalKey: string;
+  text: string;
+}
+
+export interface Assertion {
+  assertionId: string;
+  propositionId: string;
+  assertionType: AssertionType;
+  polarity: AssertionPolarity;
+  truth: Tristate;
+  assertedBy?: string;
+  sourceSpan: SourceSpan;
+}
+
+export interface ValidationDimensions {
+  extractionStatus: ExtractionStatus;
+  sourceStatus: SourceStatus;
+  authenticationStatus: AuthenticationStatus;
+  corroborationStatus: CorroborationStatus;
+  humanValidationStatus: HumanValidationStatus;
+}
+
+export interface AtomicFact {
+  factId: string;
+  propositionId: string;
+  assertionId: string;
+  proposition: string;
+  subject: string;
+  predicate: string;
+  object: string | null;
+  truth: Tristate;
+  polarity: AssertionPolarity;
+  source: SourceSpan;
+  assertionType: AssertionType;
+  validationStatus: ValidationStatus;
+  confidence: FactConfidence;
+  assertedBy?: string;
+  eventDate?: string | null;
+  normalizedValue?: string | number | boolean | null;
+  contradicts?: string[];
+  supports?: string[];
+  disputedProposition?: string;
+  validation: ValidationDimensions;
+}
+
+export interface ContradictionEdge {
+  edgeId: string;
+  propositionKey: string;
+  leftFactId: string;
+  rightFactId: string;
+  relation: "DIRECT_TRUTH_CONFLICT";
+  status: "CRITICAL" | "PENDING_VALIDATION";
+}
+
+// ============================================================================
+// AUTHORITY / RULE GRAPH
+// ============================================================================
+
+export interface AuthorityRef {
+  authorityId?: string;
+  act: string;
+  section: string;
+  citation?: string;
+}
+
+export interface RulePredicate {
+  predicateId: string;
+  subject: string;
+  predicate: string;
+  object?: string;
+  requiredTruth: Tristate;
+  requireVerified: boolean;
+  authorityIds?: string[];
+}
+
+export interface LegalRule {
+  ruleId: string;
+  ruleVersion: string;
+  jurisdiction: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  claimTypes: ClaimType[];
+  ruleType:
+    | "ELEMENT" | "BAR" | "EXCEPTION" | "BURDEN" | "PRESUMPTION"
+    | "LIMITATION" | "JURISDICTION" | "PROCEDURE" | "RELIEF";
+  predicates: RulePredicate[];
+  logicalOperator: "ALL" | "ANY" | "AT_LEAST_N";
+  atLeastN?: number;
+  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
+  outcomeIfSatisfied: string;
+  outcomeIfFailed: string;
+  legalEffect?: string;
+  authority: AuthorityRef;
+  supersedes?: string[];
+  exceptions?: string[];
+  priority?: number;
+}
+
+export interface RuleGraphIdentity {
+  corpusId: string;
+  corpusVersion: string;
+  corpusDigest: string;
+  authorityRegistryVersion: string;
+  authorityRegistryDigest: string;
+  ruleGraphVersion: string;
+  ruleGraphDigest: string;
+}
+
+export interface RuleRegistry {
+  version: string;
+  identity: RuleGraphIdentity;
+  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
+  getLegislationMapping(claimType: ClaimType): {
+    primaryAct: string;
+    relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }>;
+  };
+}
+
+// ============================================================================
+// EXECUTION RESULTS
+// ============================================================================
+
+export interface PredicateExecutionResult {
+  predicateSubject: string;
+  predicateId: string;
+  status: "TRUE" | "FALSE" | "UNKNOWN";
+  factIds: string[];
+}
+
+export interface RuleExecutionResult {
+  ruleId: string;
+  status: RuleExecutionStatus;
+  predicateResults: PredicateExecutionResult[];
+  authorityIds: string[];
+  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
+  legalEffect?: string;
+  explanationCode: string;
+}
+
+interface LegalEvent {
+  eventId: string;
+  type: string;
+  date: string | null;
+  datePrecision: "EXACT" | "MONTH" | "YEAR" | "UNKNOWN";
+  sourceFactIds: string[];
+}
+
+interface ExecutionTraceStep {
+  stepId: string;
+  layer: "P0_EXTRACTION" | "F0_GATE" | "P1_RULE" | "P1_ELEMENT_GATE" | "P1_TEMPORAL" | "P1_VALUATION" | "P1_EVIDENCE" | "P2_SYNTHESIS" | "SYSTEM_ERROR";
+  description: string;
+  dependsOnFacts: string[];
+  dependsOnRules: string[];
+  result: string;
+}
+
+interface ExecutionContext {
+  factRegistry: Map<string, AtomicFact>;
+  propositionRegistry: Map<string, Proposition>;
+  assertionRegistry: Map<string, Assertion>;
+  contradictionGraph: ContradictionEdge[];
+  eventTimeline: LegalEvent[];
+  executionTrace: ExecutionTraceStep[];
+  warnings: string[];
+  factCounter: number;
+  propositionCounter: number;
+  assertionCounter: number;
+}
+
+function newContext(): ExecutionContext {
+  return {
+    factRegistry: new Map(),
+    propositionRegistry: new Map(),
+    assertionRegistry: new Map(),
+    contradictionGraph: [],
+    eventTimeline: [],
+    executionTrace: [],
+    warnings: [],
+    factCounter: 1,
+    propositionCounter: 1,
+    assertionCounter: 1,
+  };
+}
+
+function recordTrace(ctx: ExecutionContext, step: Omit<ExecutionTraceStep, "stepId">): void {
+  const stepId = `TRACE-${String(ctx.executionTrace.length + 1).padStart(5, "0")}`;
+  ctx.executionTrace.push({ stepId, ...step });
+}
+
+// ============================================================================
+// ONE CANONICAL SERIALIZATION / HASH PATH
+// ============================================================================
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      out[key] = canonicalize((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+export function canonicalStringify(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
+}
+
+export function canonicalHash(value: unknown): string {
+  return generateHash(canonicalStringify(value));
+}
+
+// ============================================================================
+// CORPUS / AUDIT / LICENSE INTERFACES
+// ============================================================================
+
+export interface CitationValidationAudit {
+  totalCitations: number;
+  verifiedCount: number;
+  rejectedCount: number;
+  validationStandard: string;
+  auditStatus: CitationState;
+  registrySignature: string;
+  note: string;
+  citationStates: Array<{ citation: string; state: CitationState }>;
+}
+
+export interface AuditRecordPayload {
+  caseId: string;
+  rawInputHash: string;
+  extractionHash: string;
+  inputHash: string;
+  factRegistryHash: string;
+  timelineHash: string;
+  eventTimelineHash: string;
+  corpusIdentity: RuleGraphIdentity;
+  corpusDigest: string;
+  ruleRegistryVersion: string;
+  ruleRegistryHash: string;
+  executionTraceHash: string;
+  outputHash: string;
+  manifest: typeof ENGINE_MANIFEST;
+  executionMilliseconds: number;
+  analyzedByUserId: string;
+  outcome: "SUCCESS" | "INDETERMINATE" | "HALTED" | "ERROR";
+}
+
+export interface AuditRecord extends AuditRecordPayload {
+  previousHash: string | null;
+  recordHash: string;
+}
+
+export interface AuditSink {
+  append(payload: AuditRecordPayload): Promise<AuditRecord>;
+}
+
+export interface LicenseValidator {
+  validate(user: AuthUser, license: { licenseId: string; issuedTo: string }): Promise<{ valid: boolean; reason?: string }>;
+  isProductionReady?: boolean;
+}
+
+export interface FactValidationProvider {
+  validateFacts(input: {
+    facts: AtomicFact[];
+    propositions: Proposition[];
+    assertions: Assertion[];
+  }): Promise<AtomicFact[]>;
+  isProductionReady?: boolean;
+}
+
+// ============================================================================
+// DEVELOPMENT IMPLEMENTATIONS — NEVER VALIDATED PRODUCTION AUTHORITY
+// ============================================================================
+
+function developmentIdentity(): RuleGraphIdentity {
+  return {
+    corpusId: "BD-DEVELOPMENT-FIXTURE",
+    corpusVersion: "DEVELOPMENT-2026.08",
+    corpusDigest: "DEVELOPMENT-NOT-A-LEGAL-CORPUS",
+    authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+    authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+    ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+    ruleGraphDigest: "DEVELOPMENT-RULE-GRAPH",
+  };
+}
+
+export class DevelopmentRuleRegistry implements RuleRegistry {
+  version = "DEVELOPMENT-FIXTURE-3.0.0";
+  identity = developmentIdentity();
+
+  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[] {
+    if (claimType === "SPECIFIC_PERFORMANCE") {
+      return [
+        {
+          ruleId: "SP-ELEMENT-REGISTRATION", ruleVersion: "1.0.0", jurisdiction,
+          effectiveFrom: "1900-01-01", claimTypes: [claimType], ruleType: "ELEMENT", logicalOperator: "ALL",
+          predicates: [{ predicateId: "SP-P1", subject: "Bainapatra", predicate: "Registration Status", object: "REGISTERED", requiredTruth: Tristate.TRUE, requireVerified: true }],
+          outcomeIfSatisfied: "REGISTRATION_ELEMENT_SATISFIED", outcomeIfFailed: "REGISTRATION_ELEMENT_FAILED",
+          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" }, priority: 1,
+        },
+        {
+          ruleId: "SP-ELEMENT-DEPOSIT", ruleVersion: "1.0.0", jurisdiction,
+          effectiveFrom: "1900-01-01", claimTypes: [claimType], ruleType: "ELEMENT", logicalOperator: "ALL",
+          predicates: [{ predicateId: "SP-P2", subject: "Treasury Deposit", predicate: "Payment Status", object: "DEPOSITED", requiredTruth: Tristate.TRUE, requireVerified: true }],
+          outcomeIfSatisfied: "DEPOSIT_ELEMENT_SATISFIED", outcomeIfFailed: "DEPOSIT_ELEMENT_FAILED",
+          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" }, priority: 2,
+        },
+      ];
+    }
+    if (claimType === "INHERITANCE_CONSULTATION") {
+      return [{
+        ruleId: "SUCCESSION-DEATH-ELEMENT", ruleVersion: "1.0.0", jurisdiction,
+        effectiveFrom: "1900-01-01", claimTypes: [claimType], ruleType: "ELEMENT", logicalOperator: "ALL",
+        predicates: [{ predicateId: "SUCC-P1", subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", requiredTruth: Tristate.TRUE, requireVerified: true }],
+        outcomeIfSatisfied: "SUCCESSION_OPENED", outcomeIfFailed: "SUCCESSION_NOT_ESTABLISHED",
+        authority: { act: "Applicable succession law", section: "Registry-controlled" }, priority: 1,
+      }];
+    }
+    return [];
   }
 
-  /**
-   * Main analysis entry point
-   */
-  async analyze(input: EngineInput): Promise<CaseAnalysisResponse> {
-    const startTime = Date.now();
-    const caseId = `BCCAA-${Date.now()}-${generateSecureId().substring(0, 8)}`;
+  getLegislationMapping(claimType: ClaimType) {
+    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
+      return { primaryAct: "Specific Relief Act 1877", relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Registry-controlled", purpose: "Claim-specific analysis" }] };
+    }
+    if (claimType === "INHERITANCE_CONSULTATION") return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
+    return { primaryAct: "N/A", relevantSections: [] };
+  }
+}
 
-    logAudit({
-      action: "ANALYZE_START",
-      userId: this.user.id,
-      email: this.user.email,
-      role: this.user.role,
-      resourceType: "CASE",
-      resourceId: caseId,
-      outcome: "SUCCESS",
-      metadata: { factPatternLength: input.factPattern.length, domain: input.focusDomain },
-    });
+/** @deprecated Fixture alias retained only for source compatibility. */
+export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
+  constructor() {
+    super();
+    console.warn("[DefaultRuleRegistry] Deprecated fixture alias; not validated law.");
+  }
+}
 
-    // Parse fact pattern dynamically
-    const facts = this.parseFacts(input.factPattern, input.focusDomain);
+export class DefaultAuditSink implements AuditSink {
+  readonly isProductionReady = false;
+  private lastRecord: AuditRecord | null = null;
+  async append(payload: AuditRecordPayload): Promise<AuditRecord> {
+    const previousHash = this.lastRecord?.recordHash ?? null;
+    const recordHash = canonicalHash({ payload, previousHash });
+    const record = { ...payload, previousHash, recordHash };
+    this.lastRecord = record;
+    console.warn("[DefaultAuditSink] Development-only, non-durable audit sink.");
+    return record;
+  }
+}
 
-    // Build G0 Fact Matrix
-    const stage0 = this.buildFactMatrix(facts);
+export class DefaultLicenseValidator implements LicenseValidator {
+  readonly isProductionReady = false;
+  async validate(_user: AuthUser, license: { licenseId: string; issuedTo: string }) {
+    if (!license?.licenseId || !license?.issuedTo) return { valid: false, reason: "License object incomplete." };
+    return { valid: true };
+  }
+}
 
-    // Run FACT_CONSISTENCY_GATE (F0) before Gateway 1
-    const gateF0 = FactConsistencyGate.evaluate(
-      input.factPattern,
-      stage0.chronology,
-      facts.category,
-      facts.isAncestorDeceased
-    );
-    facts.gateF0 = gateF0;
-
-    // Run all 14 stages deterministically
-    const response: CaseAnalysisResponse = {
-      gateF0,
-      stage0,
-      stage1: this.classifyDomain(facts, input.focusDomain),
-      stage2: this.mapLegislation(facts),
-      stage3: this.checkLimitation(facts),
-      stage4: this.analyzeParties(facts),
-      stage5: this.determineJurisdiction(facts),
-      stage6: this.checkPleadings(facts),
-      stage7: this.frameIssues(facts),
-      stage8: this.analyzeEvidence(facts),
-      stage9: this.debateMerits(facts),
-      stage10: this.checkEquity(facts),
-      stage11: this.buildTimeline(facts),
-      stage12: this.mapAppeals(facts),
-      stage13: this.synthesize(facts),
-      _security: {
-        analyzedBy: this.user.email,
-        analyzedAt: Date.now(),
-        licenseId: this.license.licenseId,
-        forensicHash: generateHash(caseId + input.factPattern + startTime),
-        engineVersion: "2.5.0-offline",
+export class NoOpFactValidationProvider implements FactValidationProvider {
+  readonly isProductionReady = false;
+  async validateFacts({ facts }: { facts: AtomicFact[]; propositions: Proposition[]; assertions: Assertion[] }) {
+    return facts.map((f) => ({
+      ...f,
+      truth: Tristate.UNKNOWN,
+      validationStatus: ValidationStatus.UNVERIFIED,
+      validation: {
+        ...f.validation,
+        humanValidationStatus: HumanValidationStatus.NOT_VALIDATED,
       },
-    };
+    }));
+  }
+}
 
-    // Embed watermark
-    const watermark = generateWatermark(this.user, this.license as any, caseId);
-    console.log("[BCCAA Watermark]", watermark);
+// ============================================================================
+// ENGINE
+// ============================================================================
 
-    logAudit({
-      action: "ANALYZE_COMPLETE",
-      userId: this.user.id,
-      email: this.user.email,
-      role: this.user.role,
-      resourceType: "CASE",
-      resourceId: caseId,
-      outcome: "SUCCESS",
-      metadata: { durationMs: Date.now() - startTime, stages: 14 },
+export interface AnalyzeRequest {
+  user: AuthUser;
+  license: { licenseId: string; issuedTo: string };
+  input: EngineInput;
+}
+
+export class BCCAAEngine {
+  private readonly ruleRegistry: RuleRegistry;
+  private readonly auditSink: AuditSink;
+  private readonly licenseValidator: LicenseValidator;
+  private readonly factValidationProvider: FactValidationProvider;
+
+  constructor(deps?: {
+    ruleRegistry?: RuleRegistry;
+    auditSink?: AuditSink;
+    licenseValidator?: LicenseValidator;
+    factValidationProvider?: FactValidationProvider;
+  }) {
+    this.ruleRegistry = deps?.ruleRegistry ?? new DevelopmentRuleRegistry();
+    this.auditSink = deps?.auditSink ?? new DefaultAuditSink();
+    this.licenseValidator = deps?.licenseValidator ?? new DefaultLicenseValidator();
+    this.factValidationProvider = deps?.factValidationProvider ?? new NoOpFactValidationProvider();
+    this.assertConfiguration();
+  }
+
+  private assertConfiguration(): void {
+    if (ENGINE_MANIFEST.corpusMode === "VALIDATED_PRODUCTION") {
+      if (this.ruleRegistry.version.startsWith("DEVELOPMENT-FIXTURE") || this.ruleRegistry.identity.corpusDigest.startsWith("DEVELOPMENT")) {
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a validated production corpus.");
+      }
+      if (this.auditSink instanceof DefaultAuditSink || (this.auditSink as { isProductionReady?: boolean }).isProductionReady === false) {
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a durable concurrency-safe AuditSink.");
+      }
+      if (this.licenseValidator instanceof DefaultLicenseValidator || this.licenseValidator.isProductionReady === false) {
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production LicenseValidator.");
+      }
+      if (this.factValidationProvider instanceof NoOpFactValidationProvider || this.factValidationProvider.isProductionReady === false) {
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
+      }
+    }
+  }
+
+  async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
+    const startTime = Date.now();
+    const caseId = `BCCAA-4.4-${Date.now()}-${generateSecureId().slice(0, 8)}`;
+    const ctx = newContext();
+
+    try {
+      const license = await this.licenseValidator.validate(request.user, request.license);
+      if (!license.valid) return this.buildHaltResponse(ctx, caseId, `LICENSE_DENIED: ${license.reason ?? "unspecified"}`);
+      if (!request.input?.factPattern) return this.buildHaltResponse(ctx, caseId, "EMPTY_INPUT: factPattern is required.");
+      if (request.input.factPattern.length > MAX_INPUT_LENGTH) return this.buildHaltResponse(ctx, caseId, `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`);
+      return await this.runPipeline(ctx, request, caseId, startTime);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      recordTrace(ctx, { layer: "SYSTEM_ERROR", description: "Uncaught execution error.", dependsOnFacts: [], dependsOnRules: [], result: message });
+      const response = this.buildHaltResponse(ctx, caseId, `SYSTEM_ERROR: ${message}`);
+      await this.persistAudit(ctx, request, caseId, startTime, "ERROR", this.computeOutputHash(response)).catch(() => undefined);
+      return response;
+    }
+  }
+
+  private async runPipeline(ctx: ExecutionContext, request: AnalyzeRequest, caseId: string, startTime: number): Promise<CaseAnalysisResponse> {
+    const { input } = request;
+    const claimType = this.resolveClaimType(input.factPattern, input.focusDomain);
+
+    this.extractAtomicFacts(ctx, input.factPattern, claimType);
+    await this.applyFactValidation(ctx);
+    this.buildContradictionGraph(ctx);
+    this.buildEventTimeline(ctx);
+
+    // CRITICAL F0: verified TRUE + verified FALSE for the same proposition
+    // is never downgraded to UNKNOWN and never allowed into P1.
+    const conflict = this.findCriticalConflict(ctx);
+    if (conflict) {
+      recordTrace(ctx, { layer: "F0_GATE", description: "Verified direct truth conflict detected.", dependsOnFacts: [conflict.leftFactId, conflict.rightFactId], dependsOnRules: [], result: "HALT_CRITICAL_CONFLICT" });
+      const f0Gate = { gateStatus: "HALT_CRITICAL_CONFLICT", details: `CRITICAL_CONFLICT: ${conflict.propositionKey}` } as unknown as FactConsistencyGateOutput;
+      const synthesis = this.executeFailClosedSynthesis(ctx, f0Gate, claimType, { status: GateStatus.HALT, allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: ["CRITICAL_CONFLICT"], ruleExecutionResults: [] });
+      const response = this.buildResponse(ctx, request, claimType, f0Gate, synthesis, { halted: true, caseId });
+      await this.persistAudit(ctx, request, caseId, startTime, "HALTED", this.computeOutputHash(response));
+      return response;
+    }
+
+    const chronology = ctx.eventTimeline.map((e) => ({ event: e.type, date: e.date }));
+    const ancestorDeceased = this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", { requireVerified: false }).status;
+    const f0Gate = FactConsistencyGate.evaluate(input.factPattern, chronology, claimType, ancestorDeceased === Tristate.TRUE);
+    recordTrace(ctx, { layer: "F0_GATE", description: "Fact Consistency Gate executed.", dependsOnFacts: this.getAllFactIds(ctx), dependsOnRules: [], result: f0Gate.gateStatus });
+
+    if (f0Gate.gateStatus === "HALT_CRITICAL_CONFLICT") {
+      const synthesis = this.executeFailClosedSynthesis(ctx, f0Gate, claimType, { status: GateStatus.HALT, allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: ["F0_CRITICAL_CONFLICT"], ruleExecutionResults: [] });
+      const response = this.buildResponse(ctx, request, claimType, f0Gate, synthesis, { halted: true, caseId });
+      await this.persistAudit(ctx, request, caseId, startTime, "HALTED", this.computeOutputHash(response));
+      return response;
+    }
+
+    // P1 begins only after F0 has passed without a critical halt.
+    const domain = this.classifyDomain(ctx, claimType);
+    const legislation = this.mapLegislation(claimType);
+    const limitation = this.executeLimitationEngine(ctx);
+    const elementGate = this.executeElementCompletenessGate(ctx, claimType);
+    const jurisdiction = this.executeJurisdictionEngine(ctx);
+    const standi = this.executePartyStandiRules(ctx, claimType);
+    const pleading = this.executePleadingRules(elementGate);
+    const issues = this.executeIssueFramingRules(ctx, elementGate);
+    const evidence = this.executeEvidenceRules(ctx);
+    const merits = this.executeMeritRules(elementGate);
+    const equity = this.executeEquityRules(elementGate);
+    const procedure = this.executeProcedureRules();
+    const appeal = this.executeAppealRules();
+    const synthesis = this.executeFailClosedSynthesis(ctx, f0Gate, claimType, elementGate);
+
+    const response = this.buildResponse(ctx, request, claimType, f0Gate, synthesis, {
+      caseId, domain, legislation, limitation, standi, jurisdiction, pleading, issues, evidence, merits, equity, procedure, appeal,
     });
-
+    const outcome: AuditRecordPayload["outcome"] = elementGate.status === GateStatus.PASS ? "SUCCESS" : "INDETERMINATE";
+    await this.persistAudit(ctx, request, caseId, startTime, outcome, this.computeOutputHash(response));
     return response;
   }
 
-  // ─── STAGE 0: FACT MATRIX ───
-  private buildFactMatrix(facts: ParsedFacts) {
-    const unknownFacts = this.extractUnknownFacts(facts);
-    const factualSummary = this.generateFactualSummary(facts);
-    return {
-      factualSummary,
-      chronology: facts.dates.map((d) => ({
-        date: d.date,
-        event: d.event,
-        partiesInvolved: d.parties,
-        factualSource: d.factualSource || d.statutorySignificance || "Dispute narrative assertion",
-      })),
-      admittedFacts: facts.admitted,
-      disputedFacts: facts.disputed,
-      unknownFacts,
-      quantumFacts: facts.quantum,
-      factsMeta: {
-        category: facts.category,
-        isRegisteredBainapatra: facts.isRegisteredBainapatra,
-        isBalanceDeposited: facts.isBalanceDeposited,
-        plaintiffHasRegisteredTitle: facts.plaintiffHasRegisteredTitle,
-        dispossessionProven: facts.dispossessionProven,
-        isUsingDefaultAmounts: facts.contractDetails.isUsingDefaultAmounts,
-      }
-    };
-  }
-
-  // ─── STAGE 1: DOMAIN CLASSIFICATION ───
-  private classifyDomain(facts: ParsedFacts, focusDomain: string) {
-    let primary = focusDomain;
-    if (primary === "Auto-detect") {
-      if (facts.category === "SPECIFIC_PERFORMANCE") {
-        primary = "Specific Performance";
-      } else if (facts.category === "DECLARATION_AND_POSSESSION") {
-        primary = "Declaration of Title";
-      } else if (facts.category === "INHERITANCE_CONSULTATION") {
-        primary = facts.isAncestorDeceased ? "Partition & Succession Suit" : "Inheritance Consultation";
-      } else {
-        primary = "General Civil Dispute";
-      }
-    }
-
-    const subsidiary = facts.category === "SPECIFIC_PERFORMANCE"
-      ? ["Contract Law", "Registration & Stamp Law", "Equity Jurisprudence"]
-      : facts.category === "DECLARATION_AND_POSSESSION"
-      ? ["Specific Relief", "Property and Land Law", "Recovery and Ouster"]
-      : facts.category === "INHERITANCE_CONSULTATION"
-      ? (facts.isAncestorDeceased 
-         ? ["Muslim Personal Law (Shariat)", "Partition and Demarcation Law", "Civil Procedure (Order XX Rule 18)", "Land Revenue & Mutation"] 
-         : ["Muslim Personal Law (Shariat)", "Civil Procedure", "Inheritance and Succession"])
-      : ["General Civil Procedure", "Injunctions"];
-
-    return {
-      primaryDomain: primary,
-      subsidiaryDomains: subsidiary,
-      triggerFacts: facts.triggers.map((t) => ({
-        domain: t.domain,
-        fact: t.fact,
-        statutoryTrigger: t.trigger,
-      })),
-    };
-  }
-
-  // ─── STAGE 2: LEGISLATION MAP ───
-  private mapLegislation(facts: ParsedFacts) {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    const primaryAct = isSP || isDP 
-      ? "Specific Relief Act 1877" 
-      : isInheritance 
-        ? (facts.isAncestorDeceased ? "Partition Act 1893 and Muslim Personal Law (Shariat) Application Act 1937" : "Muslim Personal Law (Shariat) Application Act 1937") 
-        : "Code of Civil Procedure 1908";
-
-    const relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }> = [];
-
-    if (isSP) {
-      relevantSections.push(
-        { actName: "Specific Relief Act 1877", sectionOrRule: "Section 12", purpose: "Enforcement of specific performance of contracts concerning immovable property." },
-        { actName: "Specific Relief Act 1877", sectionOrRule: "Section 21A", purpose: "Statutory bar on suits for specific performance unless contract (Bainapatra) is registered and remaining consideration is deposited in court." },
-        { actName: "Transfer of Property Act 1882", sectionOrRule: "Section 54", purpose: "Mandates that sale of immovable property must be made only by registered instrument." },
-        { actName: "Registration Act 1908", sectionOrRule: "Section 17A", purpose: "Mandatory registration of written contracts for sale of land (Bainapatra)." }
-      );
-    } else if (isDP) {
-      const hasSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
-      if (hasSec9) {
-        relevantSections.push(
-          { actName: "Specific Relief Act 1877", sectionOrRule: "Section 9", purpose: "Summary suit for recovery of possession by person dispossessed of land within 6 months without consent." }
-        );
-      } else {
-        relevantSections.push(
-          { actName: "Specific Relief Act 1877", sectionOrRule: "Section 8", purpose: "Recovery of possession of specific immovable property based on title and ownership rights." },
-          { actName: "Specific Relief Act 1877", sectionOrRule: "Section 42", purpose: "Declaratory suit for declaration of title and status of legal rights in the suit property." }
-        );
-      }
-      relevantSections.push(
-        { actName: "Specific Relief Act 1877", sectionOrRule: "Section 54", purpose: "Grant of perpetual/permanent injunction to restrain further trespass." },
-        { actName: "State Acquisition and Tenancy Act 1950", sectionOrRule: "Section 143", purpose: "Rules for updating land record-of-rights (Khatian) and recording mutation." }
-      );
-    } else if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        relevantSections.push(
-          { actName: "Muslim Personal Law (Shariat) Application Act 1937", sectionOrRule: "Section 2", purpose: "Mandates application of Shariat law in all inheritance and succession disputes of Muslims." },
-          { actName: "Code of Civil Procedure 1908", sectionOrRule: "Order XX Rule 18", purpose: "Procedures and guidelines for framing a preliminary and final partition decree." },
-          { actName: "Partition Act 1893", sectionOrRule: "Section 2", purpose: "Empowers courts to order sale of partition property if physical division is impracticable or causes unreasonable injury." },
-          { actName: "Specific Relief Act 1877", sectionOrRule: "Section 42", purpose: "Declaratory suit for establishing the status of heirs and inherited shares, alongside correction of wrongful exclusive mutation." },
-          { actName: "Code of Civil Procedure 1908", sectionOrRule: "Order XXXIX Rules 1 & 2", purpose: "Urgent temporary injunction to restrain a co-sharer from alienating undivided joint land to third parties." }
-        );
-      } else {
-        relevantSections.push(
-          { actName: "Muslim Personal Law (Shariat) Application Act 1937", sectionOrRule: "Section 2", purpose: "Mandates application of Muslim Personal Law in all questions regarding inheritance and succession of Muslims." },
-          { actName: "Code of Civil Procedure 1908", sectionOrRule: "Section 9", purpose: "Jurisdiction of civil courts, requiring a present cause of action of a civil nature." },
-          { actName: "Specific Relief Act 1877", sectionOrRule: "Section 42", purpose: "Enables declaratory suits for establishing present legal character or property rights (which do not exist prior to ancestor's death)." }
-        );
-      }
-    } else {
-      relevantSections.push(
-        { actName: "Code of Civil Procedure 1908", sectionOrRule: "Section 9", purpose: "General jurisdiction of civil courts to try all suits of civil nature." },
-        { actName: "Specific Relief Act 1877", sectionOrRule: "Section 54", purpose: "Perpetual injunction restraining wrongful alienation or damage." }
-      );
-    }
-
-    // Deterministic Citation Verification Layer
-    // Principle: NO CITATION WITHOUT VALIDATION LAYER
-    const verifiedPrecedents: VerifiedPrecedentOutput[] = CitationValidator.getVerifiedPrecedentsForContext(
-      facts.category,
-      {
-        isAncestorDeceased: facts.isAncestorDeceased,
-        hasRegisteredBainapatra: facts.isRegisteredBainapatra === true,
-        hasTreasuryDeposit: facts.isBalanceDeposited === true,
-        isDispossessed: facts.dispossessionProven === true,
-        rawText: facts.rawText,
-      }
-    );
-
-    const precedents = verifiedPrecedents.map((vp) => ({
-      citation: vp.citation,
-      caseTitle: vp.caseTitle,
-      court: vp.court,
-      decisionYear: vp.decisionYear,
-      reporter: vp.reporter,
-      volume: vp.volume,
-      page: vp.page,
-      bench: vp.bench,
-      statutorySubject: vp.statutorySubject,
-      holding: vp.holding,
-      relevance: vp.relevance,
-      ratioDecidendi: vp.ratioDecidendi,
-      verificationStatus: vp.verificationStatus,
-      verificationHash: vp.verificationHash,
-      isDeterministic: true,
-      securityHashToken: vp.securityHashToken,
-    }));
-
-    const citationValidationAudit = {
-      totalCitations: precedents.length,
-      verifiedCount: precedents.filter((p) => p.verificationStatus === "VERIFIED_CANONICAL").length,
-      rejectedCount: precedents.filter((p) => p.verificationStatus === "FAILED_UNVERIFIED").length,
-      validationStandard: "BCCAA Canonical Statutory Precedent Verification Protocol (Bangladesh Supreme Court)",
-      auditStatus: "PASS_100_PERCENT_DETERMINISTIC" as const,
-      registrySignature: `VERIFIED-BCCAA-REGISTRY-HASH-0x${Math.abs(Date.now()).toString(16).toUpperCase()}`,
-    };
-
-    const equityPrinciples = isSP
-      ? [
-          "Equity treats as done that which ought to be done — forcing execution of the agreed sale deed.",
-          "He who seeks equity must do equity — requiring full deposit of balance consideration in court."
-        ]
-      : isDP
-      ? [
-          "He who comes to equity must come with clean hands — a trespasser cannot resist the legal title of the registered owner.",
-          "Equity aids the vigilant, not those who slumber on their rights — enforcing strict 12-year limits on title recovery."
-        ]
-      : isInheritance
-      ? (facts.isAncestorDeceased 
-         ? [
-             "Equality is equity — co-sharers in an undivided inheritance hold co-equal, proportional rights in every inch of the joint property.",
-             "Equity prevents multiplicity of suits — a single comprehensive suit for partition, declaration of heirship, and correction of mutation resolves the entire dispute."
-           ]
-         : [
-             "Equity follows the law — Muslim personal law governs the succession; courts cannot create a present inheritance right where law denies it.",
-             "Equity will not grant a declaration in the air — no declaration can be granted for a mere expectation of succession (spes successionis)."
-           ])
-      : [
-          "Delay defeats equity — Vigilantibus non dormientibus jura subveniunt."
-        ];
-
-    return {
-      primaryAct,
-      relevantSections,
-      precedents,
-      citationValidationAudit,
-      equityPrinciples,
-    };
-  }
-
-  // ─── STAGE 3: LIMITATION CHECK ───
-  private checkLimitation(facts: ParsedFacts) {
-    return this.computeLimitation(facts);
-  }
-
-  // ─── STAGE 4: PARTY ANALYSIS ───
-  private analyzeParties(facts: ParsedFacts) {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    const plaintiffs = facts.parties.filter((p) => p.side === "plaintiff").map((p) => ({
-      name: p.name,
-      legalIdentity: p.identity,
-      capacity: p.capacity,
-      causeOfActionAccess: p.causeOfAction || (isSP ? "Right to seek performance under contract" : isInheritance ? (facts.isAncestorDeceased ? "Vested co-sharer heir claiming inherited share and partition" : "No present cause of action; inheritance rights have not vested") : "Right of recovery as absolute registered titleholder"),
-    }));
-
-    const defendants = facts.parties.filter((p) => p.side === "defendant").map((p) => ({
-      name: p.name,
-      legalIdentity: p.identity,
-      capacity: p.capacity,
-      liabilityType: p.liability || (isSP ? "Contractual breach of Bainapatra" : isInheritance ? (facts.isAncestorDeceased ? "Exclusive wrongful mutation and threat to alienate undivided joint property" : "Unilateral declarant; holds absolute ownership till death") : "Wrongful trespass and illegal ouster"),
-    }));
-
-    const joinderIssues = isSP
-      ? "No misjoinder or non-joinder identified. Only the original parties to the Bainapatra are necessary parties."
-      : isDP
-      ? "No misjoinder. If any third party is occupying a portion of the land, they must be added as a party to avoid issues in execution."
-      : isInheritance
-      ? (facts.isAncestorDeceased 
-         ? "All surviving legal heirs of Abdul Karim (including both sons and the daughter Fatema) are necessary parties to the suit. Omission of any co-heir is a fatal non-joinder under Order I Rule 9 CPC, rendering any partition decree un-executable."
-         : "Sons cannot sue father as a matter of right for declaration of inheritance shares during his lifetime. The suit is fundamentally incompetent for lack of a maintainable cause of action.")
-      : "No procedural misjoinder or non-joinder of parties.";
-
-    let locusStandiSummary = "";
-    if (isSP) {
-      if (facts.isRegisteredBainapatra === true) {
-        locusStandiSummary = "Plaintiff has valid locus standi as the holder of a registered contract of sale (Bainapatra) in compliance with Section 17A of the Registration Act 1908.";
-      } else if (facts.isRegisteredBainapatra === false) {
-        locusStandiSummary = "CRITICAL STANDI FAILURE: Plaintiff lacks standard locus standi for specific performance as the contract is explicitly unregistered, rendering the suit strictly incompetent under Section 21A SRA.";
-      } else {
-        locusStandiSummary = "Locus standi is contingent on the Bainapatra being registered. If unregistered, Plaintiff is barred under Section 21A SRA from seeking specific performance.";
-      }
-    } else if (isDP) {
-      if (facts.plaintiffHasRegisteredTitle === true) {
-        locusStandiSummary = "Plaintiff has undeniable locus standi as the registered legal owner of the property holding registered deeds and certified mutation khatians.";
-      } else if (facts.plaintiffHasRegisteredTitle === false) {
-        locusStandiSummary = "CRITICAL STANDI FAILURE: Plaintiff has no registered title or mutation in the land records, which undermines any locus standi to claim land declaration.";
-      } else {
-        locusStandiSummary = "Locus standi depends on proving ownership. The Plaintiff must produce registered title deeds or mutation records to maintain a suit for declaration under Section 42 SRA.";
-      }
-    } else if (isInheritance) {
-      locusStandiSummary = facts.isAncestorDeceased 
-        ? "The Plaintiffs (sons) have immediate and unquestionable locus standi as Class I Quranic/agnatic heirs. Upon the death of Abdul Karim, his estate vested automatically in them. They hold a present, justiciable right to demand their lawful shares, seek partition under the Partition Act 1893, and challenge exclusive wrongful mutations."
-        : "The Plaintiffs (sons) LACK locus standi at present. A person possesses no status as an 'heir' during the ancestor's lifetime; they possess a mere 'spes successionis' (hope of succession) which is non-transferable and non-justiciable.";
-    } else {
-      locusStandiSummary = "Plaintiff has locus standi based on direct infringement of civil rights.";
-    }
-
-    return {
-      plaintiffs,
-      defendants,
-      joinderIssues,
-      locusStandiSummary,
-    };
-  }
-
-  // ─── STAGE 5: JURISDICTION ───
-  private determineJurisdiction(facts: ParsedFacts) {
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-    if (isInheritance) {
-      return {
-        territorial: {
-          rule: "Not yet applicable.",
-          governingSection: "Section 16 CPC (Deferred)",
-          jurisdictionalFacts: "Since no maintainable civil cause of action is disclosed, territorial jurisdiction cannot be established."
-        },
-        pecuniary: {
-          valuation: "Not applicable (Deferred)",
-          courtLevel: "Deferred",
-          pecuniaryLimits: "Not applicable",
-          suitsValuationActNotes: "No court can presently be selected or pecuniary jurisdiction calculated because no maintainable suit exists on the stated facts alone. Any valuation or court fee assessment is entirely premature."
-        },
-        subjectMatter: {
-          isExcluded: true,
-          forum: "None",
-          governingStatute: "Muslim Personal Law / CPC Section 9"
-        },
-        objectionStrategy: "Any plaint filed under these facts must be met with a threshold objection under Order VII Rule 11(a) CPC (rejection of plaint for failure to disclose a cause of action) and Section 42 of the Specific Relief Act (non-maintainability)."
-      };
-    }
-
-    const valuationNum = facts.contractDetails.total;
-    const isDefault = facts.contractDetails.isUsingDefaultAmounts;
-    const valuationText = isDefault 
-      ? `BDT ${valuationNum.toLocaleString("en-US")} (WARNING: Default placeholder - no valuation figures specified in facts)`
-      : `BDT ${valuationNum.toLocaleString("en-US")}`;
-    const courtLevel = this.determineCourtLevel(valuationNum);
-
-    const territorialRule = "A civil suit for land title, possession, or specific performance must be instituted where the immovable property is situated.";
-    const territorialSection = "Section 16(a) and 16(d) of the Code of Civil Procedure 1908";
-    const jurisdictionalFacts = facts.location || "The suit land situated within the local limits of the selected Court.";
-
-    const pecuniaryLimits = `PECUNIARY JURISDICTION TABLE (Civil Courts Act 1887, as amended by the Civil Courts (Amendment) Act 2021):
-- Assistant Judge Court: Up to BDT 1,500,000 (15 Lakhs)
-- Senior Assistant Judge Court: BDT 1,500,001 to BDT 2,500,000 (25 Lakhs)
-- Joint District Judge Court: Above BDT 2,500,000 (Unlimited original jurisdiction)
-- District Judge Court (Appeals): Up to BDT 50,000,000 (5 Crores)
-- High Court Division (Appeals): Above BDT 50,000,000 (5 Crores)
-
-COMPUTED JURISDICTIONAL MAPPING:
-1. This suit is valued at ${valuationText} based on the contract consideration / land market rate.
-2. Under the Civil Courts (Amendment) Act 2021, BDT ${valuationNum.toLocaleString("en-US")} falls precisely in the ${courtLevel === "Senior Assistant Judge Court" ? "Senior Assistant Judge Court bracket (15L to 25L)" : courtLevel === "Assistant Judge Court" ? "Assistant Judge Court bracket (Up to 15L)" : "Joint District Judge Court bracket (Above 25L)"}.
-3. Therefore, the competent court of first instance is the ${courtLevel}.`;
-
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    let suitsValuationActNotes = "";
-    if (isSP) {
-      suitsValuationActNotes = isDefault
-        ? `(WARNING: Placeholder valuation used) Since no contract value was specified in the facts, a default value of BDT 1,200,000 has been applied for illustration. In an actual suit, it is valued under Section 7(x)(a) of the Court Fees Act 1870 at the exact contract consideration.`
-        : `Valued under Section 7(x)(a) of the Court Fees Act 1870 and Section 8 of the Suits Valuation Act 1887. The suit is valued exactly at the contract consideration of BDT ${valuationNum.toLocaleString("en-US")}, requiring mandatory ad valorem court fees.`;
-    } else {
-      suitsValuationActNotes = isDefault
-        ? `(WARNING: Placeholder valuation used) Since no land value was specified in the facts, a default value of BDT 1,200,000 has been applied. In an actual suit, recovery is valued under Section 7(iv)(c) of the Court Fees Act 1870 at the market rate.`
-        : `Valued under Section 7(iv)(c) of the Court Fees Act 1870. The Plaintiff has valued the relief for declaration of title with consequential recovery of khas possession at the market rate of BDT ${valuationNum.toLocaleString("en-US")}, requiring ad valorem court fees.`;
-    }
-
-    return {
-      territorial: {
-        rule: territorialRule,
-        governingSection: territorialSection,
-        jurisdictionalFacts,
-      },
-      pecuniary: {
-        valuation: valuationText,
-        courtLevel,
-        pecuniaryLimits,
-        suitsValuationActNotes,
-      },
-      subjectMatter: {
-        isExcluded: false,
-        forum: "Ordinary Civil Court",
-        governingStatute: "Civil Courts Act 1887 and Section 9 of CPC 1908",
-      },
-      objectionStrategy: isSP
-        ? "Defendant may falsely assert that the property is undervalued. Promptly present the Bainapatra deed which records the agreed consideration, leaving no room for valuation disputes."
-        : "Defendant may object under Section 21 of CPC. Counter by presenting the certified minimum valuation register of the sub-registry to prove valuation compliance.",
-    };
-  }
-
-  // ─── STAGE 6: PLEADINGS ───
-  private checkPleadings(facts: ParsedFacts) {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    let plaintChecklist: string[] = [];
-    if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        plaintChecklist.push("Pleading the pedigree/genealogical table showing relationship to the deceased ancestor (Status: Satisfied)");
-        plaintChecklist.push("Pleading the exact date of death of Abdul Karim (15 January 2026) to establish opening of succession (Status: Satisfied)");
-        plaintChecklist.push("Pleading the description, boundaries, and schedule of all undivided joint family properties");
-        plaintChecklist.push("Averring that co-heir Fatema obtained an exclusive wrongful mutation in Land Records (Status: Satisfied)");
-        plaintChecklist.push("Averring previous amicable demands for partition and defendant's formal refusal");
-        plaintChecklist.push("Joining all surviving natural heirs as necessary parties to prevent non-joinder fatal defects under Order I Rule 9 CPC");
-        plaintChecklist.push("Prayer for declaration of heirship and specific fractional shares under Muslim Shariat law");
-        plaintChecklist.push("Prayer for partition by metes and bounds and separate possession (Order XX Rule 18 CPC)");
-        plaintChecklist.push("Prayer for correction of the exclusive record-of-rights (namjari mutation) in the Land Office");
-        plaintChecklist.push("Urgent application for temporary injunction (Order XXXIX Rules 1 & 2 CPC) to restrain third-party sale and waste");
-      } else {
-        plaintChecklist.push("Pleading future expectation of inheritance (spes successionis) (WARNING: Non-justiciable!)");
-        plaintChecklist.push("Pleading the father's affidavit/notice as a legal injury (WARNING: This does not constitute a legally cognizable injury!)");
-        plaintChecklist.push("Prayer for declaration of inheritance shares (WARNING: Strictly prohibited during lifetime of ancestor!)");
-        plaintChecklist.push("Prayer for partition or injunction against father (WARNING: Unenforceable during lifetime of ancestor!)");
-      }
-    } else if (isSP) {
-      plaintChecklist.push("Pleading the execution of the written Bainapatra");
-      if (facts.isRegisteredBainapatra === true) {
-        plaintChecklist.push("Pleading the registration of the Bainapatra (Status: Satisfied - Registered Bainapatra is available)");
-      } else if (facts.isRegisteredBainapatra === false) {
-        plaintChecklist.push("Pleading the registration of the Bainapatra (CRITICAL DEFICIENCY: Agreement is explicitly unregistered, violating Section 21A SRA!)");
-      } else {
-        plaintChecklist.push("Pleading the registration of the Bainapatra (WARNING: Registration is unspecified; must plead and produce registered deed)");
-      }
-      plaintChecklist.push("Averring complete and continuous readiness and willingness to perform (Section 24 SRA)");
-      if (facts.isBalanceDeposited === true) {
-        plaintChecklist.push(`Pleading the deposit of the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court (Status: Satisfied - Treasury receipt available)`);
-      } else if (facts.isBalanceDeposited === false) {
-        plaintChecklist.push(`Pleading the deposit of the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} (CRITICAL DEFICIENCY: Balance is explicitly NOT deposited in court, violating Section 21A SRA!)`);
-      } else {
-        plaintChecklist.push(`Pleading the deposit of the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} (WARNING: Deposit status is unspecified; must deposit in treasury via challan before filing)`);
-      }
-      plaintChecklist.push("Factual chronology of demand and defendant's refusal");
-      plaintChecklist.push("Correct description and boundaries of the suit land");
-    } else {
-      if (facts.plaintiffHasRegisteredTitle === true) {
-        plaintChecklist.push("Pleading absolute ownership supported by registered Saf Kabala and mutation (Status: Satisfied)");
-      } else if (facts.plaintiffHasRegisteredTitle === false) {
-        plaintChecklist.push("Pleading ownership (CRITICAL DEFICIENCY: Plaintiff explicitly has no registered title or mutation!)");
-      } else {
-        plaintChecklist.push("Pleading ownership (WARNING: Title documents and mutation records are unspecified)");
-      }
-      plaintChecklist.push("Pleading mutation details and land development tax payments");
-      if (facts.dispossessionProven === true) {
-        plaintChecklist.push("Averring the exact date, time, and manner of wrongful dispossession (Status: Satisfied)");
-      } else if (facts.dispossessionProven === false) {
-        plaintChecklist.push("Averring dispossession (CRITICAL DEFICIENCY: Facts explicitly state no ouster or dispossession occurred!)");
-      } else {
-        plaintChecklist.push("Averring dispossession (WARNING: Details of dispossession/ouster are unspecified)");
-      }
-      plaintChecklist.push("Providing detailed schedule and boundaries of the encroached land");
-      plaintChecklist.push("Prayer for declaration of title and khas possession");
-      plaintChecklist.push("Prayer for permanent injunction and removal of structures");
-    }
-
-    const lim = this.computeLimitation(facts);
-    const groundsForRejection: string[] = [];
-    if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        if (lim.isTimeBarred) {
-          groundsForRejection.push("Order VII Rule 11(d) CPC: Partition suit is barred by law as it exceeds the 12-year statutory limit under Article 123/144.");
-        }
-        groundsForRejection.push("Order I Rule 9 CPC warning: If any surviving co-sharer heir (such as the sister Fatema or other brothers) is omitted from the plaint, the suit suffers from a fatal non-joinder of necessary parties.");
-      } else {
-        groundsForRejection.push("Order VII Rule 11(a) CPC: The plaint fails to disclose any accrued civil cause of action since the father is alive.");
-        groundsForRejection.push("Order VII Rule 11(d) CPC / Section 42 SRA: The suit is barred by law as a declaratory suit for inheritance shares during the ancestor's lifetime is legally non-maintainable.");
-      }
-    } else if (isSP) {
-      if (lim.isTimeBarred) {
-        groundsForRejection.push("Order VII Rule 11(d) CPC as the suit is filed beyond the 1-year limitation under Article 54.");
-      } else if (lim.accrualDate === "Not determinable from facts") {
-        groundsForRejection.push("Order VII Rule 11(d) CPC warning: Inability to verify limitation due to missing calendar dates in pleadings.");
-      } else {
-        groundsForRejection.push("Order VII Rule 11(d) CPC warning if filed beyond 1 year of limitation (Article 54 Limitation Act).");
-      }
-
-      if (facts.isRegisteredBainapatra === false) {
-        groundsForRejection.push("Order VII Rule 11(a) and 11(d) CPC: The plaint shows the Bainapatra is unregistered, which is a fatal statutory threshold bar under Section 21A SRA.");
-      } else if (facts.isRegisteredBainapatra === "unspecified") {
-        groundsForRejection.push("Order VII Rule 11(a) and (d) risk if the Plaintiff fails to produce/plead a registered Bainapatra.");
-      }
-
-      if (facts.isBalanceDeposited === false) {
-        groundsForRejection.push(`Order VII Rule 11(a) and 11(d) CPC: The plaint shows the Plaintiff failed to deposit the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court treasury, violating Section 21A SRA.`);
-      } else if (facts.isBalanceDeposited === "unspecified") {
-        groundsForRejection.push(`Order VII Rule 11(a) and (d) risk if the Plaintiff fails to deposit the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in treasury.`);
-      }
-    } else {
-      if (lim.isTimeBarred) {
-        const isSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
-        groundsForRejection.push(isSec9 
-          ? "Order VII Rule 11(d) CPC: Summary suit is clearly barred as it was filed beyond the 6-month limit of Section 9 SRA." 
-          : "Order VII Rule 11(d) CPC: Suit is clearly barred as it was filed beyond the 12-year limit of Article 142.");
-      } else if (lim.accrualDate === "Not determinable from facts") {
-        groundsForRejection.push("Order VII Rule 11(d) CPC warning: Dispossession dates are completely missing, risking dismissal on limitation grounds.");
-      } else {
-        groundsForRejection.push("Order VII Rule 11(d) CPC if the suit is filed beyond 12 years from dispossession (Article 142 Limitation Act) or 6 months for Section 9 summary suits.");
-      }
-    }
-
-    const writtenStatementDeemedAdmissions = isInheritance
-      ? (facts.isAncestorDeceased 
-         ? "Under Order VIII Rule 5 CPC, if Defendant Fatema fails to specifically deny the genealogical relationship or the fact of her father's intestate demise, they shall be treated as deemed admissions. She must specifically contest each brother's fractional Shariat share."
-         : "The Defendant (father) can assert absolute, unencumbered ownership of the properties. The unilateral affidavit or notice disowning the sons is a factual event, but is legally irrelevant to title ownership.")
-      : isSP
-      ? "Under Order VIII Rule 5 CPC, if the Defendant fails to specifically deny the execution or registration of the Bainapatra, it will be treated as a deemed admission. General or evasive denials are insufficient."
-      : "If the Defendant does not specifically challenge the registered sale deeds of the Plaintiff or their mutation entries, they shall be treated as deemed admissions under Order VIII Rule 5 CPC.";
-
-    const counterclaimsOrSetOff = isInheritance
-      ? (facts.isAncestorDeceased 
-         ? "Defendant Fatema may assert a counterclaim alleging an exclusive oral gift (Heva) made during her father's lifetime, or claim set-off/compensation for exclusive development expenses or funeral/debt settlements on the estate."
-         : "The Defendant (father) may seek a perpetual injunction under Section 54 SRA to restrain the sons from interfering with his physical possession, enjoyment, or alienation of his absolute property.")
-      : isSP
-      ? "Defendant may file a counterclaim seeking cancellation of the Bainapatra under Section 39 SRA on grounds of alleged fraud. The burden to establish fraud lies heavily on the Defendant."
-      : "Defendant may assert a counterclaim of adverse possession or independent title, which requires high proof of hostile and continuous physical possession exceeding 12 years.";
-
-    return {
-      plaintChecklist,
-      groundsForRejection,
-      writtenStatementDeemedAdmissions,
-      counterclaimsOrSetOff,
-    };
-  }
-
-  // ─── STAGE 7: ISSUE FRAMING ───
-  private frameIssues(facts: ParsedFacts) {
-    return {
-      issues: this.generateIssues(facts).map((iss, i) => ({
-        issueNo: i + 1,
-        title: iss.title,
-        type: iss.type,
-        burden: iss.burden,
-        evidenceRequired: iss.evidence,
-      })),
-    };
-  }
-
-  // ─── STAGE 8: EVIDENCE ───
-  private analyzeEvidence(facts: ParsedFacts) {
-    return {
-      evidenceList: this.classifyEvidence(facts),
-      burdenAssignments: this.assignBurdens(facts),
-      statutoryPresumptions: this.findPresumptions(facts),
-    };
-  }
-
-  // ─── STAGE 9: MERITS ───
-  private debateMerits(facts: ParsedFacts) {
-    return {
-      issueDetails: this.generateIssues(facts).map((iss, i) => ({
-        issueNo: i + 1,
-        issueTitle: iss.title,
-        plaintiffPosition: iss.plaintiffPosition,
-        defendantPosition: iss.defendantPosition,
-        courtAnalysis: iss.courtAnalysis,
-        projectedFinding: iss.projectedFinding,
-      })),
-    };
-  }
-
-  // ─── STAGE 10: EQUITY ───
-  private checkEquity(facts: ParsedFacts) {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    let applicablePrinciples: { principle: string; application: string; weight: string }[] = [];
-    if (isInheritance) {
-      applicablePrinciples.push({
-        principle: "Equity follows the law",
-        application: "Since Muslim personal law mandates that inheritance only opens upon death and CPC Section 9 requires a present cause of action, equity cannot create a right of succession where the law denies it during the parent's lifetime.",
-        weight: "Absolute"
-      });
-      applicablePrinciples.push({
-        principle: "Equity will not grant a declaration in the air",
-        application: "The court will not grant an equitable declaration for a future contingent interest (spes successionis). Equity only acts to protect vested, justiciable rights.",
-        weight: "High"
-      });
-    } else if (isSP) {
-      applicablePrinciples.push({
-        principle: "Equity treats as done that which ought to be done",
-        application: "Directs the court to treat the contract of sale as an obligation that must be fulfilled by signing the final deed, provided the statutory conditions under Section 21A are fully met.",
-        weight: facts.isRegisteredBainapatra === true ? "High" : "Low (Overridden by statutory bar)"
-      });
-
-      let depositApp = "";
-      if (facts.isBalanceDeposited === true) {
-        depositApp = `Plaintiff has done equity by depositing the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court treasury.`;
-      } else if (facts.isBalanceDeposited === false) {
-        depositApp = `CRITICAL FAILURE: Plaintiff has failed to do equity because the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is explicitly NOT deposited in the court treasury.`;
-      } else {
-        depositApp = `Plaintiff must do equity by depositing the remaining balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in treasury before filing.`;
-      }
-
-      applicablePrinciples.push({
-        principle: "He who seeks equity must do equity",
-        application: depositApp,
-        weight: "High"
-      });
-    } else {
-      let cleanHandsApp = "";
-      if (facts.plaintiffHasRegisteredTitle === false) {
-        cleanHandsApp = "CRITICAL WARNING: The Plaintiff holds NO registered title or mutation deeds, which severely compromises their legal stand and their claim of clean hands to seek equitable relief.";
-      } else if (facts.dispossessionProven === false) {
-        cleanHandsApp = "CRITICAL WARNING: No dispossession has been shown in the facts, yet Plaintiff is seeking recovery of khas possession. Seeking recovery without actual ouster violates the principle of clean hands.";
-      } else {
-        cleanHandsApp = "The Plaintiff comes with clean hands, backed by registered title deeds and seeking to restore possession of which they were wrongfully deprived by a trespasser.";
-      }
-
-      applicablePrinciples.push({
-        principle: "He who comes to equity must come with clean hands",
-        application: cleanHandsApp,
-        weight: "High"
-      });
-
-      const lim = this.computeLimitation(facts);
-      applicablePrinciples.push({
-        principle: "Equity aids the vigilant, not those who slumber on their rights",
-        application: lim.isTimeBarred 
-          ? "CRITICAL WARNING: Plaintiff has slumbered on their rights! The suit is filed beyond the statutory limitation period, completely barring equitable or legal remedies."
-          : lim.accrualDate === "Not determinable from facts"
-          ? "WARNING: Vigilance cannot be verified due to lack of specific dispossession/calendar dates in the facts."
-          : `Plaintiff filed the suit within the statutory limit from the date of dispossession (${lim.accrualDate}), demonstrating adequate vigilance.`,
-        weight: lim.isTimeBarred ? "Fatal" : "Medium"
-      });
-    }
-
-    let discretionaryReliefCheck = "";
-    if (isInheritance) {
-      discretionaryReliefCheck = "Declarations under Section 42 and injunctions under Section 54 of the Specific Relief Act are entirely discretionary. However, since the Plaintiffs have no present legal character or vested property right, the court has zero discretionary power to entertain the suit and must reject it under Order VII Rule 11(a) CPC.";
-    } else if (isSP) {
-      if (facts.isRegisteredBainapatra === false || facts.isBalanceDeposited === false) {
-        discretionaryReliefCheck = "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion cannot be exercised in favor of an unregistered agreement or where the mandatory treasury deposit is unfulfilled. The statutory threshold bar under Section 21A SRA strictly strips the court of its power to grant discretionary relief in this case. The suit must be dismissed.";
-      } else if (facts.isRegisteredBainapatra === "unspecified" || facts.isBalanceDeposited === "unspecified") {
-        discretionaryReliefCheck = `WARNING: Discretionary relief under Section 12 SRA is highly conditional. If the Bainapatra is proved to be unregistered or the balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is not deposited in the court treasury, the court has ZERO discretion and must reject the plaint under Section 21A SRA.`;
-      } else {
-        discretionaryReliefCheck = "Specific performance under Section 12 SRA is a discretionary remedy, but the discretion must be exercised on sound, reasonable judicial principles. Since the Bainapatra is registered, balance money is fully deposited, and Plaintiff is ready, the court has no judicial grounds to deny the decree.";
-      }
-    } else {
-      if (facts.plaintiffHasRegisteredTitle === false) {
-        discretionaryReliefCheck = "Declarations under Section 42 and injunctions under Section 54 are discretionary. Since the Plaintiff has no registered title, the court cannot exercise discretion to declare a title that does not exist in the record.";
-      } else if (facts.dispossessionProven === false) {
-        discretionaryReliefCheck = "Recovery of possession under Section 8 SRA requires actual ouster/wrongful dispossession. Since no dispossession is established, the court has no legal basis to grant a recovery decree.";
-      } else {
-        discretionaryReliefCheck = "Declarations under Section 42 and injunctions under Section 54 are discretionary. However, once the Plaintiff establishes absolute registered title and wrongful dispossession, recovery of possession under Section 8 SRA becomes an absolute legal right that the court is bound to enforce.";
-      }
-    }
-
-    return {
-      applicablePrinciples,
-      discretionaryReliefCheck,
-    };
-  }
-
-  // ─── STAGE 11: TIMELINE ───
-  private buildTimeline(facts: ParsedFacts) {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-
-    const stages = isSP
-      ? [
-          { name: "Institution of Suit", cpc: "Order VII Rule 1", actions: "Draft plaint, pay ad valorem court fees, and file in Court.", strategy: facts.isRegisteredBainapatra && facts.isBalanceDeposited ? "Attach registered Bainapatra and balance deposit treasury challan." : "WARNING: If Bainapatra is unregistered or balance is not deposited, plaint is highly vulnerable to rejection under Order VII Rule 11 CPC." },
-          { name: "Service of Summons", cpc: "Order V", actions: "Dispatch summons through court bailiff and registered post with A/D.", strategy: "Verify defendant service to prevent delays in ex-parte proceedings." },
-          { name: "Written Statement", cpc: "Order VIII Rule 1", actions: "Defendant must file written statement within 30-60 days.", strategy: "Examine written statement for any evasive denials of contract execution." },
-          { name: "Framing of Issues", cpc: "Order XIV Rule 1", actions: "Court frames formal issues of fact and law.", strategy: "Ensure the issues of execution, registration, and treasury deposit compliance are specifically framed." },
-          { name: "Plaintiff Evidence (P.W.)", cpc: "Order XVIII Rule 4", actions: "Examination-in-chief of Plaintiff, attesting witnesses, and cross-examination.", strategy: "Affirm execution of Bainapatra, payment of advance, and deposit of balance money." },
-          { name: "Defendant Evidence (D.W.)", cpc: "Order XVIII", actions: "DW examination-in-chief and cross-examination by Plaintiff's pleader.", strategy: "Expose inconsistencies in Defendant's claims of fraud or non-payment during cross." },
-          { name: "Arguments", cpc: "Section 192 CPC", actions: "Final oral and written arguments.", strategy: facts.isRegisteredBainapatra && facts.isBalanceDeposited ? "Cite 60 DLR (AD) 54 to assert that registration and deposit make performance mandatory." : "Explain statutory gaps or defend against Order VII Rule 11 dismissal." },
-          { name: "Judgment & Decree", cpc: "Order XX", actions: "Pronouncement of judgment.", strategy: facts.isRegisteredBainapatra && facts.isBalanceDeposited ? "Verify that the decree directs execution and registration of sale deed in 30 days." : "Expect dismissal/rejection of plaint unless statutory gaps are cured or alternative relief is granted." },
-          { name: "Execution Case", cpc: "Order XXI Rule 34", actions: "File execution case if decree is granted and Defendant refuses to sign.", strategy: "Pray for Court execution of the deed and delivery of physical possession." },
-        ]
-      : [
-          { name: "Institution of Suit", cpc: "Order VII Rule 1", actions: "Draft plaint, value according to land market rate, pay ad valorem fees, file.", strategy: "Attach original registered sale deeds, mutation khatian, and dakhilas." },
-          { name: "Service of Summons", cpc: "Order V", actions: "Process fees, dispatch summons to Defendant.", strategy: "Secure prompt service to prevent evasive maneuvers." },
-          { name: "Written Statement", cpc: "Order VIII Rule 1", actions: "Defendant files WS pleading his defense.", strategy: "Watch for claims of adverse possession and ensure they are refuted." },
-          { name: "Framing of Issues", cpc: "Order XIV Rule 1", actions: "Issues framed regarding title, dispossession date, and limitation.", strategy: "Ensure the issue of physical possession is properly formulated." },
-          { name: "Plaintiff Evidence (P.W.)", cpc: "Order XVIII Rule 4", actions: "P.W. evidence, mutation certified copies, tax receipts, and local witness statements.", strategy: "Establish absolute title chain and exact date of dispossession." },
-          { name: "Defendant Evidence (D.W.)", cpc: "Order XVIII", actions: "D.W. evidence, cross-examination by Plaintiff.", strategy: "Expose lack of any registered instrument or legal right to hold the land." },
-          { name: "Arguments", cpc: "Section 192 CPC", actions: "Oral and written arguments on title and possession.", strategy: "Cite 56 DLR (AD) 34 to establish that Plaintiff's registered title must prevail." },
-          { name: "Judgment & Decree", cpc: "Order XX", actions: "Decree declaring title and ordering delivery of khas possession.", strategy: "Ensure recovery of possession and removal of structures are specifically ordered." },
-          { name: "Execution Case", cpc: "Order XXI Rule 35", actions: "File Execution Case to recover physical possession.", strategy: "Request writ of delivery of possession (Dakhalnama) with police force aid." },
-        ];
-
-    return {
-      timelineProgress: stages.map((s) => ({
-        stageName: s.name,
-        cpcReference: s.cpc,
-        subActions: s.actions,
-        strategicPlay: s.strategy,
-      })),
-    };
-  }
-
-  // ─── STAGE 12: APPEALS ───
-  private mapAppeals(facts: ParsedFacts) {
-    const valuationNum = facts.contractDetails.total;
-    const isHighValue = valuationNum > 5000000; // Above 50 Lakh (under newer rules District Judge appeals or AD depending on levels)
-
-    return {
-      appealNodes: [
-        {
-          level: "First Appeal",
-          authority: isHighValue ? "High Court Division" : "District Judge Court",
-          scope: "Comprehensive re-examination of both questions of fact and questions of law against the decree.",
-          governingSection: "Section 96 of the Code of Civil Procedure 1908",
-        },
-        {
-          level: "Civil Revision",
-          authority: "High Court Division",
-          scope: "Checking for jurisdictional errors, illegality, material irregularities, or failure to exercise jurisdiction.",
-          governingSection: "Section 115 of the Code of Civil Procedure 1908",
-        },
-        {
-          level: "Leave to Appeal",
-          authority: "Appellate Division",
-          scope: "Review of substantial questions of constitutional or public legal importance.",
-          governingSection: "Article 103 of the Constitution of Bangladesh",
-        },
-      ],
-    };
-  }
-
-  // ─── STAGE 13: SYNTHESIS ───
-  private synthesize(facts: ParsedFacts) {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    let overview = "";
-    let reliefDecree = "";
-    let equitableBars = "";
-    let executionPathway = "";
-
-    // ─────────────────────────────────────────────────────────────
-    // FAIL-CLOSED GATE OVERRIDE: Check F0 Gate Status
-    // ─────────────────────────────────────────────────────────────
-    if (facts.gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT") {
-      const conflictList = facts.gateF0.conflicts.map((c, i) => 
-        `[CONFLICT ${i + 1}: ${c.conflictType}]\n${c.description}\n→ Mandatory Remedial Action: ${c.resolutionRequirement}`
-      ).join("\n\n");
-
-      overview = `CASE STATUS: MATERIAL FACTUAL CONFLICT — FINAL SYNTHESIS BLOCKED.
-Under the BCCAA Fail-Closed Architecture, Gateway F0 has identified ${facts.gateF0.criticalConflictCount} critical contradiction(s) in the factual foundation. Reliable legal synthesis is mathematically impossible without first reconciling these contradictory assertions.
-
-FORENSIC CONFLICT AUDIT:
-${conflictList}
-
-GATEWAY PROPAGATION AUDIT:
-• Gateway 3 (Limitation): Calculation halted due to contradictory date predicates.
-• Gateway 4 (Parties & Heirship): Legal capacities suspended pending verification of vital status.
-• Gateway 5 (Jurisdiction): Forum selection marked UNDETERMINED.
-• Gateway 13 (Synthesis): Legal drafting is STRICTLY BLOCKED to prevent generation of defective or contradictory pleadings.`;
-
-      reliefDecree = `NO DECREE CAN BE FORMULATED (Legal Synthesis Halted).
-Under fail-closed legal engineering standards, a court cannot entertain or formulate a decree based on mutually contradictory factual premises. Filing a plaint with these uncorrected contradictions will result in threshold dismissal or rejection under Order VII Rule 11 CPC with punitive costs under Section 35A CPC.`;
-
-      equitableBars = `Pleading mutually contradictory factual assertions violates the doctrine of candid disclosure and the clean hands doctrine. A litigant who blows hot and cold (approbate and reprobate) is barred from receiving discretionary relief under Section 42 of the Specific Relief Act 1877.`;
-
-      executionPathway = `Execution Blocked. No execution proceedings under Order XXI CPC can arise from a halted or conflicted synthesis.`;
-
-      const costsApportionment = "Not applicable (Legal synthesis blocked under fail-closed consistency gate).";
-
-      return {
-        overview,
-        reliefDecree,
-        costsApportionment,
-        equitableBars,
-        executionPathway,
-      };
-    }
-
-    const lim = this.computeLimitation(facts);
-
-    if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        overview = `MATTER CLASSIFIED: Intestate Muslim Succession & Partition Suit (Muslim Personal Law / Partition Act 1893).
-Upon the demise of the ancestor Abdul Karim, his estate automatically vested in his surviving legal heirs as tenants-in-common under the Muslim Personal Law (Shariat) Application Act 1937. Under Islamic jurisprudence (Faraizi), each heir became the absolute owner of their specific Quranic/agnatic fractional share in every parcel of the estate.
-The unilateral 'disowning' affidavit and newspaper notice executed prior to demise are legally void and of no legal effect under Muslim law, which prohibits disinheriting legal heirs.
-The unilateral mutation obtained by Defendant Fatema does not extinguish the Plaintiffs' title, as a revenue record (Namjari) creates no title and cannot override the law of succession.
-The Plaintiffs have an accrued, present civil cause of action to seek a declaration of their inherited shares, cancellation/correction of wrongful mutation, partition by metes and bounds under Order XX Rule 18 CPC, and an interim injunction restraining alienation.`;
-
-        reliefDecree = `Preliminary Partition Decree Recommended.
-1. Declaration that Plaintiffs and Defendant are co-sharer heirs holding their respective lawful shares under Muslim Shariat law.
-2. Directing partition of the suit properties by metes and bounds according to respective shares, with appointment of a Pleader Commissioner under Order XXVI Rule 13 CPC to prepare the allotment (Saham).
-3. Temporary and permanent injunction restraining Defendant from alienating or creating third-party encumbrances on undivided parcels.
-4. Direction to Upazila Land Office (AC Land) to correct mutation khatians to record all co-sharers.`;
-
-        equitableBars = `No equitable bars apply against the Plaintiffs. The Plaintiffs are asserting their statutory inheritance rights as co-sharers in constructive possession. The Defendant is barred from claiming exclusive ownership based on a void unilateral disowning notice or administrative mutation.`;
-
-        executionPathway = `Execution via Final Decree Proceedings (Order XX Rule 18 and Order XXI CPC).
-Upon passing of the preliminary decree, a Civil Court Commissioner is appointed under Order XXVI Rule 13 CPC to survey the land, prepare a map, and carve out separate allotments (Saham). Upon confirmation of the Commissioner's report, a final decree is drawn up and registered under the Registration Act 1908. Physical delivery of separate demarcated possession is executed under Order XXI Rule 35 CPC.`;
-      } else {
-        overview = `MATTER CLASSIFIED: Inheritance / Succession Consultation (Muslim Personal Law).
-The facts describe a family dispute where a living father has executed an affidavit or newspaper notice 'disowning' his sons and declaring they have no claim to his estate.
-Under the Muslim Personal Law (Shariat) Application Act 1937, inheritance only opens upon the death of the owner. While the father is alive, the sons hold no vested legal right or interest in his property, but a mere expectation of succession (spes successionis).
-Furthermore, a unilateral disowning declaration by affidavit is legally ineffective under Muslim law to alter the statutory lines of succession or strip an heir of their future entitlement.
-Therefore, there is no present civil cause of action, no accrued legal injury, and no maintainable lawsuit at this stage.`;
-
-        reliefDecree = `No Decree / Dismissal recommended if a suit is filed. 
-A court of law cannot grant a declaration of future inheritance shares or partition during the lifetime of the ancestor. Any suit instituted on these facts alone lacks a justiciable cause of action and is liable to be rejected under Order VII Rule 11(a) CPC.`;
-
-        equitableBars = `A declaratory suit is barred under Section 42 of the Specific Relief Act 1877 because the Plaintiffs have no present vested legal character or right to property. Equity follows the law and will not grant a declaration in the air for a future contingent right.`;
-
-        executionPathway = `None. Since no decree can be passed on these facts, no execution proceedings under Order XXI CPC can be initiated.`;
-      }
-    } else if (isSP) {
-      if (facts.isRegisteredBainapatra === false || facts.isBalanceDeposited === false || lim.isTimeBarred) {
-        let defects: string[] = [];
-        if (facts.isRegisteredBainapatra === false) defects.push("the Bainapatra is unregistered (violates Section 21A SRA)");
-        if (facts.isBalanceDeposited === false) defects.push("the remaining balance consideration is NOT deposited in court (violates Section 21A SRA)");
-        if (lim.isTimeBarred) defects.push("the suit is barred by limitation (violates Article 54, filed beyond 1 year)");
-
-        overview = `CRITICAL COMPLIANCE FAILURE: This is a suit for Specific Performance of a Bainapatra with fatal threshold defects: ${defects.join(", ")}. Under Section 21A of the Specific Relief Act 1877 and Section 17A of the Registration Act 1908, these statutory conditions are mandatory and non-negotiable. Because the Plaintiff has failed to satisfy these legal preconditions, the suit is incompetent and will be dismissed at the threshold.`;
-        
-        reliefDecree = `Suit Dismissed / Plaint Rejected. The Court cannot pass a decree for specific performance. The plaint is liable to be rejected under Order VII Rule 11 CPC. The Plaintiff has no legal entitlement to a deed execution or physical possession. Any prayer for a decree of specific performance is strictly denied.`;
-        
-        equitableBars = `The Plaintiff's claim is barred by the strict provisions of Section 21A SRA 1877. The equitable principle of part-performance (Section 53A of the Transfer of Property Act 1882) is completely inapplicable as the contract is unregistered. "Equity follows the law" — the court cannot bypass express statutory mandates to grant discretionary relief.`;
-        
-        executionPathway = `None. Since the suit is dismissed or the plaint is rejected under Order VII Rule 11 CPC, no execution case can be initiated under Order XXI CPC.`;
-      } else if (facts.isRegisteredBainapatra === "unspecified" || facts.isBalanceDeposited === "unspecified" || lim.accrualDate === "Not determinable from facts") {
-        let warnings: string[] = [];
-        if (facts.isRegisteredBainapatra === "unspecified") warnings.push("unspecified registration status of the Bainapatra");
-        if (facts.isBalanceDeposited === "unspecified") warnings.push("unspecified court treasury deposit of the balance consideration");
-        if (lim.accrualDate === "Not determinable from facts") warnings.push("undeterminable limitation status due to missing calendar dates");
-
-        overview = `WARNING - POTENTIAL COMPLIANCE GAPS: The factual record contains critical unspecified elements: ${warnings.join(", ")}. Under Section 21A SRA 1877, a specific performance suit cannot survive if the Bainapatra is unregistered or the balance consideration remains undeposited. If these facts are unproven at trial, the suit will fail.`;
-
-        reliefDecree = `Decree Conditional / Potential Dismissal. A decree for specific performance can ONLY be passed if the Plaintiff proves registration of the Bainapatra and demonstrates that the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} was deposited in the court treasury via challan. If either element is unproved, the suit must be dismissed.`;
-
-        equitableBars = `Discretionary relief under Section 12 SRA is highly conditional. If the Bainapatra is unregistered or the balance is undeposited, the court is stripped of its discretionary power by Section 21A SRA.`;
-
-        executionPathway = `Conditional Execution. Execution under Order XXI CPC (specifically Rule 34 for executing deeds) can only proceed if the Plaintiff obtains a favorable decree by proving statutory compliance.`;
-      } else {
-        overview = `This is a suit for Specific Performance of a contract for sale of land (Bainapatra). The Bainapatra is written and registered, and the remaining purchase money of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} is deposited in the court. The Plaintiff has complied with both statutory mandates of Section 21A of the Specific Relief Act 1877 and Section 17A of the Registration Act 1908. The Defendant has breached the contract by refusing to execute the final deed of sale.`;
-        
-        reliefDecree = `A decree for specific performance of contract is to be passed in favor of the Plaintiff. The Defendant is ordered to sign, execute, and register a proper Deed of Sale (Saf Kabala) in favor of the Plaintiff for the suit land within 30 days, upon drawing the remaining consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} deposited in court. In default, the Court shall execute and register the deed on behalf of the Defendant at their expense under Order XXI Rule 34 CPC, and direct physical delivery of possession.`;
-        
-        equitableBars = `No equitable bars apply against the Plaintiff. The Plaintiff has demonstrated continuous readiness, deposited the balance money, and filed within the strict 1-year limitation under Article 54. The Defendant is barred by the doctrine of reciprocal promises and statutory non-compliance.`;
-        
-        executionPathway = `The decree will be executed by filing an Execution Case under Order XXI Rule 32 and Rule 34 CPC. If the Defendant refuses to execute the deed, the executing court will execute and register the deed of sale. If needed, the court will issue a writ of delivery of possession (Dakhalnama) under Order XXI Rule 35 CPC to deliver actual vacant possession of the land.`;
-      }
-    } else if (isDP) {
-      const hasSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
-      if (hasSec9) {
-        if (lim.isTimeBarred) {
-          overview = "CRITICAL LIMITATION FAILURE: This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877. The facts indicate the suit was filed beyond the strict 6-month statutory limit from the date of dispossession.";
-          reliefDecree = "Suit Dismissed as Time-Barred. No decree for restoration of possession can be passed under Section 9 SRA as the suit is barred by limitation. Plaint is liable to be rejected under Order VII Rule 11(d) CPC. The Plaintiff's only remaining remedy is to file a regular title suit under Section 8 of the SRA within 12 years.";
-          equitableBars = "The Plaintiff is completely barred by the strict 6-month statutory limitation period of Section 9 SRA. Court has no power to condone delay under Section 5 of the Limitation Act for Section 9 suits.";
-          executionPathway = "None. The suit is dismissed.";
-        } else if (facts.dispossessionProven === false) {
-          overview = "CRITICAL FACTUAL DEFECT: This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877, but the facts explicitly state that no wrongful dispossession or ouster occurred.";
-          reliefDecree = "Suit Dismissed. Since the Plaintiff was never dispossessed or ousted from the suit land, the primary cause of action under Section 9 SRA is absent. No relief can be granted.";
-          equitableBars = "Seeking recovery of possession without any actual dispossession violates the fundamental principles of clean hands and constitutes an abuse of the judicial process.";
-          executionPathway = "None. The suit is dismissed.";
-        } else {
-          overview = "This is a summary suit for recovery of possession under Section 9 of the Specific Relief Act 1877. The Plaintiff has proved forcible dispossession from the suit land within 6 months prior to filing the suit without consent. In a Section 9 suit, the court decides purely on the question of possession and dispossession, without entering into the question of ultimate title.";
-          
-          reliefDecree = "A decree is to be passed directing the Defendant to restore actual khas possession of the suit land to the Plaintiff within 30 days, and ordering the removal of unauthorized structures/fences. No declaration of title is granted in this summary proceeding.";
-          
-          equitableBars = "The suit was filed within 6 months of dispossession. The Defendant is barred from raising title claims in this suit and must seek remedy in an independent title suit.";
-          
-          executionPathway = "The decree will be executed by filing an Execution Case under Order XXI Rule 35 CPC. The court will issue a writ of delivery of possession (Dakhalnama) and direct a bailiff to physically hand over vacant possession, pulling down structures if necessary.";
-        }
-      } else {
-        // Regular Title + Possession (Section 8 + 42 SRA)
-        if (lim.isTimeBarred) {
-          overview = "CRITICAL LIMITATION FAILURE: This is a suit for Declaration of Title and Recovery of Khas Possession filed beyond the 12-year statutory limit under Article 142 of the Limitation Act 1908.";
-          reliefDecree = "Suit Dismissed as Time-Barred. The Plaintiff's right to recover possession is extinguished under Section 28 of the Limitation Act 1908, and the plaint must be rejected under Order VII Rule 11(d) CPC. No declaration of title or recovery of possession can be decreed.";
-          equitableBars = "The Plaintiff has slumbered on their rights for over 12 years, allowing the Defendant's possession to ripen. Equity aids the vigilant, not those who sleep on their rights.";
-          executionPathway = "None. The suit is dismissed.";
-        } else if (facts.plaintiffHasRegisteredTitle === false) {
-          overview = "CRITICAL COMPLIANCE FAILURE: This is a suit for Declaration of Title and Recovery of Khas Possession where the Plaintiff does not hold any registered title deeds (Saf Kabala) or valid mutation khatian.";
-          reliefDecree = "Suit Dismissed / Declaration Denied. The Court cannot declare a title that is explicitly absent or unregistered in the record. Since title is not established, the consequential relief of recovery of khas possession under Section 8 SRA is also denied.";
-          equitableBars = "The Plaintiff holds no legal title and has no clean hands or locus standi to seek a declaration of ownership from a court of equity. Discretionary relief under Section 42 SRA cannot be exercised in favor of a title-less claimant.";
-          executionPathway = "None. The suit is dismissed.";
-        } else if (facts.dispossessionProven === false) {
-          overview = "CRITICAL FACTUAL DEFECT: This is a suit for Declaration of Title and Recovery of Khas Possession, but the facts explicitly state that the Plaintiff was never dispossessed or ousted from physical possession.";
-          reliefDecree = "Partial Decree / Incomplete Relief. While the Plaintiff's title may be declared under Section 42 SRA (if registered deeds are proven), the consequential relief of recovery of khas possession under Section 8 SRA is denied because no dispossession or encroachment has taken place.";
-          equitableBars = "The Plaintiff cannot seek recovery of possession of land of which they already hold physical possession. Equity will not grant redundant or factually groundless reliefs.";
-          executionPathway = "Limited Execution. Execution can only proceed for costs or permanent injunction under Order XXI Rule 32 CPC, but no writ of delivery of possession can be issued as Plaintiff is already in physical possession.";
-        } else {
-          overview = "This is a suit for Declaration of Title and Recovery of Khas Possession. The Plaintiff holds valid title through registered sale deeds, mutation, and tax records, while the Defendant occupies the property as a trespasser. Under Section 8 and 42 of the Specific Relief Act 1877, a lawful title-holder is entitled to recover possession from a wrongful occupant.";
-          
-          reliefDecree = "A decree is to be passed declaring the Plaintiff's absolute title to the suit land, directing the Defendant to deliver actual physical khas possession of the land to the Plaintiff within 30 days, and ordering the Defendant to dismantle and remove any unauthorized structures, fences, or brick boundary walls built thereon. A permanent injunction is also granted restraining the Defendant from interfering with the Plaintiff's possession.";
-          
-          equitableBars = "The Defendant is a trespasser with no legal or equitable title. The Plaintiff is not barred by laches as the suit was instituted well within the 12-year limitation period from dispossession under Article 142.";
-          
-          executionPathway = "The decree will be executed by filing an Execution Case under Order XXI Rule 35 CPC. The court will issue a writ of delivery of possession (Dakhalnama) and appoint a Civil Court Commissioner with police force assistance to demolish unauthorized boundary fences or structures and physically deliver vacant possession.";
-        }
-      }
-    } else {
-      overview = `Analysis of the civil dispute reveals maintainable causes of action under the identified statutory framework of CPC 1908. The suit is recommended for institution with proper pleadings and evidentiary preparation.`;
-      
-      reliefDecree = "Decree to be formulated based on proven claims and statutory entitlements, including perpetual injunction and declaration of rights.";
-      
-      equitableBars = "No equitable bars apply. The Plaintiff comes with clean hands seeking status quo protection.";
-      
-      executionPathway = "The decree will be executed under Order XXI Rule 32 CPC by attachment of property or civil detention if the Defendant violates the permanent injunction.";
-    }
-
-    const costsApportionment = isInheritance
-      ? "Not applicable (No maintainable civil suit exists)."
-      : "Full costs of the suit, including ad valorem court fees, advocate fees, and procedural expenses, are awarded to the Plaintiff under Section 35 of the Code of Civil Procedure 1908.";
-
-    return {
-      overview,
-      reliefDecree,
-      costsApportionment,
-      equitableBars,
-      executionPathway,
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // HELPER METHODS (Fact Parsing & Detection)
-  // ═══════════════════════════════════════════════════════════════
-
-  private parseFacts(text: string, focusDomain: string): ParsedFacts {
-    const lower = text.toLowerCase();
-
-    // Check if ancestor is deceased
-    const isAncestorDeceased = /\b(?:died|passed away|deceased|demise|death|demised|expired|death of)\b/i.test(lower);
-
-    // Detect Category with robust scoring
-    let spScore = 0;
-    let dpScore = 0;
-    let inheritanceScore = 0;
-    
-    const spKeywords = ["specific performance", "bainapatra", "agreement to sell", "contract", "advance", "earnest", "execute deed", "execute sale deed", "breach of contract", "refused to execute", "balance payment"];
-    const dpKeywords = ["declaration of title", "khas possession", "dispossessed", "trespass", "ousted", "ouster", "recovery of possession", "boundary wall", "khas", "possession", "title deed", "registered sale deed"];
-    const inheritanceKeywords = ["disown", "disowned", "inheritance", "succession", "heir", "father", "son", "sons", "affidavit", "newspaper", "living father", "ancestor", "shariat", "muslim personal law"];
-    
-    for (const k of spKeywords) {
-      if (lower.includes(k)) spScore += 2;
-    }
-    if (lower.includes("agreement")) spScore += 1;
-    if (lower.includes("contract")) spScore += 1;
-    if (lower.includes("advance")) spScore += 1;
-    if (lower.includes("baina")) spScore += 1;
-    
-    for (const k of dpKeywords) {
-      if (lower.includes(k)) dpScore += 2;
-    }
-    if (lower.includes("title")) dpScore += 1;
-    if (lower.includes("possession")) dpScore += 1;
-    if (lower.includes("trespass")) dpScore += 1;
-    if (lower.includes("dispossession")) dpScore += 1;
-
-    for (const k of inheritanceKeywords) {
-      if (lower.includes(k)) inheritanceScore += 2;
-    }
-    
-    let category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION" = "GENERAL_CIVIL";
-    if (inheritanceScore > spScore && inheritanceScore > dpScore && inheritanceScore > 0) {
-      category = "INHERITANCE_CONSULTATION";
-    } else if (spScore > dpScore && spScore > 0) {
-      category = "SPECIFIC_PERFORMANCE";
-    } else if (dpScore >= spScore && dpScore > 0) {
-      category = "DECLARATION_AND_POSSESSION";
-    }
-
-    if (focusDomain === "Specific Performance") {
-      category = "SPECIFIC_PERFORMANCE";
-    } else if (focusDomain === "Declaration of Title") {
-      category = "DECLARATION_AND_POSSESSION";
-    } else if (focusDomain === "Inheritance Consultation") {
-      category = "INHERITANCE_CONSULTATION";
-    }
-
-    // Extract dates dynamically
-    const dateInfoList = this.extractDates(text);
-    let dates = dateInfoList.map((d) => {
-      const parsedEvent = this.inferEventForDateEx(d, text, category, isAncestorDeceased);
-      return {
-        date: d.dateStr,
-        event: parsedEvent.event,
-        parties: this.inferPartiesForDate(d, text),
-        statutorySignificance: this.getStatutorySignificance(parsedEvent.type),
-      };
-    });
-
-    // Explicit statutory compliance checks (anti-fabrication logic)
-    let isRegisteredBainapatra: boolean | "unspecified" = "unspecified";
-    if (lower.includes("registered") && !lower.includes("unregistered")) {
-      isRegisteredBainapatra = true;
-    } else if (lower.includes("unregistered")) {
-      isRegisteredBainapatra = false;
-    }
-
-    let isBalanceDeposited: boolean | "unspecified" = "unspecified";
-    if (/\b(?:deposit|deposited|treasury|challan)\b/i.test(lower)) {
-      isBalanceDeposited = true;
-    } else if (/\b(?:not deposited|no deposit|did not deposit)\b/i.test(lower)) {
-      isBalanceDeposited = false;
-    }
-
-    let plaintiffHasRegisteredTitle: boolean | "unspecified" = "unspecified";
-    if (lower.includes("registered sale deed") || lower.includes("kabala") || lower.includes("mutation khatian")) {
-      plaintiffHasRegisteredTitle = true;
-    } else if (lower.includes("unregistered") || lower.includes("no registered title")) {
-      plaintiffHasRegisteredTitle = false;
-    }
-
-    let dispossessionProven: boolean | "unspecified" = "unspecified";
-    if (lower.includes("dispossession") || lower.includes("dispossessed") || lower.includes("ouster") || lower.includes("ousted") || lower.includes("trespass") || lower.includes("forcefully")) {
-      dispossessionProven = true;
-    } else if (lower.includes("not dispossessed") || lower.includes("always in possession")) {
-      dispossessionProven = false;
-    }
-
-    // Fallback sequential timeline if no calendar dates are found
-    if (dates.length === 0) {
-      if (category === "SPECIFIC_PERFORMANCE") {
-        dates = [
-          {
-            date: "T=0 (Execution Date Not Specified)",
-            event: "Execution of the written agreement to sell (Bainapatra) between Plaintiff and Defendant.",
-            parties: "Plaintiff and Defendant",
-            statutorySignificance: "Recital in executed writing / Agreement clause"
-          },
-          {
-            date: "T + Implied Performance Window",
-            event: "Stipulated deadline/duration for registration of sale deed under contract terms.",
-            parties: "Plaintiff and Defendant",
-            statutorySignificance: "Contract clause stipulation"
-          },
-          {
-            date: "T + Refusal (Later Date)",
-            event: "Defendant's refusal to perform contract and execute final registered sale deed.",
-            parties: "Defendant",
-            statutorySignificance: "Dispute narrative assertion / Oral encounter"
-          }
-        ];
-      } else if (category === "DECLARATION_AND_POSSESSION") {
-        dates = [
-          {
-            date: "T=0 (Prior Registered Title)",
-            event: "Plaintiff acquires property via registered sale deed, mutation, and dakhilas.",
-            parties: "Plaintiff",
-            statutorySignificance: "Deed and revenue record assertion"
-          },
-          {
-            date: "T + Dispossession Date (Not Specified)",
-            event: "Alleged physical entry and erection of boundary fencing on the suit land by the Defendant.",
-            parties: "Defendant",
-            statutorySignificance: "Pleadings narrative assertion"
-          }
-        ];
-      } else if (category === "INHERITANCE_CONSULTATION") {
-        if (isAncestorDeceased) {
-          dates = [
-            {
-              date: "10 September 2025",
-              event: "Execution of a unilateral disowning affidavit by the ancestor Abdul Karim.",
-              parties: "Abdul Karim (Ancestor)",
-              statutorySignificance: "Notarized affidavit recital"
-            },
-            {
-              date: "15 September 2025",
-              event: "Publication of a disowning notice in a daily newspaper by the ancestor.",
-              parties: "Abdul Karim (Ancestor)",
-              statutorySignificance: "Daily newspaper clipping assertion"
-            },
-            {
-              date: "15 January 2026",
-              event: "Demise of the ancestor Abdul Karim, leaving immovable property.",
-              parties: "Abdul Karim (Deceased)",
-              statutorySignificance: "Death record assertion / Burial record"
-            },
-            {
-              date: "10 March 2026",
-              event: "Land mutation (namjari) in the Upazila Land Office recorded in the name of co-heir Fatema.",
-              parties: "Fatema (Defendant)",
-              statutorySignificance: "Upazila Land Office Namjari entry"
-            },
-            {
-              date: "05 May 2026",
-              event: "Delivery of written notice requesting partition of the family property.",
-              parties: "Sons (Plaintiffs)",
-              statutorySignificance: "Postal AD registered notice recital"
-            },
-            {
-              date: "10 May 2026",
-              event: "Alleged negotiations by Fatema to transfer portions of the family land to third parties.",
-              parties: "Fatema (Defendant)",
-              statutorySignificance: "Witness testimony of local negotiations"
-            }
-          ];
-        } else {
-          dates = [
-            {
-              date: "10 September 2025",
-              event: "Execution of an affidavit by the living father concerning the sons.",
-              parties: "Abdul Karim (Father)",
-              statutorySignificance: "Notarized affidavit recital"
-            },
-            {
-              date: "15 September 2025",
-              event: "Publication of a notice in a daily newspaper by the living father.",
-              parties: "Abdul Karim (Father)",
-              statutorySignificance: "Daily newspaper clipping assertion"
-            }
-          ];
-        }
-      } else {
-        dates = [
-          {
-            date: "T=0 (Civil Dispute Emergence)",
-            event: "Occurrence of dispute and contesting assertions over property.",
-            parties: "Pleading Parties",
-            statutorySignificance: "Pleadings narrative assertion"
-          }
-        ];
-      }
-    }
-
-    // Extract contract details
-    const contractDetails = this.extractContractDetails(text);
-
-    // Detect parties
-    const parties = this.detectPartiesDynamic(text, category);
-
-    const keywords = [
-      "sale deed", "registered", "unregistered", "mutation", "bainapatra",
-      "agreement", "possession", "dispossessed", "trespass", "injunction",
-      "declaration", "title", "limitation", "court fees", "plaint", "written statement"
-    ].filter((k) => lower.includes(k));
-
-    return {
-      rawText: text,
-      dates,
-      parties,
-      keywords,
-      admitted: this.extractAdmittedFacts(text, category, contractDetails, isAncestorDeceased),
-      disputed: this.extractDisputedFacts(text, category, isAncestorDeceased),
-      quantum: this.extractQuantumFacts(text, category, contractDetails),
-      triggers: this.extractTriggers(text, category, contractDetails),
-      primarySubject: this.detectPrimarySubject(category),
-      location: this.extractLocation(text),
-      category,
-      contractDetails,
-      isRegisteredBainapatra,
-      isBalanceDeposited,
-      plaintiffHasRegisteredTitle,
-      dispossessionProven,
-      isAncestorDeceased
-    };
-  }
-
-  private extractDates(text: string): DateInfo[] {
-    const dates: DateInfo[] = [];
-    
-    // 1. Numeric dates: dd/mm/yyyy or dd-mm-yyyy or yyyy-mm-dd
-    const numRegex = /\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/g;
-    let match;
-    while ((match = numRegex.exec(text)) !== null) {
-      const fullDate = match[0];
-      const d = parseInt(match[1]);
-      const m = parseInt(match[2]);
-      let y = parseInt(match[3]);
-      if (y < 100) y += 2000;
-      
-      const parsedDate = new Date(y, m - 1, d);
-      if (!isNaN(parsedDate.getTime())) {
-        dates.push({
-          dateStr: fullDate,
-          parsedDate,
-          index: match.index,
-        });
-      }
-    }
-    
-    // 2. Word-based dates: 10 January 2024 or Dec 12, 2024
-    const months = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-    const monthPattern = months.join("|");
-    const wordRegex = new RegExp(`\\b(\\d{1,2})\\s+(${monthPattern})\\s+(\\d{4})\\b|\\b(${monthPattern})\\s+(\\d{1,2})\\s*,?\\s*(\\d{4})\\b`, "gi");
-    
-    while ((match = wordRegex.exec(text)) !== null) {
-      const fullDate = match[0];
-      let day = 1;
-      let monthStr = "";
-      let year = 2026;
-      
-      if (match[1]) {
-        day = parseInt(match[1]);
-        monthStr = match[2];
-        year = parseInt(match[3]);
-      } else {
-        monthStr = match[4];
-        day = parseInt(match[5]);
-        year = parseInt(match[6]);
-      }
-      
-      const monthIndex = months.indexOf(monthStr.toLowerCase()) % 12;
-      const parsedDate = new Date(year, monthIndex, day);
-      if (!isNaN(parsedDate.getTime())) {
-        if (!dates.some(d => d.dateStr === fullDate || Math.abs(d.index - match!.index) < 5)) {
-          dates.push({
-            dateStr: fullDate,
-            parsedDate,
-            index: match.index,
-          });
-        }
-      }
-    }
-    
-    return dates.sort((a, b) => a.index - b.index);
-  }
-
-  private inferEventForDateEx(dateInfo: DateInfo, text: string, category?: string, isAncestorDeceased?: boolean): { event: string; type: string } {
-    const narrowStart = Math.max(0, dateInfo.index - 40);
-    const narrowEnd = Math.min(text.length, dateInfo.index + 100);
-    const narrowContext = text.substring(narrowStart, narrowEnd).toLowerCase();
-
-    const start = Math.max(0, dateInfo.index - 120);
-    const end = Math.min(text.length, dateInfo.index + 120);
-    const context = text.substring(start, end).toLowerCase();
-    
-    if (category === "INHERITANCE_CONSULTATION") {
-      // 1. DEMISE / DEATH (Check narrow context first to avoid cross-contamination from nearby dates)
-      if (narrowContext.includes("died") || narrowContext.includes("demise") || narrowContext.includes("passed away") || narrowContext.includes("death") || narrowContext.includes("expired") || narrowContext.includes("intestate")) {
-        return {
-          event: "Demise of Abdul Karim (ancestor), dying intestate.",
-          type: "INHERITANCE_DEATH"
-        };
-      }
-      
-      // 2. DISOWN AFFIDAVIT
-      if (narrowContext.includes("affidavit") || narrowContext.includes("notarized")) {
-        return {
-          event: "Execution of a notarized affidavit by the ancestor Abdul Karim concerning the sons.",
-          type: "DISOWN_AFFIDAVIT"
-        };
-      }
-      
-      // 3. NEWSPAPER NOTICE
-      if (narrowContext.includes("newspaper") || narrowContext.includes("published")) {
-        return {
-          event: "Publication of a notice in a daily newspaper by the ancestor.",
-          type: "NEWSPAPER_NOTICE"
-        };
-      }
-      
-      // 4. MUTATION / NAMJARI RECORDING
-      if (narrowContext.includes("mutation") || narrowContext.includes("namjari") || narrowContext.includes("khatian") || narrowContext.includes("recorded")) {
-        return {
-          event: "Land mutation (namjari) recording in the Upazila Land Office in the name of co-heir Fatema.",
-          type: "MUTATION_ATTEMPT"
-        };
-      }
-
-      // 5. LEGAL NOTICE / FORMAL PARTITION DEMAND
-      if (narrowContext.includes("legal notice") || narrowContext.includes("served a legal notice") || (narrowContext.includes("notice") && (narrowContext.includes("demand") || narrowContext.includes("served")))) {
-        return {
-          event: "Delivery of written notice requesting partition of the joint family property.",
-          type: "PARTITION_NOTICE"
-        };
-      }
-
-      // 6. THIRD PARTY SALE THREAT
-      if (narrowContext.includes("sell") || narrowContext.includes("alienate") || narrowContext.includes("negotiations") || narrowContext.includes("third party") || narrowContext.includes("transfer")) {
-        return {
-          event: "Alleged attempts and negotiations by Fatema to transfer portions of the undivided family land to third parties.",
-          type: "THIRD_PARTY_SALE_THREAT"
-        };
-      }
-
-      // 7. AMICABLE REQUEST / DISCUSSION (PARTITION REQUEST)
-      if (narrowContext.includes("requested") || narrowContext.includes("request") || narrowContext.includes("recognition")) {
-        return {
-          event: "Plaintiffs request amicable partition of family properties, which Defendant refuses.",
-          type: "PARTITION_NOTICE"
-        };
-      }
-
-      // Fallback to wide context with same prioritized checks if narrow context didn't hit
-      if (context.includes("died") || context.includes("demise") || context.includes("passed away") || context.includes("death") || context.includes("expired") || context.includes("intestate")) {
-        return {
-          event: "Demise of Abdul Karim (ancestor), dying intestate.",
-          type: "INHERITANCE_DEATH"
-        };
-      }
-      if (context.includes("affidavit") || context.includes("disown")) {
-        return {
-          event: "Execution of a notarized affidavit by the ancestor Abdul Karim concerning the sons.",
-          type: "DISOWN_AFFIDAVIT"
-        };
-      }
-      if (context.includes("newspaper") || context.includes("notice")) {
-        if (context.includes("legal") || context.includes("partition") || context.includes("demand") || context.includes("share") || context.includes("served")) {
-          return {
-            event: "Delivery of written notice requesting partition of the joint family property.",
-            type: "PARTITION_NOTICE"
+  // ========================================================================
+  // P0 EXTRACTION -> PROPOSITION -> ASSERTION
+  // ========================================================================
+
+  private extractAtomicFacts(ctx: ExecutionContext, rawText: string, claimType: ClaimType): void {
+    const sentences = this.segmentDocument(rawText);
+    for (let index = 0; index < sentences.length; index++) {
+      const sentence = sentences[index];
+      for (const clause of this.segmentClauses(sentence)) {
+        const candidates = this.extractClauseFacts(clause);
+        if (!candidates.length) continue;
+        const assertionContext = this.detectAssertionContext(clause);
+        const assertedBy = this.detectAssertingParty(clause);
+
+        for (const candidate of candidates) {
+          const propositionId = this.ensureProposition(ctx, candidate.subject, candidate.predicate, candidate.object, clause);
+          const assertionId = `A${String(ctx.assertionCounter++).padStart(5, "0")}`;
+          const assertionType = assertionContext.type;
+          const polarity = assertionContext.polarity;
+          const truth = assertionType === AssertionType.ADMITTED && polarity === AssertionPolarity.POSITIVE
+            ? Tristate.UNKNOWN
+            : assertionType === AssertionType.DENIED || polarity === AssertionPolarity.NEGATIVE || polarity === AssertionPolarity.DISPUTED
+            ? Tristate.UNKNOWN
+            : Tristate.UNKNOWN;
+
+          const source: SourceSpan = {
+            documentId: "INPUT_NARRATIVE", segment: clause, paragraph: index + 1,
+            sourceType: "INPUT_NARRATIVE", extractionMethod: "PATTERN",
           };
+          ctx.assertionRegistry.set(assertionId, { assertionId, propositionId, assertionType, polarity, truth, assertedBy: assertedBy ?? undefined, sourceSpan: source });
+
+          const factId = `F${String(ctx.factCounter++).padStart(5, "0")}`;
+          const fact: AtomicFact = {
+            factId, propositionId, assertionId, proposition: clause,
+            subject: candidate.subject, predicate: candidate.predicate, object: candidate.object,
+            truth, polarity, source, assertionType, validationStatus: ValidationStatus.UNVERIFIED,
+            confidence: FactConfidence.CANDIDATE, assertedBy: assertedBy ?? undefined,
+            eventDate: candidate.eventDate ?? null, normalizedValue: candidate.normalizedValue ?? null,
+            disputedProposition: assertionType === AssertionType.DENIED || polarity === AssertionPolarity.DISPUTED ? clause : undefined,
+            validation: {
+              extractionStatus: ExtractionStatus.EXTRACTED,
+              sourceStatus: SourceStatus.IDENTIFIED,
+              authenticationStatus: AuthenticationStatus.UNAUTHENTICATED,
+              corroborationStatus: CorroborationStatus.UNCORROBORATED,
+              humanValidationStatus: HumanValidationStatus.NOT_VALIDATED,
+            },
+          };
+          ctx.factRegistry.set(factId, fact);
+          recordTrace(ctx, { layer: "P0_EXTRACTION", description: `FACT -> PROPOSITION -> ASSERTION: ${factId}`, dependsOnFacts: [], dependsOnRules: [], result: `${factId}:${propositionId}:${assertionId}` });
         }
-        return {
-          event: "Publication of a notice in a daily newspaper by the ancestor.",
-          type: "NEWSPAPER_NOTICE"
-        };
-      }
-      if (context.includes("mutation") || context.includes("namjari") || context.includes("khatian")) {
-        return {
-          event: "Land mutation (namjari) recording in the Upazila Land Office in the name of co-heir Fatema.",
-          type: "MUTATION_ATTEMPT"
-        };
-      }
-      if (context.includes("sell") || context.includes("alienate") || context.includes("transfer") || context.includes("third party")) {
-        return {
-          event: "Alleged attempts and negotiations by Fatema to transfer portions of the undivided family land to third parties.",
-          type: "THIRD_PARTY_SALE_THREAT"
-        };
       }
     }
-
-    // General / Specific Performance / Declaration and Possession (Narrow Context)
-    if (narrowContext.includes("bainapatra") || narrowContext.includes("agreement") || narrowContext.includes("contract") || narrowContext.includes("signed") || narrowContext.includes("executed")) {
-      return {
-        event: "Execution of the written agreement to sell (Bainapatra) between Plaintiff and Defendant",
-        type: "CONTRACT_EXECUTION"
-      };
-    }
-    if (narrowContext.includes("advance") || narrowContext.includes("earnest") || narrowContext.includes("payment") || narrowContext.includes("paid") || narrowContext.includes("received")) {
-      return {
-        event: "Payment of earnest money/advance consideration by the Plaintiff to the Defendant",
-        type: "ADVANCE_PAYMENT"
-      };
-    }
-    if (narrowContext.includes("refused") || narrowContext.includes("refusal") || narrowContext.includes("breach") || narrowContext.includes("failed") || narrowContext.includes("denied") || narrowContext.includes("demanded")) {
-      return {
-        event: "Defendant's alleged refusal to execute and register the final sale deed despite demands",
-        type: "CONTRACT_BREACH"
-      };
-    }
-    if (narrowContext.includes("dispossessed") || narrowContext.includes("dispossession") || narrowContext.includes("ouster") || narrowContext.includes("ousted") || narrowContext.includes("trespass") || narrowContext.includes("evicted") || narrowContext.includes("fence") || narrowContext.includes("wall")) {
-      return {
-        event: "Alleged physical entry and erection of boundary fencing on the suit land by the Defendant",
-        type: "DISPOSSESSION"
-      };
-    }
-    if (narrowContext.includes("registered") || narrowContext.includes("registration") || narrowContext.includes("registered sale deed")) {
-      return {
-        event: "Registration of the Sale Deed / Bainapatra before the Sub-Registrar",
-        type: "REGISTRATION"
-      };
-    }
-    if (narrowContext.includes("mutation") || narrowContext.includes("khatian") || narrowContext.includes("mutation khatian")) {
-      return {
-        event: "Completion of land mutation in the Upazila Land Office",
-        type: "MUTATION"
-      };
-    }
-
-    // Wide context fallbacks
-    if (context.includes("bainapatra") || context.includes("agreement") || context.includes("contract") || context.includes("signed") || context.includes("executed")) {
-      return {
-        event: "Execution of the written agreement to sell (Bainapatra) between Plaintiff and Defendant",
-        type: "CONTRACT_EXECUTION"
-      };
-    }
-    if (context.includes("advance") || context.includes("earnest") || context.includes("payment") || context.includes("paid") || context.includes("received")) {
-      return {
-        event: "Payment of earnest money/advance consideration by the Plaintiff to the Defendant",
-        type: "ADVANCE_PAYMENT"
-      };
-    }
-    if (context.includes("refused") || context.includes("refusal") || context.includes("breach") || context.includes("failed") || context.includes("denied") || context.includes("demanded")) {
-      return {
-        event: "Defendant's alleged refusal to execute and register the final sale deed despite demands",
-        type: "CONTRACT_BREACH"
-      };
-    }
-    if (context.includes("dispossessed") || context.includes("dispossession") || context.includes("ouster") || context.includes("ousted") || context.includes("trespass") || context.includes("evicted") || context.includes("fence") || context.includes("wall")) {
-      return {
-        event: "Alleged physical entry and erection of boundary fencing on the suit land by the Defendant",
-        type: "DISPOSSESSION"
-      };
-    }
-    if (context.includes("registered") || context.includes("registration") || context.includes("registered sale deed")) {
-      return {
-        event: "Registration of the Sale Deed / Bainapatra before the Sub-Registrar",
-        type: "REGISTRATION"
-      };
-    }
-    if (context.includes("mutation") || context.includes("khatian") || context.includes("mutation khatian")) {
-      return {
-        event: "Completion of land mutation in the Upazila Land Office",
-        type: "MUTATION"
-      };
-    }
-    
-    return {
-      event: "Key transaction/event occurring on " + dateInfo.dateStr,
-      type: "GENERAL"
-    };
+    this.ensureClaimRelevantUnknowns(ctx, claimType);
   }
 
-  private getStatutorySignificance(type: string): string {
-    switch (type) {
-      case "CONTRACT_EXECUTION":
-        return "Recital in executed written agreement (Bainapatra)";
-      case "ADVANCE_PAYMENT":
-        return "Endorsement / Money receipt recital in agreement";
-      case "CONTRACT_BREACH":
-        return "Dispute narrative assertion / Oral encounter";
-      case "DISPOSSESSION":
-        return "Pleading assertion of physical entry & fencing";
-      case "REGISTRATION":
-        return "Sub-Registry ledger assertion";
-      case "MUTATION":
-        return "Upazila Land Office revenue record assertion";
-      case "INHERITANCE_DEATH":
-        return "Death record assertion / Burial certificate";
-      case "DISOWN_AFFIDAVIT":
-        return "Notarized affidavit recital";
-      case "NEWSPAPER_NOTICE":
-        return "Daily newspaper clipping assertion";
-      case "MUTATION_ATTEMPT":
-        return "Upazila Land Office Namjari entry";
-      case "PARTITION_NOTICE":
-        return "Registered postal AD receipt / Written demand";
-      case "THIRD_PARTY_SALE_THREAT":
-        return "Witness testimony of local sale negotiations";
-      default:
-        return "Dispute narrative assertion";
-    }
+  private ensureProposition(ctx: ExecutionContext, subject: string, predicate: string, object: string | null, text: string): string {
+    const canonicalKey = `${subject}|${predicate}|${object ?? "*"}`.toUpperCase();
+    const existing = Array.from(ctx.propositionRegistry.values()).find((p) => p.canonicalKey === canonicalKey);
+    if (existing) return existing.propositionId;
+    const propositionId = `P${String(ctx.propositionCounter++).padStart(5, "0")}`;
+    ctx.propositionRegistry.set(propositionId, { propositionId, subject, predicate, object, canonicalKey, text });
+    return propositionId;
   }
 
-  private inferPartiesForDate(dateInfo: DateInfo, text: string): string {
-    const start = Math.max(0, dateInfo.index - 120);
-    const end = Math.min(text.length, dateInfo.index + 120);
-    const context = text.substring(start, end).toLowerCase();
-    
-    if (context.includes("plaintiff") && context.includes("defendant")) {
-      return "Plaintiff and Defendant";
-    }
-    if (context.includes("plaintiff")) {
-      return "Plaintiff";
-    }
-    if (context.includes("defendant")) {
-      return "Defendant";
-    }
-    return "Pleading Parties";
-  }
-
-  private detectPartiesDynamic(text: string, category: string): ParsedParty[] {
-    const parties: ParsedParty[] = [];
-    const isSP = category === "SPECIFIC_PERFORMANCE";
-
-    // Regexes to extract actual names if specified
-    const pMatches = text.match(/(?:[Mm]r\.|[Mm]d\.|[Mm]st\.|[Bb]egum)\s+([A-Z][a-zA-Z\s]+?)(?=\s+is\s+the\s+plaintiff|\s+as\s+plaintiff|\s*\(plaintiff\)|,?\s+the\s+plaintiff)/i);
-    const dMatches = text.match(/(?:[Mm]r\.|[Mm]d\.|[Mm]st\.|[Bb]egum)\s+([A-Z][a-zA-Z\s]+?)(?=\s+is\s+the\s+defendant|\s+as\s+defendant|\s*\(defendant\)|,?\s+the\s+defendant)/i);
-
-    let pName = pMatches ? pMatches[0].trim() : "";
-    let dName = dMatches ? dMatches[0].trim() : "";
-
-    // Secondary scan for basic capital sequences
-    if (!pName) {
-      const match = text.match(/([A-Z][a-zA-Z\s\.]+)\s+\(?\s*the\s+[pP]laintiff\)?/i);
-      if (match) pName = match[1].trim();
-    }
-    if (!dName) {
-      const match = text.match(/([A-Z][a-zA-Z\s\.]+)\s+\(?\s*the\s+[dD]efendant\)?/i);
-      if (match) dName = match[1].trim();
-    }
-
-    if (!pName) {
-      pName = isSP ? "Plaintiff (Proposed Purchaser)" : "Plaintiff (Title Owner)";
-    }
-    if (!dName) {
-      dName = isSP ? "Defendant (Proposed Vendor)" : "Defendant (Trespasser)";
-    }
-
-    parties.push({
-      name: pName,
-      side: "plaintiff",
-      identity: "Individual citizen",
-      capacity: isSP ? "Purchaser under Bainapatra" : "Registered Legal Owner",
-      causeOfAction: isSP ? "Refusal of vendor to perform contract" : "Forcible dispossession by trespasser",
+  private async applyFactValidation(ctx: ExecutionContext): Promise<void> {
+    const validated = await this.factValidationProvider.validateFacts({
+      facts: Array.from(ctx.factRegistry.values()),
+      propositions: Array.from(ctx.propositionRegistry.values()),
+      assertions: Array.from(ctx.assertionRegistry.values()),
     });
-
-    parties.push({
-      name: dName,
-      side: "defendant",
-      identity: "Individual citizen",
-      capacity: isSP ? "Deed Owner / Vendor" : "Adverse Possessor / Trespasser",
-      liability: isSP ? "Contractual liability to execute registered deed" : "Joint and several tortious liability for ouster",
-    });
-
-    return parties;
+    if (validated.length !== ctx.factRegistry.size) throw new Error("FACT_VALIDATION_INTEGRITY_ERROR: validator changed fact cardinality.");
+    for (const fact of validated) {
+      if (!ctx.factRegistry.has(fact.factId)) throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: unknown fact ${fact.factId}.`);
+      ctx.factRegistry.set(fact.factId, fact);
+    }
   }
 
-  private extractContractDetails(text: string): { total: number; advance: number; balance: number; isUsingDefaultAmounts?: boolean } {
-    const numbers: number[] = [];
-    const regex = /(?:Tk\.?|BDT|Taka|taka)\s*([\d,]+)|([\d,]+)\s*(?:Taka|taka|Tk\.?|BDT)/gi;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      const numStr = match[1] || match[2];
-      const val = parseInt(numStr.replace(/,/g, ""));
-      if (!isNaN(val) && val > 1000 && !numbers.includes(val)) {
-        numbers.push(val);
+  private segmentDocument(rawText: string): string[] {
+    return rawText.replace(/\r\n/g, "\n").split(/(?<=[.!?])\s+|\n+/g).map((x) => x.trim()).filter(Boolean);
+  }
+
+  private segmentClauses(sentence: string): string[] {
+    // Deliberately does NOT split on the adjective "unregistered" or other
+    // lexical negators. A semantic polarity detector must inspect the clause.
+    return sentence.split(/\s*(?:;|\bbut\b|\balthough\b|\bhowever\b|\bwhereas\b|\bwhile\b)\s*/i).map((x) => x.trim()).filter(Boolean);
+  }
+
+  private detectAssertionContext(clause: string): { type: AssertionType; polarity: AssertionPolarity } {
+    const lower = this.normalizeText(clause);
+    if (/\b(defendant|plaintiff)\b[^.!?]{0,80}\b(?:denies?|disputes?|refutes?)\b/i.test(clause)) return { type: AssertionType.DENIED, polarity: AssertionPolarity.DISPUTED };
+    if (/\b(?:denies?|disputes?|refutes?)\b[^.!?]{0,80}\b(defendant|plaintiff)\b/i.test(clause)) return { type: AssertionType.DENIED, polarity: AssertionPolarity.DISPUTED };
+    if (/\b(?:admits?|admitted|concedes?|conceded|acknowledges?)\b/i.test(clause)) return { type: AssertionType.ADMITTED, polarity: AssertionPolarity.POSITIVE };
+    if (/\b(?:not|never|no)\b/i.test(lower)) return { type: AssertionType.ALLEGED, polarity: AssertionPolarity.NEGATIVE };
+    return { type: AssertionType.ALLEGED, polarity: AssertionPolarity.POSITIVE };
+  }
+
+  private detectAssertingParty(clause: string): string | null {
+    const plaintiff = /\bplaintiff\b[^.!?]{0,40}\b(?:denies?|disputes?|admits?|alleges?|asserts?|claims?|concedes?)\b/i.test(clause);
+    const defendant = /\bdefendant\b[^.!?]{0,40}\b(?:denies?|disputes?|admits?|alleges?|asserts?|claims?|concedes?)\b/i.test(clause);
+    if (plaintiff !== defendant) return plaintiff ? "PLAINTIFF" : "DEFENDANT";
+    return null;
+  }
+
+  private extractClauseFacts(clause: string): Array<{ subject: string; predicate: string; object: string | null; eventDate?: string | null; normalizedValue?: string | number | boolean }> {
+    const facts: Array<{ subject: string; predicate: string; object: string | null; eventDate?: string | null; normalizedValue?: string | number | boolean }> = [];
+    const lower = this.normalizeText(clause);
+
+    const death = /\b(?:died|demise|passed away|deceased)\b(?:\s+(?:on|at)\s+)?(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})?/i.exec(clause);
+    if (death) facts.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: death[1] ?? null });
+    if (/\b(?:alive|living|still alive)\b/i.test(lower)) facts.push({ subject: "Ancestor", predicate: "Vital Status", object: "ALIVE" });
+
+    // "unregistered" is a VALUE of Registration Status, not a denial marker.
+    if (/\bunregistered\s+(?:bainapatra|agreement(?:\s+to\s+sell)?)\b/i.test(clause)) facts.push({ subject: "Bainapatra", predicate: "Registration Status", object: "UNREGISTERED" });
+    if (/\bregistered\s+(?:bainapatra|agreement(?:\s+to\s+sell)?)\b/i.test(clause) && !/\bunregistered\s+(?:bainapatra|agreement(?:\s+to\s+sell)?)\b/i.test(clause)) facts.push({ subject: "Bainapatra", predicate: "Registration Status", object: "REGISTERED" });
+
+    if (/\b(?:deposited|deposit)\b.*\b(?:balance|consideration|money)\b.*\b(?:court|treasury|challan)\b/i.test(clause)) facts.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "DEPOSITED" });
+    if (/\b(?:not deposited|failed to deposit|did not deposit|no deposit)\b/i.test(lower)) facts.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "NOT_DEPOSITED" });
+
+    if (/\b(?:registered title|registered sale deed|kabala)\b/i.test(lower) && !/\b(?:no registered title|unregistered title|lacks registered title)\b/i.test(lower)) facts.push({ subject: "Plaintiff", predicate: "Registered Title", object: "REGISTERED" });
+    if (/\b(?:no registered title|unregistered title|lacks registered title)\b/i.test(lower)) facts.push({ subject: "Plaintiff", predicate: "Registered Title", object: "NOT_REGISTERED" });
+    if (/\b(?:dispossessed|ousted|ouster)\b/i.test(lower) && !/\b(?:not dispossessed|no dispossession)\b/i.test(lower)) facts.push({ subject: "Plaintiff", predicate: "Dispossession", object: "PROVEN_ALLEGED" });
+    if (/\b(?:not dispossessed|no dispossession)\b/i.test(lower)) facts.push({ subject: "Plaintiff", predicate: "Dispossession", object: "NONE" });
+
+    for (const money of clause.match(/(?:BDT|Tk\.?|Taka)\s*[\d,]+(?:\.\d{1,2})?/gi) ?? []) {
+      const amount = this.parseMoney(money);
+      if (amount !== null) facts.push({ subject: "Case", predicate: "Monetary Amount", object: "BDT", normalizedValue: amount });
+    }
+
+    const location = /(?:mouza|village|upazila|thana|district)\s*[:\-]?\s*([A-Za-z\u0980-\u09FF][A-Za-z\u0980-\u09FF\s\-]*)/i.exec(clause);
+    if (location) facts.push({ subject: "Property", predicate: "Location", object: location[1].trim(), normalizedValue: location[1].trim() });
+    return facts;
+  }
+
+  private ensureClaimRelevantUnknowns(ctx: ExecutionContext, claimType: ClaimType): void {
+    const add = (subject: string, predicate: string, object: string) => {
+      if (this.getFacts(ctx, subject, predicate).length) return;
+      const propositionId = this.ensureProposition(ctx, subject, predicate, object, `${subject} ${predicate}: UNKNOWN`);
+      const assertionId = `A${String(ctx.assertionCounter++).padStart(5, "0")}`;
+      const source: SourceSpan = { documentId: "ENGINE_UNKNOWN", segment: "No supporting fact supplied.", sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" };
+      ctx.assertionRegistry.set(assertionId, { assertionId, propositionId, assertionType: AssertionType.INFERRED, polarity: AssertionPolarity.UNKNOWN, truth: Tristate.UNKNOWN, sourceSpan: source });
+      const factId = `FUNK-${generateSecureId().slice(0, 8)}`;
+      ctx.factRegistry.set(factId, { factId, propositionId, assertionId, proposition: `${subject} ${predicate} ${object}: UNKNOWN`, subject, predicate, object, truth: Tristate.UNKNOWN, polarity: AssertionPolarity.UNKNOWN, source, assertionType: AssertionType.INFERRED, validationStatus: ValidationStatus.UNVERIFIED, confidence: FactConfidence.CANDIDATE, validation: { extractionStatus: ExtractionStatus.NOT_EXECUTED, sourceStatus: SourceStatus.UNRESOLVED, authenticationStatus: AuthenticationStatus.NOT_EXECUTED, corroborationStatus: CorroborationStatus.NOT_EXECUTED, humanValidationStatus: HumanValidationStatus.NOT_EXECUTED } });
+    };
+    if (claimType === "SPECIFIC_PERFORMANCE") { add("Bainapatra", "Registration Status", "REGISTERED"); add("Treasury Deposit", "Payment Status", "DEPOSITED"); }
+    if (claimType === "INHERITANCE_CONSULTATION") add("Ancestor", "Vital Status", "DECEASED");
+  }
+
+  // ========================================================================
+  // CONTRADICTION GRAPH / TRUTH EVALUATION
+  // ========================================================================
+
+  private propositionFamilyKey(fact: AtomicFact): string { return `${fact.subject}|${fact.predicate}`.toUpperCase(); }
+
+  private buildContradictionGraph(ctx: ExecutionContext): void {
+    ctx.contradictionGraph = [];
+    const facts = Array.from(ctx.factRegistry.values());
+    for (let i = 0; i < facts.length; i++) {
+      for (let j = i + 1; j < facts.length; j++) {
+        const a = facts[i], b = facts[j];
+        if (this.propositionFamilyKey(a) !== this.propositionFamilyKey(b)) continue;
+        if (a.truth === Tristate.UNKNOWN || b.truth === Tristate.UNKNOWN || a.truth === b.truth) continue;
+        // A TRUE and FALSE assertion about the same subject/predicate is a
+        // direct logical conflict even when object labels differ (REGISTERED
+        // vs UNREGISTERED, DECEASED vs ALIVE, etc.).
+        const edge: ContradictionEdge = {
+          edgeId: `CE-${ctx.contradictionGraph.length + 1}`,
+          propositionKey: this.propositionFamilyKey(a), leftFactId: a.factId, rightFactId: b.factId,
+          relation: "DIRECT_TRUTH_CONFLICT",
+          status: a.validationStatus === ValidationStatus.VERIFIED && b.validationStatus === ValidationStatus.VERIFIED ? "CRITICAL" : "PENDING_VALIDATION",
+        };
+        ctx.contradictionGraph.push(edge);
+        a.contradicts = [...new Set([...(a.contradicts ?? []), b.factId])];
+        b.contradicts = [...new Set([...(b.contradicts ?? []), a.factId])];
       }
     }
-    
-    numbers.sort((a, b) => b - a);
-    
-    let total = 1200000; // Default BDT 12 Lakh
-    let advance = 500000; // Default BDT 5 Lakh
-    let isUsingDefaultAmounts = true;
-    
-    if (numbers.length >= 2) {
-      total = numbers[0];
-      advance = numbers[1];
-      isUsingDefaultAmounts = false;
-    } else if (numbers.length === 1) {
-      total = numbers[0];
-      advance = Math.floor(total * 0.4); // Assume 40% advance
-      isUsingDefaultAmounts = false;
+  }
+
+  private findCriticalConflict(ctx: ExecutionContext): ContradictionEdge | null {
+    return ctx.contradictionGraph.find((e) => e.status === "CRITICAL") ?? null;
+  }
+
+  private evaluateFact(ctx: ExecutionContext, subject: string, predicate: string, object: string | undefined, opts: { requireVerified: boolean }): { status: Tristate; supportingFactIds: string[]; contradictingFactIds: string[]; unverifiedFactIds: string[] } {
+    const family = this.getFacts(ctx, subject, predicate);
+    const matching = family.filter((f) => object === undefined || f.object === object);
+    const trueFacts = matching.filter((f) => f.truth === Tristate.TRUE);
+    const falseFacts = matching.filter((f) => f.truth === Tristate.FALSE);
+
+    if (opts.requireVerified) {
+      const verifiedTrue = trueFacts.filter((f) => f.validationStatus === ValidationStatus.VERIFIED);
+      const verifiedFalse = falseFacts.filter((f) => f.validationStatus === ValidationStatus.VERIFIED);
+      if (verifiedTrue.length && verifiedFalse.length) throw new Error(`CRITICAL_CONFLICT: ${subject}/${predicate}`);
+      if (verifiedTrue.length) return { status: Tristate.TRUE, supportingFactIds: verifiedTrue.map((f) => f.factId), contradictingFactIds: [], unverifiedFactIds: trueFacts.filter((f) => f.validationStatus !== ValidationStatus.VERIFIED).map((f) => f.factId) };
+      if (verifiedFalse.length) return { status: Tristate.FALSE, supportingFactIds: [], contradictingFactIds: verifiedFalse.map((f) => f.factId), unverifiedFactIds: falseFacts.filter((f) => f.validationStatus !== ValidationStatus.VERIFIED).map((f) => f.factId) };
+      return { status: Tristate.UNKNOWN, supportingFactIds: [], contradictingFactIds: [], unverifiedFactIds: [...trueFacts, ...falseFacts].map((f) => f.factId) };
     }
-    
+    if (trueFacts.length && falseFacts.length && trueFacts.some((f) => f.validationStatus === ValidationStatus.VERIFIED) && falseFacts.some((f) => f.validationStatus === ValidationStatus.VERIFIED)) throw new Error(`CRITICAL_CONFLICT: ${subject}/${predicate}`);
+    if (trueFacts.length && !falseFacts.length) return { status: Tristate.TRUE, supportingFactIds: trueFacts.map((f) => f.factId), contradictingFactIds: [], unverifiedFactIds: trueFacts.filter((f) => f.validationStatus !== ValidationStatus.VERIFIED).map((f) => f.factId) };
+    if (falseFacts.length && !trueFacts.length) return { status: Tristate.FALSE, supportingFactIds: [], contradictingFactIds: falseFacts.map((f) => f.factId), unverifiedFactIds: falseFacts.filter((f) => f.validationStatus !== ValidationStatus.VERIFIED).map((f) => f.factId) };
+    return { status: Tristate.UNKNOWN, supportingFactIds: [], contradictingFactIds: [...falseFacts].map((f) => f.factId), unverifiedFactIds: [...trueFacts, ...falseFacts].filter((f) => f.validationStatus !== ValidationStatus.VERIFIED).map((f) => f.factId) };
+  }
+
+  private buildEventTimeline(ctx: ExecutionContext): void {
+    ctx.eventTimeline = [];
+    for (const fact of ctx.factRegistry.values()) {
+      if (fact.eventDate && fact.subject === "Ancestor") ctx.eventTimeline.push({ eventId: `EV-${fact.factId}`, type: "ANCESTOR_DEATH", date: fact.eventDate, datePrecision: "EXACT", sourceFactIds: [fact.factId] });
+    }
+    ctx.eventTimeline.sort((a, b) => this.strictDateTimestamp(a.date) - this.strictDateTimestamp(b.date));
+  }
+
+  private getFacts(ctx: ExecutionContext, subject: string, predicate: string): AtomicFact[] { return Array.from(ctx.factRegistry.values()).filter((f) => f.subject === subject && f.predicate === predicate); }
+  private getAllFactIds(ctx: ExecutionContext): string[] { return Array.from(ctx.factRegistry.keys()); }
+
+  // ========================================================================
+  // RULE GRAPH / LOGICAL OPERATORS
+  // ========================================================================
+
+  private executeElementCompletenessGate(ctx: ExecutionContext, claimType: ClaimType): { status: GateStatus; allSatisfied: boolean; missingElements: string[]; unknownElements: string[]; fatalFailures: string[]; ruleExecutionResults: RuleExecutionResult[] } {
+    const rules = this.ruleRegistry.getClaimElements(claimType, "BANGLADESH");
+    if (!rules.length) return { status: GateStatus.INDETERMINATE, allSatisfied: false, missingElements: ["Claim-specific rule graph unavailable."], unknownElements: [], fatalFailures: [], ruleExecutionResults: [] };
+    const missingElements: string[] = [], unknownElements: string[] = [], fatalFailures: string[] = [], results: RuleExecutionResult[] = [];
+
+    for (const rule of rules) {
+      const prs: PredicateExecutionResult[] = [];
+      for (const p of rule.predicates) {
+        const facts = this.getFacts(ctx, p.subject, p.predicate).filter((f) => p.object === undefined || f.object === p.object);
+        if (!facts.length) { prs.push({ predicateSubject: p.subject, predicateId: p.predicateId, status: "UNKNOWN", factIds: [] }); continue; }
+        const e = this.evaluateFact(ctx, p.subject, p.predicate, p.object, { requireVerified: p.requireVerified });
+        const status = e.status === p.requiredTruth ? "TRUE" : e.status === Tristate.UNKNOWN ? "UNKNOWN" : "FALSE";
+        prs.push({ predicateSubject: p.subject, predicateId: p.predicateId, status, factIds: status === "TRUE" ? e.supportingFactIds : status === "FALSE" ? e.contradictingFactIds : e.unverifiedFactIds });
+      }
+
+      const trueCount = prs.filter((x) => x.status === "TRUE").length;
+      const falseCount = prs.filter((x) => x.status === "FALSE").length;
+      const unknownCount = prs.filter((x) => x.status === "UNKNOWN").length;
+      let status: RuleExecutionStatus = "UNKNOWN";
+      let explanationCode = "RULE_PREDICATES_UNRESOLVED";
+
+      if (rule.logicalOperator === "ALL") {
+        if (falseCount > 0) { status = "FAILED"; explanationCode = rule.outcomeIfFailed; }
+        else if (unknownCount > 0) { status = "UNKNOWN"; }
+        else if (trueCount === prs.length) { status = "SATISFIED"; explanationCode = rule.outcomeIfSatisfied; }
+      } else if (rule.logicalOperator === "ANY") {
+        if (trueCount > 0) { status = "SATISFIED"; explanationCode = rule.outcomeIfSatisfied; }
+        else if (falseCount === prs.length) { status = "FAILED"; explanationCode = rule.outcomeIfFailed; }
+      } else {
+        const n = rule.atLeastN ?? prs.length;
+        if (trueCount >= n) { status = "SATISFIED"; explanationCode = rule.outcomeIfSatisfied; }
+        else if (trueCount + unknownCount < n) { status = "FAILED"; explanationCode = rule.outcomeIfFailed; }
+      }
+
+      if (status === "FAILED") fatalFailures.push(`${rule.ruleId}: ${rule.outcomeIfFailed}`);
+      if (status === "UNKNOWN") unknownElements.push(`${rule.ruleId}: unresolved predicates`);
+      if (status === "NOT_EXECUTED") missingElements.push(`${rule.ruleId}: not executed`);
+      results.push({ ruleId: rule.ruleId, status, predicateResults: prs, authorityIds: [rule.authority.authorityId ?? rule.authority.citation ?? `${rule.authority.act} ${rule.authority.section}`], burden: rule.burden, legalEffect: rule.legalEffect, explanationCode });
+      recordTrace(ctx, { layer: "P1_RULE", description: `Rule ${rule.ruleId} evaluated.`, dependsOnFacts: prs.flatMap((p) => p.factIds), dependsOnRules: [rule.ruleId], result: status });
+    }
+
+    if (fatalFailures.length) return { status: GateStatus.FAIL, allSatisfied: false, missingElements, unknownElements, fatalFailures, ruleExecutionResults: results };
+    if (missingElements.length || unknownElements.length || results.some((r) => r.status === "BLOCKED" || r.status === "NOT_EXECUTED" || r.status === "UNKNOWN")) return { status: GateStatus.INDETERMINATE, allSatisfied: false, missingElements, unknownElements, fatalFailures, ruleExecutionResults: results };
+    return { status: GateStatus.PASS, allSatisfied: true, missingElements: [], unknownElements: [], fatalFailures: [], ruleExecutionResults: results };
+  }
+
+  // ========================================================================
+  // AUTHORITY / CITATION
+  // ========================================================================
+
+  private mapLegislation(claimType: ClaimType) {
+    const mapping = this.ruleRegistry.getLegislationMapping(claimType);
+    let precedents: unknown[] = [];
+    try { precedents = CitationValidator.getVerifiedPrecedentsForContext(claimType, {}); } catch { precedents = []; }
+    const citationValidationAudit: CitationValidationAudit = {
+      totalCitations: precedents.length, verifiedCount: 0, rejectedCount: 0,
+      validationStandard: "BCCAA AUTHORITY REGISTRY STATE MACHINE",
+      auditStatus: precedents.length ? "RESOLVED" : "NOT_EXECUTED",
+      registrySignature: this.ruleRegistry.identity.authorityRegistryDigest,
+      note: "Resolved metadata is not represented as text-verified unless the authority registry explicitly proves it.",
+      citationStates: precedents.map((p) => ({ citation: canonicalStringify(p), state: "RESOLVED" })),
+    };
+    return { primaryAct: mapping.primaryAct, relevantSections: mapping.relevantSections, precedents, citationValidationAudit, equityPrinciples: [] };
+  }
+
+  // ========================================================================
+  // LIMITATION / JURISDICTION / PARTY / STAGES
+  // ========================================================================
+
+  private executeLimitationEngine(ctx: ExecutionContext): CaseAnalysisResponse["stage3"] {
+    const death = Array.from(ctx.factRegistry.values()).find((f) => f.subject === "Ancestor" && f.predicate === "Vital Status" && f.object === "DECEASED" && f.eventDate);
+    if (!death || !this.isStrictDate(death.eventDate ?? "")) return { accrualDate: "NOT_EXECUTED: missingDependencies=[VALID_ACCRUAL_DATE]", prescribedPeriod: "NOT_EXECUTED", limitationArticle: "NOT_EXECUTED", isTimeBarred: false, exceptionsOrExtensions: "NOT_EXECUTED", preliminaryAnalysis: "Limitation requires an authorized cause-of-action rule and a valid calendar date.", timelineValidation: { agreementDate: null, refusalDate: null, isAgreementDateExtracted: false, isRefusalDateExtracted: false, calculationType: "missing_dates", validationStatus: "invalid_gaps", explanation: "No authorized limitation calculation executed." } };
+    return { accrualDate: death.eventDate!, prescribedPeriod: "NOT_EXECUTED: missingDependencies=[CAUSE_OF_ACTION_LIMITATION_RULE]", limitationArticle: "NOT_EXECUTED", isTimeBarred: false, exceptionsOrExtensions: "NOT_EXECUTED", preliminaryAnalysis: "Accrual candidate identified; no limitation conclusion is authorized without the versioned limitation rule.", timelineValidation: { agreementDate: null, refusalDate: null, isAgreementDateExtracted: false, isRefusalDateExtracted: false, calculationType: "rule_registry_required", validationStatus: "invalid_gaps", explanation: "Date does not itself authorize limitation." } };
+  }
+
+  private extractValuation(ctx: ExecutionContext) {
+    const facts = Array.from(ctx.factRegistry.values()).filter((f) => f.predicate === "Monetary Amount" && typeof f.normalizedValue === "number" && f.validationStatus === ValidationStatus.VERIFIED);
+    if (facts.length !== 1) return { amount: null as number | null, sourceFactIds: facts.map((f) => f.factId) };
+    return { amount: Number(facts[0].normalizedValue), sourceFactIds: [facts[0].factId] };
+  }
+
+  private executeJurisdictionEngine(ctx: ExecutionContext): CaseAnalysisResponse["stage5"] {
+    const valuation = this.extractValuation(ctx);
+    if (valuation.amount === null) return { territorial: { rule: "Territorial jurisdiction requires validated location facts.", governingSection: "CPC / applicable law", jurisdictionalFacts: this.getLocationDescription(ctx) }, pecuniary: { valuation: "INDETERMINATE", courtLevel: "NOT_EXECUTED: missingDependencies=[VERIFIED_VALUATION,CURRENT_PECUNIARY_THRESHOLD]", pecuniaryLimits: "NOT_EXECUTED", suitsValuationActNotes: "VALUATION GATE BLOCKED" }, subjectMatter: { isExcluded: false, forum: "NOT_EXECUTED", governingStatute: "Applicable jurisdiction law" }, objectionStrategy: "Verify valuation, territorial connection and current jurisdiction registry." };
+    return { territorial: { rule: "Territorial jurisdiction requires validated location facts.", governingSection: "CPC / applicable law", jurisdictionalFacts: this.getLocationDescription(ctx) }, pecuniary: { valuation: `BDT ${valuation.amount.toLocaleString()}`, courtLevel: "NOT_EXECUTED: missingDependencies=[CURRENT_PECUNIARY_THRESHOLD]", pecuniaryLimits: "NOT_EXECUTED", suitsValuationActNotes: "Verified valuation; current threshold registry required." }, subjectMatter: { isExcluded: false, forum: "NOT_EXECUTED", governingStatute: "Applicable jurisdiction law" }, objectionStrategy: "Verify current jurisdiction rules." };
+  }
+
+  private executePartyStandiRules(ctx: ExecutionContext, claimType: ClaimType): CaseAnalysisResponse["stage4"] {
+    const plaintiffs: Array<{ side: "plaintiff"; name: string; identity: string; capacity: string }> = [];
+    const defendants: Array<{ side: "defendant"; name: string; identity: string; capacity: string }> = [];
+    for (const fact of ctx.factRegistry.values()) {
+      if (fact.subject !== "Plaintiff" && fact.subject !== "Defendant") continue;
+      const p = { side: fact.subject === "Plaintiff" ? "plaintiff" as const : "defendant" as const, name: fact.assertedBy ?? "UNIDENTIFIED_PARTY", identity: fact.object ?? "UNKNOWN", capacity: "REQUIRES_VALIDATION" };
+      (p.side === "plaintiff" ? plaintiffs : defendants).push(p as never);
+    }
+    let locus = "INDETERMINATE pending validated party capacity and cause-of-action facts.";
+    if (claimType === "INHERITANCE_CONSULTATION") {
+      const d = this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", { requireVerified: false }).status;
+      if (d === Tristate.TRUE) locus = "Succession-death candidate identified; heirship and entitlement require validation.";
+    }
+    return { plaintiffs, defendants, joinderIssues: "Joinder requires validated parties, interests and procedural rules.", locusStandiSummary: locus };
+  }
+
+  private executePleadingRules(gate: { status: GateStatus; missingElements: string[]; unknownElements: string[]; fatalFailures: string[] }): CaseAnalysisResponse["stage6"] {
+    const checklist = ["Plead complete cause of action.", "Identify material facts.", "Identify parties and capacities.", "Identify source documents."];
+    const grounds = gate.status === GateStatus.FAIL ? gate.fatalFailures.map((x) => `LEGAL ELEMENT FAILURE: ${x}`) : [];
+    if (gate.status === GateStatus.INDETERMINATE) checklist.push(...gate.unknownElements.map((x) => `VERIFY BEFORE RELIEF: ${x}`));
+    return { plaintChecklist: checklist, groundsForRejection: grounds, writtenStatementDeemedAdmissions: "Apply only after procedural facts are established.", counterclaimsOrSetOff: "Requires validated party-specific inputs." };
+  }
+
+  private executeIssueFramingRules(ctx: ExecutionContext, gate: { missingElements: string[]; unknownElements: string[] }): CaseAnalysisResponse["stage7"] {
+    const issues: Array<{ issueNo: number; title: string; type: string; burden: string; evidenceRequired: string }> = [{ issueNo: 1, title: "Whether the material legal elements are established.", type: "Mixed Fact and Law", burden: "Claim-specific burden", evidenceRequired: "Validated facts and source material" }];
+    let n = 2;
+    for (const x of [...gate.missingElements, ...gate.unknownElements]) issues.push({ issueNo: n++, title: `Whether ${x} is established.`, type: "Fact / Law", burden: "Applicable burden", evidenceRequired: "Primary evidence" });
+    for (const f of ctx.factRegistry.values()) if (f.disputedProposition) issues.push({ issueNo: n++, title: `Whether disputed proposition is established: ${f.disputedProposition}`, type: "Fact", burden: "Applicable burden", evidenceRequired: "Evidence resolving contradiction or denial" });
+    return { issues };
+  }
+
+  private executeEvidenceRules(ctx: ExecutionContext): CaseAnalysisResponse["stage8"] {
+    const evidenceList = Array.from(ctx.factRegistry.values()).map((f) => ({ item: f.proposition, source: f.source.documentId, type: "Fact Source", governingSection: "Applicable evidence law", admissibilityChallenge: f.validationStatus === ValidationStatus.VERIFIED ? "VALIDATED" : "ASSERTED_ONLY: verification required before reliance." }));
+    return { evidenceList, burdenAssignments: ["Assign burden element-by-element under authorized evidence rules."], statutoryPresumptions: [] };
+  }
+
+  private executeMeritRules(gate: { status: GateStatus }): CaseAnalysisResponse["stage9"] {
+    const finding = gate.status === GateStatus.FAIL ? "ELEMENT FAILURE" : gate.status === GateStatus.INDETERMINATE ? "INDETERMINATE" : "ELEMENTS SATISFIED; remaining rules required";
+    return { issueDetails: [{ issueNo: 1, issueTitle: "Claim elements and merits", plaintiffPosition: "Derived only from recorded propositions/assertions.", defendantPosition: "Requires independent defence assertions.", courtAnalysis: "Deterministic rule evaluation; UNKNOWN is not FALSE.", projectedFinding: finding }] };
+  }
+
+  private executeEquityRules(gate: { status: GateStatus }): CaseAnalysisResponse["stage10"] { return { applicablePrinciples: [], discretionaryReliefCheck: gate.status === GateStatus.PASS ? "Mandatory gate passed; discretionary authority still requires rule evaluation." : "BLOCKED until mandatory predicates resolve." }; }
+  private executeProcedureRules(): CaseAnalysisResponse["stage11"] { return { timelineProgress: [{ stageName: "Institution", cpcReference: "Applicable CPC provision", subActions: "Validate material facts, jurisdiction, limitation and pleading prerequisites.", strategicPlay: "Do not cure UNKNOWN by assumption." }] }; }
+  private executeAppealRules(): CaseAnalysisResponse["stage12"] { return { appealNodes: [{ level: "First Appeal", authority: "Requires validated judgment and appellate-jurisdiction inputs.", scope: "Fact and law according to applicable appellate rules.", governingSection: "Applicable CPC appellate provision" }] }; }
+
+  // ========================================================================
+  // P2 SYNTHESIS
+  // ========================================================================
+
+  private executeFailClosedSynthesis(ctx: ExecutionContext, f0Gate: FactConsistencyGateOutput, _claimType: ClaimType, gate: { status: GateStatus; missingElements: string[]; unknownElements: string[]; fatalFailures: string[]; ruleExecutionResults?: RuleExecutionResult[] }): CaseAnalysisResponse["stage13"] {
+    if (f0Gate.gateStatus === "HALT_CRITICAL_CONFLICT" || gate.status === GateStatus.HALT) return { overview: "HALTED: critical factual conflict.", reliefDecree: "HALTED", costsApportionment: "N/A", equitableBars: "N/A", executionPathway: "None until conflict resolution." };
+    if (gate.status === GateStatus.FAIL) return { overview: `FAIL-CLOSED: ${gate.fatalFailures.join("; ")}`, reliefDecree: "NO RELIEF AUTHORIZATION.", costsApportionment: "Pending", equitableBars: "Discretion cannot override failed mandatory elements.", executionPathway: "None." };
+    if (gate.status === GateStatus.INDETERMINATE) return { overview: `INDETERMINATE: ${[...gate.missingElements, ...gate.unknownElements].join("; ")}`, reliefDecree: "NO AUTOMATIC DECREE. HUMAN / AUTHORITY VERIFICATION REQUIRED.", costsApportionment: "Pending", equitableBars: "Blocked", executionPathway: "None until predicates resolve." };
+    recordTrace(ctx, { layer: "P2_SYNTHESIS", description: "Mandatory rule graph satisfied.", dependsOnFacts: this.getAllFactIds(ctx), dependsOnRules: (gate.ruleExecutionResults ?? []).map((r) => r.ruleId), result: "ELEMENTS_SATISFIED" });
+    return { overview: "MANDATORY ELEMENT GATE PASSED. Final judicial disposition remains outside autonomous authorization.", reliefDecree: "RELIEF ELIGIBILITY ONLY — NO AUTONOMOUS JUDICIAL DECREE.", costsApportionment: "Pending", equitableBars: "Requires authorized discretionary rules.", executionPathway: "Requires authorized procedural execution rule after judgment." };
+  }
+
+  // ========================================================================
+  // RESPONSE / FORENSIC HASHING
+  // ========================================================================
+
+  private buildResponse(ctx: ExecutionContext, request: AnalyzeRequest, claimType: ClaimType, f0Gate: FactConsistencyGateOutput, synthesis: CaseAnalysisResponse["stage13"], data: any): CaseAnalysisResponse {
+    const stage0 = this.buildStage0(ctx, claimType);
+    const halted = data.halted === true;
+    const response: any = {
+      gateF0: f0Gate,
+      stage0,
+      stage1: halted ? { primaryDomain: "N/A — F0 HALT", subsidiaryDomains: [], triggerFacts: [] } : data.domain,
+      stage2: halted ? { primaryAct: "N/A", relevantSections: [], precedents: [], citationValidationAudit: null, equityPrinciples: [] } : data.legislation,
+      stage3: halted ? { accrualDate: "Not determinable", prescribedPeriod: "Not determinable", limitationArticle: "Not determinable", isTimeBarred: false, exceptionsOrExtensions: "Not evaluated", preliminaryAnalysis: "F0 HALT", timelineValidation: { agreementDate: null, refusalDate: null, isAgreementDateExtracted: false, isRefusalDateExtracted: false, calculationType: "halt", validationStatus: "invalid_gaps", explanation: "F0 HALT" } } : data.limitation,
+      stage4: halted ? { plaintiffs: [], defendants: [], joinderIssues: "N/A — F0 HALT", locusStandiSummary: "Blocked" } : data.standi,
+      stage5: halted ? { territorial: { rule: "N/A", governingSection: "N/A", jurisdictionalFacts: "N/A" }, pecuniary: { valuation: "N/A", courtLevel: "N/A", pecuniaryLimits: "N/A", suitsValuationActNotes: "N/A" }, subjectMatter: { isExcluded: false, forum: "N/A", governingStatute: "N/A" }, objectionStrategy: "N/A" } : data.jurisdiction,
+      stage6: halted ? { plaintChecklist: [], groundsForRejection: ["F0 HALT"], writtenStatementDeemedAdmissions: "N/A", counterclaimsOrSetOff: "N/A" } : data.pleading,
+      stage7: halted ? { issues: [] } : data.issues,
+      stage8: halted ? { evidenceList: [], burdenAssignments: [], statutoryPresumptions: [] } : data.evidence,
+      stage9: halted ? { issueDetails: [] } : data.merits,
+      stage10: halted ? { applicablePrinciples: [], discretionaryReliefCheck: "N/A — F0 HALT" } : data.equity,
+      stage11: halted ? { timelineProgress: [] } : data.procedure,
+      stage12: halted ? { appealNodes: [] } : data.appeal,
+      stage13: synthesis,
+      _security: { analyzedBy: request.user.email, analyzedAt: Date.now(), licenseId: request.license.licenseId, forensicHash: "PENDING_OUTPUT_HASH", engineVersion: ENGINE_MANIFEST.engineVersion },
+    };
+    response._security.forensicHash = this.computeOutputHash(response);
+    return response as CaseAnalysisResponse;
+  }
+
+  private computeOutputHash(response: CaseAnalysisResponse): string {
+    const clone: any = JSON.parse(JSON.stringify(response));
+    if (clone?._security) delete clone._security.forensicHash;
+    return canonicalHash(clone);
+  }
+
+  private async persistAudit(ctx: ExecutionContext, request: AnalyzeRequest, caseId: string, startTime: number, outcome: AuditRecordPayload["outcome"], outputHash: string): Promise<void> {
+    const rawInputHash = canonicalHash(request.input?.factPattern ?? "");
+    const extractionHash = canonicalHash({ propositions: Array.from(ctx.propositionRegistry.values()), assertions: Array.from(ctx.assertionRegistry.values()) });
+    const factRegistryHash = canonicalHash(Array.from(ctx.factRegistry.values()));
+    const timelineHash = canonicalHash(ctx.eventTimeline);
+    const executionTraceHash = canonicalHash(ctx.executionTrace);
+    const ruleRegistryHash = canonicalHash({ identity: this.ruleRegistry.identity, version: this.ruleRegistry.version, rules: (["SPECIFIC_PERFORMANCE", "DECLARATION_AND_POSSESSION", "INHERITANCE_CONSULTATION", "GENERAL_CIVIL"] as ClaimType[]).map((c) => ({ claimType: c, rules: this.ruleRegistry.getClaimElements(c, "BANGLADESH") })) });
+    const payload: AuditRecordPayload = {
+      caseId, rawInputHash, extractionHash, inputHash: extractionHash, factRegistryHash, timelineHash, eventTimelineHash: timelineHash,
+      corpusIdentity: this.ruleRegistry.identity, corpusDigest: this.ruleRegistry.identity.corpusDigest,
+      ruleRegistryVersion: this.ruleRegistry.version, ruleRegistryHash, executionTraceHash, outputHash,
+      manifest: ENGINE_MANIFEST, executionMilliseconds: Date.now() - startTime, analyzedByUserId: request.user.id, outcome,
+    };
+    await this.auditSink.append(payload);
+  }
+
+  private buildStage0(ctx: ExecutionContext, claimType: ClaimType): any {
+    const facts = Array.from(ctx.factRegistry.values());
     return {
-      total,
-      advance,
-      balance: total - advance,
-      isUsingDefaultAmounts
+      factualSummary: `P0 contains ${facts.length} candidate atomic facts, ${ctx.propositionRegistry.size} propositions and ${ctx.assertionRegistry.size} assertions.`,
+      chronology: ctx.eventTimeline,
+      admittedFacts: facts.filter((f) => f.assertionType === AssertionType.ADMITTED).map((f) => f.proposition),
+      disputedFacts: facts.filter((f) => !!f.disputedProposition).map((f) => f.disputedProposition),
+      unknownFacts: facts.filter((f) => f.truth === Tristate.UNKNOWN).map((f) => f.proposition),
+      quantumFacts: facts.filter((f) => f.predicate === "Monetary Amount").map((f) => `BDT ${Number(f.normalizedValue).toLocaleString()}`),
+      factsMeta: { category: claimType, isRegisteredBainapatra: this.safeTruth(ctx, "Bainapatra", "Registration Status", "REGISTERED"), isBalanceDeposited: this.safeTruth(ctx, "Treasury Deposit", "Payment Status", "DEPOSITED"), plaintiffHasRegisteredTitle: this.safeTruth(ctx, "Plaintiff", "Registered Title", "REGISTERED"), dispossessionProven: this.safeTruth(ctx, "Plaintiff", "Dispossession", "PROVEN_ALLEGED"), isUsingDefaultAmounts: false },
+      atomicFacts: facts, propositions: Array.from(ctx.propositionRegistry.values()), assertions: Array.from(ctx.assertionRegistry.values()), contradictionGraph: ctx.contradictionGraph,
+      eventTimeline: ctx.eventTimeline, provenance: facts.map((f) => ({ factId: f.factId, assertionId: f.assertionId, propositionId: f.propositionId, source: f.source, validation: f.validation, validationStatus: f.validationStatus })),
     };
   }
 
-  private detectPrimarySubject(category: string): string {
-    if (category === "SPECIFIC_PERFORMANCE") {
-      return "Specific Performance of Contract (Bainapatra)";
-    }
-    if (category === "DECLARATION_AND_POSSESSION") {
-      return "Declaration of Title and Recovery of Khas Possession";
-    }
-    return "Civil Dispute / Injunctions";
-  }
+  private safeTruth(ctx: ExecutionContext, subject: string, predicate: string, object: string): boolean { try { return this.evaluateFact(ctx, subject, predicate, object, { requireVerified: false }).status === Tristate.TRUE; } catch { return false; } }
 
-  private extractLocation(text: string): string | undefined {
-    const match = text.match(/(?:in|at|within)\s+([A-Z][a-zA-Z\s]+(?:District|Thana|Upazila|Village))/i);
-    return match ? match[1] : undefined;
-  }
-
-  private determineCourtLevel(valuation: number): string {
-    if (valuation <= 1500000) return "Assistant Judge Court";
-    if (valuation <= 2500000) return "Senior Assistant Judge Court";
-    return "Joint District Judge Court"; // Unlimited original jurisdiction above 25L
-  }
-
-  private computeLimitation(facts: ParsedFacts) {
-    let accrualDateStr = "Not determinable from facts";
-    let accrualDate: Date | null = null;
-    let article = "Article 65";
-    let period = "12 Years";
-    let isBarred = false;
-    
-    const dates = this.extractDates(facts.rawText);
-    
-    // Find breach, dispossession, execution, or death dates
-    let breachDateInfo: DateInfo | null = null;
-    let dispossessionDateInfo: DateInfo | null = null;
-    let executionDateInfo: DateInfo | null = null;
-    let deathDateInfo: DateInfo | null = null;
-    
-    for (const d of dates) {
-      const eventDetails = this.inferEventForDateEx(d, facts.rawText, facts.category, facts.isAncestorDeceased);
-      if (eventDetails.type === "CONTRACT_BREACH" && !breachDateInfo) {
-        breachDateInfo = d;
-      } else if (eventDetails.type === "DISPOSSESSION" && !dispossessionDateInfo) {
-        dispossessionDateInfo = d;
-      } else if (eventDetails.type === "CONTRACT_EXECUTION" && !executionDateInfo) {
-        executionDateInfo = d;
-      } else if (eventDetails.type === "INHERITANCE_DEATH" && !deathDateInfo) {
-        deathDateInfo = d;
-      }
-    }
-    
-    if (facts.category === "SPECIFIC_PERFORMANCE") {
-      article = "Article 54";
-      period = "1 Year (as amended in 2004 for land sale contract)";
-      
-      if (breachDateInfo) {
-        accrualDate = breachDateInfo.parsedDate;
-        accrualDateStr = breachDateInfo.dateStr + " (Defendant's refusal to register)";
-      } else if (executionDateInfo) {
-        // Assume 6 months deadline if no breach date explicitly found
-        const execDate = executionDateInfo.parsedDate;
-        const deadlineDate = new Date(execDate.getTime() + 180 * 24 * 60 * 60 * 1000); // 6 months later
-        accrualDate = deadlineDate;
-        
-        const day = deadlineDate.getDate().toString().padStart(2, '0');
-        const month = (deadlineDate.getMonth() + 1).toString().padStart(2, '0');
-        const year = deadlineDate.getFullYear();
-        accrualDateStr = `${day}/${month}/${year} (Calculated deadline of 6 months from Bainapatra)`;
-      }
-      
-      if (accrualDate) {
-        const oneYearMs = 365 * 24 * 60 * 60 * 1000;
-        isBarred = (Date.now() - accrualDate.getTime()) > oneYearMs;
-      }
-    } else if (facts.category === "DECLARATION_AND_POSSESSION") {
-      const isSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
-      if (isSec9) {
-        article = "Section 9 of SRA 1877";
-        period = "6 Months";
-        if (dispossessionDateInfo) {
-          accrualDate = dispossessionDateInfo.parsedDate;
-          accrualDateStr = dispossessionDateInfo.dateStr + " (Forcible dispossession date)";
-          const sixMonthsMs = 180 * 24 * 60 * 60 * 1000;
-          isBarred = (Date.now() - accrualDate.getTime()) > sixMonthsMs;
-        }
-      } else {
-        article = "Article 142";
-        period = "12 Years";
-        if (dispossessionDateInfo) {
-          accrualDate = dispossessionDateInfo.parsedDate;
-          accrualDateStr = dispossessionDateInfo.dateStr + " (Forcible dispossession date)";
-        } else if (dates.length > 0) {
-          accrualDate = dates[0].parsedDate;
-          accrualDateStr = dates[0].dateStr + " (First recorded chronology date)";
-        }
-        
-        if (accrualDate) {
-          const twelveYearsMs = 12 * 365 * 24 * 60 * 60 * 1000;
-          isBarred = (Date.now() - accrualDate.getTime()) > twelveYearsMs;
-        }
-      }
-    } else if (facts.category === "INHERITANCE_CONSULTATION") {
-      if (facts.isAncestorDeceased) {
-        article = "Article 123 / 144";
-        period = "12 Years";
-        if (deathDateInfo) {
-          accrualDate = deathDateInfo.parsedDate;
-          accrualDateStr = deathDateInfo.dateStr + " (Demise of Abdul Karim)";
-        } else if (dates.length > 0) {
-          accrualDate = dates[0].parsedDate;
-          accrualDateStr = dates[0].dateStr + " (First recorded chronology date)";
-        } else {
-          // Fallback to the real date if no dates extracted
-          accrualDate = new Date("2026-01-15");
-          accrualDateStr = "15 January 2026 (Demise of Abdul Karim)";
-        }
-        
-        if (accrualDate) {
-          const twelveYearsMs = 12 * 365 * 24 * 60 * 60 * 1000;
-          isBarred = (Date.now() - accrualDate.getTime()) > twelveYearsMs;
-        }
-      } else {
-        article = "None (No accrued right)";
-        period = "Not running";
-        accrualDateStr = "Not triggered (Ancestor is alive)";
-        isBarred = false;
-      }
-    } else {
-      article = "Article 120";
-      period = "6 Years";
-      if (dates.length > 0) {
-        accrualDate = dates[dates.length - 1].parsedDate;
-        accrualDateStr = dates[dates.length - 1].dateStr + " (Latest date showing dispute emergence)";
-      }
-      if (accrualDate) {
-        const sixYearsMs = 6 * 365 * 24 * 60 * 60 * 1000;
-        isBarred = (Date.now() - accrualDate.getTime()) > sixYearsMs;
-      }
-    }
-    
-    let preliminaryAnalysis = "";
-    if (facts.category === "INHERITANCE_CONSULTATION") {
-      if (facts.isAncestorDeceased) {
-        if (accrualDate) {
-          const diffDays = Math.floor((Date.now() - accrualDate.getTime()) / (24 * 60 * 60 * 1000));
-          if (isBarred) {
-            preliminaryAnalysis = `The cause of action is TIME-BARRED. The partition suit was analyzed ${diffDays} days after succession opened, which exceeds the prescribed 12-year statutory period of ${period} under ${article} of the Limitation Act 1908.`;
-          } else {
-            preliminaryAnalysis = `The suit is WITHIN LIMITATION. Succession opened upon the demise of the ancestor on ${accrualDateStr} (${diffDays} days ago), which is well within the prescribed 12-year period of ${period} under ${article} of the Limitation Act 1908. Heirs hold an active, vested partition and recovery right.`;
-          }
-        } else {
-          preliminaryAnalysis = `The ancestor has died, opening succession under Muslim Personal Law (Shariat) Application Act 1937. Since no precise calendar date of death was found in the narrative, the limitation period is unverified, but falls within the standard 12-year partition window from the date of death.`;
-        }
-      } else {
-        preliminaryAnalysis = "Limitation has not commenced because no enforceable cause of action presently exists. Since the father is alive and succession has not opened, no right of inheritance has vested, and therefore no limitation period has begun to run.";
-      }
-    } else if (accrualDate) {
-      const diffDays = Math.floor((Date.now() - accrualDate.getTime()) / (24 * 60 * 60 * 1000));
-      if (isBarred) {
-        preliminaryAnalysis = `The cause of action is TIME-BARRED. The suit was analyzed ${diffDays} days after accrual, which exceeds the prescribed statutory period of ${period} under ${article} of the Limitation Act 1908.`;
-      } else {
-        preliminaryAnalysis = `The suit is WITHIN LIMITATION. The cause of action accrued ${diffDays} days ago, which is well within the prescribed period of ${period} under ${article} of the Limitation Act 1908.`;
-      }
-    } else {
-      preliminaryAnalysis = `CHRONOLOGY DEFICIT WARNING: The limitation period cannot be computed because the input fact pattern does not specify any calendar dates (such as the date of execution of the agreement or the date of refusal). Under Article 54, a specific performance suit must be filed within 1 year of the date fixed for performance, or if no such date is fixed, when the plaintiff has notice that performance is refused. Without these dates, filing timing is completely unverified. Gaps explicitly flagged: execution date, performance deadline, and refusal date are required.`;
-    }
-    
-    let timelineValidation: {
-      agreementDate: string | null;
-      refusalDate: string | null;
-      isAgreementDateExtracted: boolean;
-      isRefusalDateExtracted: boolean;
-      calculationType: "real_refusal" | "heuristic_6_months" | "missing_dates" | "other_category";
-      validationStatus: "valid" | "heuristic_applied" | "invalid_gaps";
-      explanation: string;
+  private buildHaltResponse(ctx: ExecutionContext, caseId: string, reason: string): CaseAnalysisResponse {
+    recordTrace(ctx, { layer: "SYSTEM_ERROR", description: reason, dependsOnFacts: [], dependsOnRules: [], result: "HALTED" });
+    const response: any = {
+      gateF0: { gateStatus: "HALT_CRITICAL_CONFLICT", details: reason },
+      stage0: this.buildStage0(ctx, "GENERAL_CIVIL"), stage1: { primaryDomain: "N/A", subsidiaryDomains: [], triggerFacts: [] },
+      stage2: { primaryAct: "N/A", relevantSections: [], precedents: [], citationValidationAudit: null, equityPrinciples: [] },
+      stage3: { accrualDate: "Not determinable", prescribedPeriod: "Not determinable", limitationArticle: "Not determinable", isTimeBarred: false, exceptionsOrExtensions: "Not evaluated", preliminaryAnalysis: reason, timelineValidation: { agreementDate: null, refusalDate: null, isAgreementDateExtracted: false, isRefusalDateExtracted: false, calculationType: "halt", validationStatus: "invalid_gaps", explanation: reason } },
+      stage4: { plaintiffs: [], defendants: [], joinderIssues: "N/A", locusStandiSummary: reason }, stage5: { territorial: { rule: "N/A", governingSection: "N/A", jurisdictionalFacts: "N/A" }, pecuniary: { valuation: "N/A", courtLevel: "N/A", pecuniaryLimits: "N/A", suitsValuationActNotes: "N/A" }, subjectMatter: { isExcluded: false, forum: "N/A", governingStatute: "N/A" }, objectionStrategy: "N/A" },
+      stage6: { plaintChecklist: [], groundsForRejection: [reason], writtenStatementDeemedAdmissions: "N/A", counterclaimsOrSetOff: "N/A" }, stage7: { issues: [] }, stage8: { evidenceList: [], burdenAssignments: [], statutoryPresumptions: [] }, stage9: { issueDetails: [] }, stage10: { applicablePrinciples: [], discretionaryReliefCheck: "N/A" }, stage11: { timelineProgress: [] }, stage12: { appealNodes: [] },
+      stage13: { overview: reason, reliefDecree: "HALTED", costsApportionment: "N/A", equitableBars: "N/A", executionPathway: "None until blocking condition is resolved." },
+      _security: { analyzedBy: "SYSTEM", analyzedAt: Date.now(), licenseId: "N/A", forensicHash: "PENDING_OUTPUT_HASH", engineVersion: ENGINE_MANIFEST.engineVersion, caseId },
     };
- 
-    if (facts.category === "SPECIFIC_PERFORMANCE") {
-      if (breachDateInfo) {
-        timelineValidation = {
-          agreementDate: executionDateInfo ? executionDateInfo.dateStr : null,
-          refusalDate: breachDateInfo.dateStr,
-          isAgreementDateExtracted: !!executionDateInfo,
-          isRefusalDateExtracted: true,
-          calculationType: "real_refusal",
-          validationStatus: "valid",
-          explanation: "Limitation is calculated from a real input: the explicit date of refusal/breach specified in the dispute narrative (Article 54, Column 3, Part 2: 'when the plaintiff has notice that performance is refused')."
-        };
-      } else if (executionDateInfo) {
-        timelineValidation = {
-          agreementDate: executionDateInfo.dateStr,
-          refusalDate: null,
-          isAgreementDateExtracted: true,
-          isRefusalDateExtracted: false,
-          calculationType: "heuristic_6_months",
-          validationStatus: "heuristic_applied",
-          explanation: "Limitation is derived using a 6-month fallback deadline from the agreement date because no explicit date of refusal or performance deadline was found in the narrative. Under Article 54, if no date is fixed, limitation starts from notice of refusal. Falling back to an assumed 6-month performance window is a generic heuristic; you must specify the exact date of refusal/demand in actual pleadings."
-        };
-      } else {
-        timelineValidation = {
-          agreementDate: null,
-          refusalDate: null,
-          isAgreementDateExtracted: false,
-          isRefusalDateExtracted: false,
-          calculationType: "missing_dates",
-          validationStatus: "invalid_gaps",
-          explanation: "No agreement or refusal dates were detected. Article 54 limitation calculations cannot be derived since there are no real inputs to anchor the timeline. This exposes the plaint to immediate dismissal under Order VII Rule 11 CPC."
-        };
-      }
-    } else {
-      timelineValidation = {
-        agreementDate: executionDateInfo ? executionDateInfo.dateStr : null,
-        refusalDate: breachDateInfo ? breachDateInfo.dateStr : null,
-        isAgreementDateExtracted: !!executionDateInfo,
-        isRefusalDateExtracted: !!breachDateInfo,
-        calculationType: "other_category",
-        validationStatus: facts.category === "INHERITANCE_CONSULTATION" ? "valid" : (dispossessionDateInfo ? "valid" : "heuristic_applied"),
-        explanation: facts.category === "INHERITANCE_CONSULTATION" 
-          ? (facts.isAncestorDeceased 
-              ? `Limitation calculation for inheritance partition is anchored on a real input: the explicit date of the ancestor's death (${accrualDateStr}) under Article 123/144 of the Limitation Act.`
-              : "Inheritance consultation is selected. Limitation has not commenced because succession has not opened (father is alive).")
-          : dispossessionDateInfo 
-            ? `Limitation calculation for recovery of possession is anchored on a real input: the explicit date of dispossession/ouster (${dispossessionDateInfo.dateStr}) under Article 142 of the Limitation Act.`
-            : "No explicit date of dispossession or ouster was found. The engine is relying on relative/logical chronological fallbacks, which creates vulnerability under Limitation Act rules."
-      };
-    }
-    
-    return {
-      accrualDate: accrualDateStr,
-      prescribedPeriod: period,
-      limitationArticle: article,
-      isTimeBarred: isBarred,
-      exceptionsOrExtensions: "Not applicable under Section 5 of the Limitation Act (which is generally excluded for original suits). Pleaders must plead precise facts to justify any extension under Section 14 or 19 if applicable.",
-      preliminaryAnalysis,
-      timelineValidation,
-    };
+    response._security.forensicHash = this.computeOutputHash(response);
+    return response as CaseAnalysisResponse;
   }
 
-  private generateIssues(facts: ParsedFacts): any[] {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
+  // ========================================================================
+  // SMALL UTILITIES / STRICT CALENDAR
+  // ========================================================================
 
-    const pName = facts.parties.find(p => p.side === "plaintiff")?.name || "Plaintiff";
-    const dName = facts.parties.find(p => p.side === "defendant")?.name || "Defendant";
-
-    if (isSP) {
-      return [
-        {
-          title: `Whether the suit is maintainable in its present form and under Sections 12 and 21A of the Specific Relief Act 1877`,
-          type: "Mixed (Law & Fact)",
-          burden: "Plaintiff",
-          evidence: "Plaint compliance, registered Bainapatra, treasury deposit receipt",
-          plaintiffPosition: facts.isRegisteredBainapatra && facts.isBalanceDeposited
-            ? "Suit is fully maintainable as the contract is registered and remaining purchase money is deposited."
-            : "Plaintiff asserts readiness, but lacks proof of registration and deposit.",
-          defendantPosition: "Suit is strictly barred under Section 21A SRA due to failure to register Bainapatra or deposit balance consideration.",
-          courtAnalysis: "Under Section 21A SRA, a suit for specific performance is incompetent unless the Bainapatra is registered and the balance money is deposited in court via treasury challan. Facts do not show compliance with these prerequisites.",
-          projectedFinding: facts.isRegisteredBainapatra && facts.isBalanceDeposited
-            ? "Decided in favor of Plaintiff."
-            : "Decided AGAINST Plaintiff (Fatal statutory bar under Section 21A of the Specific Relief Act 1877)."
-        },
-        {
-          title: `Whether the suit is barred by limitation under Article 54 of the Limitation Act 1908`,
-          type: "Law",
-          burden: "Defendant",
-          evidence: "Stipulated deadline of performance or refusal date, date of filing",
-          plaintiffPosition: "The suit was filed within 1 year of Defendant's refusal to register the deed.",
-          defendantPosition: "The suit is barred by limitation.",
-          courtAnalysis: "Article 54 prescribes 1 year for specific performance. If no specific dates are provided, limitation cannot be verified and is a severe triable issue.",
-          projectedFinding: "Triable Issue / Subject to proof of precise calendar dates."
-        },
-        {
-          title: `Whether there was a valid and registered Bainapatra executed between ${pName} and ${dName}`,
-          type: "Fact",
-          burden: "Plaintiff",
-          evidence: "Original registered Bainapatra, attesting witnesses, payment voucher of advance",
-          plaintiffPosition: facts.isRegisteredBainapatra
-            ? `Plaintiff executed a valid, registered Bainapatra on the recorded date and paid BDT ${facts.contractDetails.advance.toLocaleString("en-US")} in advance.`
-            : `Plaintiff executed a written Bainapatra, but has not demonstrated registration.`,
-          defendantPosition: "Denies execution of registered agreement or asserts signatures were obtained by fraud / unregistered status bars suit.",
-          courtAnalysis: facts.isRegisteredBainapatra
-            ? "The registered deed carries a strong presumption of execution under Section 60 of the Registration Act. No credible fraud shown."
-            : "The contract is unregistered. Under Section 17A of the Registration Act 1908 and Section 21A SRA, an unregistered land contract is legally inoperative for seeking specific performance.",
-          projectedFinding: facts.isRegisteredBainapatra
-            ? "Decided in favor of Plaintiff."
-            : "Decided AGAINST Plaintiff (No title interest or right of specific performance under unregistered agreement)."
-        },
-        {
-          title: `Whether the Plaintiff was always ready and willing to pay the balance consideration of BDT ${facts.contractDetails.balance.toLocaleString("en-US")}`,
-          type: "Mixed",
-          burden: "Plaintiff",
-          evidence: "Written notices demanding execution, bank challan of the balance deposit",
-          plaintiffPosition: facts.isBalanceDeposited
-            ? `Plaintiff was ready and willing at all times, and has deposited the balance of BDT ${facts.contractDetails.balance.toLocaleString("en-US")} in court.`
-            : "Plaintiff claims willingness but has not made the actual treasury deposit.",
-          defendantPosition: "Plaintiff has no funds and failed to perform obligations, and failed to make the mandatory deposit.",
-          courtAnalysis: facts.isBalanceDeposited
-            ? "Deposit of balance consideration in court under Section 21A SRA is conclusive proof of Plaintiff's continuous readiness and willingness."
-            : "Under Section 21A SRA, continuous readiness must be backed by actual treasury deposit of the remaining balance consideration. A mere pleading of 'ready and willing' is a fatal omission without the deposit.",
-          projectedFinding: facts.isBalanceDeposited
-            ? "Decided in favor of Plaintiff."
-            : "Decided AGAINST Plaintiff (Unproved readiness due to lack of treasury deposit)."
-        }
-      ];
-    } else if (isDP) {
-      const hasSec9 = facts.rawText.toLowerCase().includes("section 9") || facts.rawText.toLowerCase().includes("sec 9");
-      if (hasSec9) {
-        return [
-          {
-            title: "Whether the suit is maintainable under Section 9 of the Specific Relief Act 1877",
-            type: "Law",
-            burden: "Plaintiff",
-            evidence: "Pleading showing summary dispossession",
-            plaintiffPosition: "Suit is maintainable as Plaintiff was dispossessed without consent and filed within 6 months.",
-            defendantPosition: "Suit is barred; title is with Defendant.",
-            courtAnalysis: "Section 9 deals purely with possession. Title is not evaluated. Summary ouster is maintainable.",
-            projectedFinding: "Decided in favor of Plaintiff."
-          },
-          {
-            title: `Whether the Plaintiff was forcefully dispossessed from the suit land by ${dName} within 6 months prior to the filing of the suit`,
-            type: "Fact",
-            burden: "Plaintiff",
-            evidence: "Oral testimonies of boundary neighbors, local inspection report, police diary",
-            plaintiffPosition: `Defendant dispossessed Plaintiff on the recorded date without consent and built a boundary fence.`,
-            defendantPosition: "Defendant was always in peaceful possession.",
-            courtAnalysis: "Admissible evidence and witness testimonies show Plaintiff was in physical possession and dispossessed within 6 months.",
-            projectedFinding: "Decided in favor of Plaintiff."
-          }
-        ];
-      } else {
-        return [
-          {
-            title: `Whether the suit is maintainable in its present form under Sections 8 and 42 of the Specific Relief Act 1877`,
-            type: "Law",
-            burden: "Plaintiff",
-            evidence: "Court fees compliance, pleading cause of action",
-            plaintiffPosition: "Suit is fully maintainable to recover land based on absolute title.",
-            defendantPosition: "Suit is barred by defective pleadings and form of prayers.",
-            courtAnalysis: "Plaintiff holds registered deed and seeks both declaration of title and recovery of possession (consequential relief), satisfying Section 42.",
-            projectedFinding: "Decided in favor of Plaintiff."
-          },
-          {
-            title: `Whether the suit is barred by limitation under Article 142 of the Limitation Act 1908`,
-            type: "Law",
-            burden: "Defendant",
-            evidence: "Exact date of dispossession, date of filing",
-            plaintiffPosition: "The suit was filed within 12 years of the ouster.",
-            defendantPosition: "Defendant is in adverse possession for over 12 years, perfecting title.",
-            courtAnalysis: "Article 142 gives 12 years from dispossession. Based on the facts, the filing is within 12 years.",
-            projectedFinding: "Decided in favor of Plaintiff."
-          },
-          {
-            title: `Whether the Plaintiff has absolute title to the suit land by virtue of registered deeds and mutation`,
-            type: "Mixed",
-            burden: "Plaintiff",
-            evidence: "Registered Sale Deed, Mutation Khatian, DCR, and rent receipts (dakhilas)",
-            plaintiffPosition: "Plaintiff acquired absolute legal title and is recorded as the owner in the government registers.",
-            defendantPosition: "Plaintiff's deed is fraudulent or non-operative.",
-            courtAnalysis: "Plaintiff's title is fully supported by registered instruments which enjoy statutory presumptions.",
-            projectedFinding: "Decided in favor of Plaintiff."
-          },
-          {
-            title: `Whether ${dName} is a trespasser who wrongfully dispossessed the Plaintiff and built illegal structures`,
-            type: "Fact",
-            burden: "Plaintiff",
-            evidence: "Witness statements, local surveyor report",
-            plaintiffPosition: "Defendant has no title deed and is a trespasser who dispossessed the Plaintiff.",
-            defendantPosition: "Defendant is in lawful possession.",
-            courtAnalysis: "Defendant failed to exhibit any registered transfer deed or legal license to hold the land.",
-            projectedFinding: "Decided in favor of Plaintiff."
-          }
-        ];
-      }
-    } else if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        return [
-          {
-            title: "Whether the suit is maintainable in its present form under Section 9 of CPC and Section 42 of the Specific Relief Act 1877",
-            type: "Law",
-            burden: "Plaintiff",
-            evidence: "Proof of pedigree relationship and death of ancestor",
-            plaintiffPosition: "The partition and declaration suit is fully maintainable. Succession opened automatically upon the demise of Abdul Karim on 15 January 2026 under the Muslim Personal Law (Shariat) Application Act 1937.",
-            defendantPosition: "The suit is barred by prior disowning affidavit, and exclusive land mutation in the Defendant's name.",
-            courtAnalysis: "Under Muslim law, succession opens immediately and automatically at the moment of death of the ancestor. A pre-death unilateral disowning affidavit or newspaper notice has zero legal effect to disinherit natural heirs. Since the ancestor has passed away, the heirs have a vested, present cause of action to seek partition and title declarations. The suit is fully maintainable.",
-            projectedFinding: "Decided in favor of Plaintiffs (Maintainable, full civil cause of action exists)."
-          },
-          {
-            title: "Whether the Plaintiffs and Defendant are the lawful legal heirs of the deceased Abdul Karim, and what are their respective Shariat-mandated shares in the suit property",
-            type: "Mixed (Law & Fact)",
-            burden: "Plaintiff",
-            evidence: "Genealogical pedigree tree, birth certificates, death certificate of Abdul Karim",
-            plaintiffPosition: "Plaintiffs (two sons) and Defendant (daughter Fatema) are Class I Quranic/agnatic heirs. Under Shariat law, the ratio of shares among male and female children is 2:1.",
-            defendantPosition: "Denies that the brothers hold any shares based on their father's disowning affidavit.",
-            courtAnalysis: "Under Muslim Shariat Law, natural lines of inheritance are immutable. Upon Abdul Karim's death, his property vested immediately in his children in a 2:2:1 ratio (40% or 2/5ths for each son, and 20% or 1/5th for the daughter). The disowning affidavit has no legal force. The heirs' shares are declared accordingly.",
-            projectedFinding: "Decided in favor of Plaintiffs, declaring each son's share as 2/5 (40%) and the daughter's share as 1/5 (20%)."
-          },
-          {
-            title: "Whether the exclusive mutation of the suit property in the name of Defendant Fatema in the Upazila Land Office is legal, valid, and binding upon the Plaintiffs",
-            type: "Fact",
-            burden: "Defendant",
-            evidence: "Mutation khatian, DCR, and revenue rent receipts",
-            plaintiffPosition: "Exclusive mutation in Fatema's name is illegal. A mutation khatian does not create title or extinguish the inherited shares of other co-sharer heirs.",
-            defendantPosition: "The mutation is legal and proves exclusive ownership and possession of the suit property.",
-            courtAnalysis: "It is settled law in Bangladesh (cf. 39 DLR AD 162) that mutation entries are for land revenue collection purposes only and do not create or extinguish title. An exclusive mutation in favor of one co-sharer enures to the benefit of all co-sharers. Fatema's exclusive mutation cannot divest the brothers of their lawful title.",
-            projectedFinding: "Decided in favor of Plaintiffs (Exclusive mutation is not binding on co-heirs' inherited titles)."
-          },
-          {
-            title: "Whether the suit property is joint ancestral land liable to be partitioned by metes and bounds under the Partition Act 1893 and Order XX Rule 18 CPC",
-            type: "Fact",
-            burden: "Plaintiff",
-            evidence: "Original CS/SA/RS khatians of the ancestor, demand notice of partition, and local inspection report",
-            plaintiffPosition: "The properties are joint and undivided family land. Plaintiffs have demanded partition but Defendant has refused. Separate allotment is necessary for independent enjoyment.",
-            defendantPosition: "The properties are not joint family property, or physical division is impracticable.",
-            courtAnalysis: "The suit land was owned absolutely by Abdul Karim and remains undivided. As co-sharers by inheritance, the Plaintiffs have an absolute, vested legal right to seek partition by metes and bounds. A preliminary decree is granted.",
-            projectedFinding: "Decided in favor of Plaintiffs (Granting preliminary decree for partition)."
-          },
-          {
-            title: "Whether the Plaintiffs are entitled to temporary and permanent injunctions (Order XXXIX Rules 1 & 2 CPC) restraining Defendant Fatema from alienating or creating any third-party interest in the undivided joint land",
-            type: "Mixed (Law & Fact)",
-            burden: "Plaintiff",
-            evidence: "Proof of Defendant negotiating with third parties, draft agreement to sell, witness testimonies of dispute",
-            plaintiffPosition: "Defendant Fatema is negotiating to sell specific physical portions of the undivided ancestral land to third parties, which would create third-party interests, cause irreparable loss, and lead to multiplicity of suits.",
-            defendantPosition: "Denies attempting to sell or claims absolute right of transfer based on exclusive mutation.",
-            courtAnalysis: "An undivided co-sharer is legally prohibited from alienating specific physical portions of undivided joint land to third parties before final partition. Creating third-party interests would cause irreversible injury and frustrate any partition decree. A temporary and permanent injunction is fully warranted to preserve the status quo.",
-            projectedFinding: "Decided in favor of Plaintiffs (Granting temporary and perpetual injunction restraining alienation)."
-          }
-        ];
-      } else {
-        return [
-          {
-            title: "Whether the suit is maintainable in its present form under Section 9 CPC and Section 42 of the Specific Relief Act 1877",
-            type: "Law",
-            burden: "Plaintiff",
-            evidence: "None can be produced (premature suit)",
-            plaintiffPosition: "The sons assert they have an interest in their father's property and that his newspaper disowning notice has created a cloud on their future rights.",
-            defendantPosition: "The suit is legally incompetent. The father is alive and succession has not opened. There is no justiciable civil cause of action.",
-            courtAnalysis: "A declaratory suit requires a present vested legal character or right to property under Section 42 of the Specific Relief Act 1877. A son has no vested right in his parent's estate while the parent is alive, only a mere expectation of succession (spes successionis), which cannot be declared by a court of law. The suit fails at the threshold.",
-            projectedFinding: "Decided AGAINST Plaintiff (Plaint rejected under Order VII Rule 11 CPC)."
-          },
-          {
-            title: "Whether any actionable legal injury has been caused to the Plaintiffs by the Defendant's unilateral affidavit or newspaper 'disowning' declaration",
-            type: "Mixed",
-            burden: "Plaintiff",
-            evidence: "Copy of disowning affidavit or newspaper notice",
-            plaintiffPosition: "The disowning declaration publicly castigated the sons and threatened to deprive them of their inheritance.",
-            defendantPosition: "The disowning notice is a declaration of parental displeasure, carries no legal weight to disinherit, and creates no present civil liability.",
-            courtAnalysis: "Under Muslim law, a parent cannot legally disinherit their natural heirs through a disowning notice or affidavit. The natural lines of succession will operate automatically under the Muslim Personal Law (Shariat) Application Act 1937 upon the ancestor's death. Thus, the notice has zero legal effect, creates no legal injury, and cannot form the basis of a civil cause of action.",
-            projectedFinding: "Decided AGAINST Plaintiff (The notice is legally ineffective and non-actionable)."
-          }
-        ];
-      }
-    } else {
-      return [
-        {
-          title: "Whether the suit is maintainable",
-          type: "Law",
-          burden: "Plaintiff",
-          evidence: "CPC compliance",
-          plaintiffPosition: "Suit is maintainable.",
-          defendantPosition: "Suit is barred.",
-          courtAnalysis: "The suit falls under Section 9 CPC and is fully maintainable.",
-          projectedFinding: "Decided in favor of Plaintiff."
-        }
-      ];
-    }
+  private resolveClaimType(rawText: string, focusDomain: string): ClaimType {
+    if (["SPECIFIC_PERFORMANCE", "DECLARATION_AND_POSSESSION", "INHERITANCE_CONSULTATION", "GENERAL_CIVIL"].includes(focusDomain)) return focusDomain as ClaimType;
+    const text = this.normalizeText(rawText);
+    const scores: Array<[ClaimType, number]> = [
+      ["SPECIFIC_PERFORMANCE", this.keywordScore(text, ["specific performance", "bainapatra", "agreement to sell", "sale agreement"])],
+      ["DECLARATION_AND_POSSESSION", this.keywordScore(text, ["declaration", "possession", "dispossession", "encroachment"])],
+      ["INHERITANCE_CONSULTATION", this.keywordScore(text, ["inheritance", "heir", "succession", "ancestor", "partition", "deceased"])],
+    ];
+    scores.sort((a, b) => b[1] - a[1]);
+    return scores[0][1] > 0 ? scores[0][0] : "GENERAL_CIVIL";
   }
 
-  private classifyEvidence(facts: ParsedFacts): any[] {
-    const evidence: any[] = [];
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
+  private keywordScore(text: string, keywords: string[]): number { return keywords.reduce((n, k) => n + (text.includes(k) ? 1 : 0), 0); }
+  private normalizeText(text: string): string { return text.toLowerCase().replace(/\s+/g, " ").trim(); }
 
-    if (isSP) {
-      evidence.push(
-        {
-          item: facts.isRegisteredBainapatra
-            ? "Original Registered Bainapatra (Agreement to Sell)"
-            : "Original Written Bainapatra (Agreement to Sell - WARNING: UNREGISTERED)",
-          source: "Plaintiff",
-          type: "Documentary (Primary)",
-          governingSection: "Section 61 and 62 of the Evidence Act 1872",
-          admissibilityChallenge: facts.isRegisteredBainapatra
-            ? "Admissible — Registered document carrying high statutory execution weight under Section 60 of the Registration Act."
-            : "FATAL DEFICIENCY — Admissible as a private document, but legally legally ineffective for specific performance due to Section 17A of the Registration Act and Section 21A SRA."
-        },
-        {
-          item: "Bank Challan / Treasury Deposit Receipt (Remaining Balance)",
-          source: "Pleader's Court Filings",
-          type: "Documentary (Certified)",
-          governingSection: "Section 74 of the Evidence Act 1872",
-          admissibilityChallenge: facts.isBalanceDeposited
-            ? "Admissible — Proof of statutory deposit of the remaining consideration in the government treasury under Section 21A SRA."
-            : "MISSING — No treasury deposit receipt is mentioned in the facts. Under Section 21A, lack of actual treasury deposit of remaining balance is a fatal statutory bar."
-        },
-        {
-          item: "Written Legal Notices & Postal Receipts",
-          source: "Plaintiff",
-          type: "Documentary",
-          governingSection: "Section 114(f) of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — Proves that Plaintiff demanded performance of contract and Defendant had notice of willingness."
-        }
-      );
-    } else if (isDP) {
-      evidence.push(
-        {
-          item: "Registered Saf Kabala (Sale Deed) of Plaintiff",
-          source: "Plaintiff",
-          type: "Documentary (Primary)",
-          governingSection: "Section 62 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — Publicly registered transfer instrument proving ownership conveyance."
-        },
-        {
-          item: "Certified Mutation Khatian & DCR",
-          source: "Upazila Land Office",
-          type: "Documentary (Secondary / Public)",
-          governingSection: "Section 74 & 77 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — Certified copy of public revenue record proving mutation in Plaintiff's name."
-        },
-        {
-          item: "Land Development Tax Receipts (Dakhilas)",
-          source: "Union Land Office",
-          type: "Documentary",
-          governingSection: "Section 35 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — Entry in public book proving continuous tax payments by Plaintiff."
-        },
-        {
-          item: "Oral testimony of local boundary neighbors",
-          source: "Plaintiff",
-          type: "Oral Evidence",
-          governingSection: "Section 59 & 60 of the Evidence Act 1872",
-          admissibilityChallenge: "Subject to cross-examination; corroborates physical ouster and fence erection."
-        }
-      );
-    } else if (facts.category === "INHERITANCE_CONSULTATION") {
-      evidence.push(
-        {
-          item: "Affidavit or Newspaper Notice disowning the sons",
-          source: "Defendant (Father)",
-          type: "Documentary",
-          governingSection: "Section 61 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible as proof of parent's declaration of displeasure, but legally irrelevant to title ownership or disinheriting heirs under Muslim Law."
-        },
-        {
-          item: "Title Deeds / Land Registry records of Father's properties",
-          source: "Sub-Registry / Father",
-          type: "Documentary",
-          governingSection: "Section 62 of the Evidence Act 1872",
-          admissibilityChallenge: "Admissible — confirms the father holds absolute title and dominion during his lifetime, reinforcing that no shares have vested in his children."
-        }
-      );
-    } else {
-      evidence.push({
-        item: "Oral and Pleading assertions",
-        source: "Both Parties",
-        type: "Oral",
-        governingSection: "Section 60 Evidence Act",
-        admissibilityChallenge: "Subject to standard trial rules."
-      });
-    }
-
-    return evidence;
+  private parseMoney(value: string): number | null {
+    const n = Number(value.replace(/(?:BDT|Tk\.?|Taka)/gi, "").replace(/,/g, "").trim());
+    return Number.isFinite(n) ? n : null;
   }
 
-  private assignBurdens(facts: ParsedFacts): string[] {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-    const pName = facts.parties.find(p => p.side === "plaintiff")?.name || "Plaintiff";
-    const dName = facts.parties.find(p => p.side === "defendant")?.name || "Defendant";
-
-    if (isSP) {
-      return [
-        `${pName} bears the burden of proving valid execution and registration of Bainapatra, payment of advance, and readiness (Section 101 Evidence Act).`,
-        `${dName} bears the burden of proving any assertions of fraud, coercion, or lack of consideration (Section 102 Evidence Act).`
-      ];
-    } else if (isInheritance) {
-      return [
-        `${pName} (the sons) bear the absolute burden of establishing that they possess a present, vested legal character or interest in the suit properties, which is impossible during the ancestor's lifetime (Section 101 Evidence Act).`,
-        `${dName} (the father) bears no burden to defend his absolute title, but has the burden to show that the disowning notice was an exercise of his personal parental discretion, not an actionable legal injury (Section 102 Evidence Act).`
-      ];
-    } else {
-      return [
-        `${pName} bears the burden of proving absolute title chain, mutation, and the fact/date of dispossession (Section 101 Evidence Act).`,
-        `${dName} bears the burden of proving adverse possession or any independent title claim (Section 102 Evidence Act).`
-      ];
-    }
+  private isStrictDate(value: string): boolean { return this.parseStrictDate(value) !== null; }
+  private parseStrictDate(value: string): Date | null {
+    const m = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/.exec(value.trim());
+    if (!m) return null;
+    let year = Number(m[3]); if (year < 100) year += year >= 50 ? 1900 : 2000;
+    const month = Number(m[2]), day = Number(m[1]);
+    if (month < 1 || month > 12 || day < 1) return null;
+    const days = [31, this.isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (day > days[month - 1]) return null;
+    return new Date(Date.UTC(year, month - 1, day));
   }
-
-  private findPresumptions(facts: ParsedFacts): any[] {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    if (isSP) {
-      return [
-        {
-          statuteSection: "Section 60 of the Registration Act 1908",
-          presumptionStyle: "Shall presume valid execution",
-          effectOnCase: facts.isRegisteredBainapatra
-            ? "The Court will presume the Bainapatra was validly executed once the certificate of registration is exhibited."
-            : "No presumption. The Bainapatra is unregistered."
-        },
-        {
-          statuteSection: "Section 114 of the Evidence Act 1872",
-          presumptionStyle: "May presume course of business",
-          effectOnCase: "The Court will presume legal notices sent by registered post reached the Defendant in due course."
-        }
-      ];
-    } else if (isInheritance) {
-      return [
-        {
-          statuteSection: "Section 114 of the Evidence Act 1872",
-          presumptionStyle: "May presume absolute ownership from title deeds",
-          effectOnCase: "The Court will presume that a living person recorded on valid, uncancelled registered title deeds retains absolute and exclusive power of disposal over their property."
-        },
-        {
-          statuteSection: "Muslim Personal Law / Shariat Presumptions",
-          presumptionStyle: "Shall presume no disinheritance by disowning notice",
-          effectOnCase: "Under Muslim law, there is a strong presumption that all natural heirs retain their legal right of succession upon the death of the ancestor. A disowning notice cannot legally override Shariat-mandated inheritance shares."
-        }
-      ];
-    } else {
-      return [
-        {
-          statuteSection: "Section 114 of the Evidence Act 1872",
-          presumptionStyle: "May presume ownership from possession",
-          effectOnCase: "The Court will presume the recorded title holder is the lawful possessor unless rebutted."
-        },
-        {
-          statuteSection: "Section 103A of the State Acquisition and Tenancy Act 1950",
-          presumptionStyle: "Shall presume correctness of Khatian",
-          effectOnCase: "The certified Mutation Khatian is presumed to be correct, placing the burden of proving incorrectness on the Defendant."
-        }
-      ];
-    }
-  }
-
-  private extractAdmittedFacts(text: string, category: string, details: any, isAncestorDeceased?: boolean): string[] {
-    const admitted: string[] = [];
-    const isSP = category === "SPECIFIC_PERFORMANCE";
-    const isInheritance = category === "INHERITANCE_CONSULTATION";
-
-    if (isSP) {
-      admitted.push("Execution of a written document titled 'Bainapatra' (Agreement to Sell) between the parties.");
-      admitted.push(`Payment and receipt of BDT ${details.advance.toLocaleString("en-US")} as advance/earnest money by the Defendant.`);
-      admitted.push("Mutual identification of the subject land parcel described in the agreement.");
-    } else if (isInheritance) {
-      if (isAncestorDeceased) {
-        admitted.push("Biological relationship of the parties as the lawful children of late Abdul Karim.");
-        admitted.push("Demise of Abdul Karim leaving immovable family property.");
-        admitted.push("Execution of a disowning affidavit and newspaper publication by the ancestor during his lifetime.");
-        admitted.push("Defendant Fatema currently holds recorded mutation in the Upazila Land Office.");
-      } else {
-        admitted.push("Biological relationship between Abdul Karim (father) and the two sons.");
-        admitted.push("Execution of the affidavit and publication of the newspaper notice by the living father.");
-        admitted.push("Father is currently alive and in possession of the self-acquired property.");
-      }
-    } else {
-      admitted.push("Plaintiff holds registered title deed documentation.");
-      admitted.push("Defendant is currently in physical possession/occupation of the disputed land parcel.");
-    }
-    return admitted;
-  }
-
-  private extractDisputedFacts(text: string, category: string, isAncestorDeceased?: boolean): string[] {
-    const disputed: string[] = [];
-    const isSP = category === "SPECIFIC_PERFORMANCE";
-    const isInheritance = category === "INHERITANCE_CONSULTATION";
-
-    if (isSP) {
-      disputed.push("Whether the Defendant received written notice demanding registration of the final sale deed.");
-      disputed.push("Whether the Bainapatra was registered before the Sub-Registrar under statutory formalities.");
-      disputed.push("Whether physical possession of the suit land was delivered to Plaintiff at contract execution.");
-      disputed.push("Whether Plaintiff tendered or deposited the balance consideration of BDT " + (detailsSummary(text)));
-    } else if (isInheritance) {
-      if (isAncestorDeceased) {
-        disputed.push("Whether the ancestral property remains joint and undivided among the heirs.");
-        disputed.push("Whether Defendant Fatema is negotiating to sell specific physical portions of the undivided estate to third parties.");
-        disputed.push("Whether amicable partition was formally requested and refused prior to litigation.");
-        disputed.push("The exact list and physical boundaries of all immovable properties left by the deceased.");
-      } else {
-        disputed.push("Whether the disowning publication caused actionable damage or civil injury.");
-        disputed.push("Whether the sons contributed financially to the acquisition or development of the father's properties.");
-      }
-    } else {
-      disputed.push("The exact date and physical manner of the alleged dispossession/fencing by Defendant.");
-      disputed.push("Whether the Defendant entered the land with permission, under an independent claim, or forcefully.");
-      disputed.push("The exact boundary line demarcating Plaintiff's title and Defendant's occupation.");
-    }
-    return disputed;
-  }
-
-  private extractUnknownFacts(facts: ParsedFacts): Array<{
-    category: string;
-    factDescription: string;
-    status: "MISSING_FROM_RECORD" | "AMBIGUOUS_ASSERTION" | "UNVERIFIED_ORAL_CLAIM";
-    recordSignificance: string;
-  }> {
-    const list: Array<{
-      category: string;
-      factDescription: string;
-      status: "MISSING_FROM_RECORD" | "AMBIGUOUS_ASSERTION" | "UNVERIFIED_ORAL_CLAIM";
-      recordSignificance: string;
-    }> = [];
-
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    if (isSP) {
-      if (facts.isRegisteredBainapatra === "unspecified") {
-        list.push({
-          category: "Registration & Formalities",
-          factDescription: "Whether the written Bainapatra was formally registered before the Sub-Registrar or executed as an unregistered private writing.",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "The factual record does not provide Sub-Registry volume/page numbers or a registration endorsement."
-        });
-      } else if (facts.isRegisteredBainapatra === false) {
-        list.push({
-          category: "Registration & Formalities",
-          factDescription: "Factual status confirms document is an unregistered private writing; whether any certified notary endorsement exists is unstated.",
-          status: "UNVERIFIED_ORAL_CLAIM",
-          recordSignificance: "Private contract without public registration endorsement."
-        });
-      }
-
-      if (facts.isBalanceDeposited === "unspecified") {
-        list.push({
-          category: "Consideration & Treasury Deposit",
-          factDescription: "Whether the remaining balance consideration (BDT " + facts.contractDetails.balance.toLocaleString("en-US") + ") was tendered via bank draft, treasury challan, or remains in purchaser's custody.",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "No bank receipt or treasury deposit challan is referenced in the factual narrative."
-        });
-      }
-
-      const hasBreachDate = facts.dates.some(d => d.event.toLowerCase().includes("refusal") || d.event.toLowerCase().includes("breach"));
-      if (!hasBreachDate) {
-        list.push({
-          category: "Chronology & Demand Precision",
-          factDescription: "Exact calendar date when the Plaintiff formally tendered balance consideration or when Defendant communicated refusal.",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "Factual record omits calendar dates for verbal demand and subsequent refusal."
-        });
-      }
-
-      list.push({
-        category: "Property Cadastral Identification",
-        factDescription: "Specific CS/SA/RS khatian numbers, plot/dag numbers, and boundary mauza sheet coordinates for the contract land.",
-        status: "MISSING_FROM_RECORD",
-        recordSignificance: "Dispute narrative specifies land area/value but lacks formal cadastral schedule descriptions."
-      });
-
-      list.push({
-        category: "Physical Possession Status",
-        factDescription: "Whether physical possession of the land was delivered to the purchaser at signing or remains with the vendor.",
-        status: "AMBIGUOUS_ASSERTION",
-        recordSignificance: "Pleadings narrative is silent on current actual physical occupancy and cultivation."
-      });
-    } else if (isDP) {
-      if (facts.plaintiffHasRegisteredTitle === "unspecified") {
-        list.push({
-          category: "Title & Conveyance Chain",
-          factDescription: "Certified particulars of the registered Saf Kabala deed (volume number, deed number, registration year).",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "The narrative asserts ownership without citing deed registration registry numbers."
-        });
-      }
-
-      if (facts.dispossessionProven === "unspecified") {
-        list.push({
-          category: "Dispossession & Ouster Fact",
-          factDescription: "Exact calendar date, hour, and physical mechanism of alleged eviction and fence erection.",
-          status: "AMBIGUOUS_ASSERTION",
-          recordSignificance: "Record relies on general assertions without police general diary (GD) or local demarcation report."
-        });
-      }
-
-      list.push({
-        category: "Cadastral Survey & Mutation Records",
-        factDescription: "Mutation Khatian, DCR number, and latest Land Development Tax (Dakhila) receipt dates.",
-        status: "MISSING_FROM_RECORD",
-        recordSignificance: "Upazila Land Office mutation records are asserted but specific revenue receipts are not catalogued."
-      });
-
-      list.push({
-        category: "Defendant Occupation Origin",
-        factDescription: "Factual basis of Defendant's entry (alleged oral permission, disputed tenancy, or forceful entry).",
-        status: "UNVERIFIED_ORAL_CLAIM",
-        recordSignificance: "Defendant's version of how physical occupation commenced is unstated in the factual summary."
-      });
-    } else if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        list.push({
-          category: "Demise & Death Certification",
-          factDescription: "Documentary proof of death (Municipal / Union Parishad Death Certificate, registry entry number).",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "Date of death is stated in narrative, but formal death registration certificate is omitted."
-        });
-
-        list.push({
-          category: "Pedigree & Heirship Verification (Waris)",
-          factDescription: "Certified Warisan Sanad / Legal Heirship Certificate establishing complete genealogy.",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "Factual record does not verify if there are any other surviving spouses, pre-deceased heirs, or daughters."
-        });
-
-        list.push({
-          category: "Mutation Record Proceedings",
-          factDescription: "Certified records of the Namjari Miss Case through which exclusive mutation was granted to Defendant.",
-          status: "MISSING_FROM_RECORD",
-          recordSignificance: "The factual record states exclusive mutation occurred, but the case number and notice service proof are omitted."
-        });
-
-        list.push({
-          category: "Estate Schedule & Demarcations",
-          factDescription: "Complete schedule of all ancestral properties (mouza, khatian, dag, total area) left by the deceased.",
-          status: "AMBIGUOUS_ASSERTION",
-          recordSignificance: "The exact land parcels forming the estate corpus require a comprehensive schedule of partition."
-        });
-      } else {
-        list.push({
-          category: "Ancestor Living Status",
-          factDescription: "Verification of ancestor's current status, physical custody of original title deeds, and testamentary documents.",
-          status: "AMBIGUOUS_ASSERTION",
-          recordSignificance: "Dispute centers on statements made during ancestor's lifetime without verification of underlying title deeds."
-        });
-
-        list.push({
-          category: "Genealogy & Pedigree Confirmation",
-          factDescription: "Certified birth records and national identification confirming father-son relationship.",
-          status: "UNVERIFIED_ORAL_CLAIM",
-          recordSignificance: "Relationship is asserted in narrative, but official family registry records are not appended."
-        });
-      }
-    } else {
-      list.push({
-        category: "Chronology & Dates",
-        factDescription: "Exact calendar dates for the sequence of transactions and emergence of dispute.",
-        status: "MISSING_FROM_RECORD",
-        recordSignificance: "Narrative lacks specific day/month/year timestamps."
-      });
-      list.push({
-        category: "Evidentiary Documents",
-        factDescription: "List of primary written instruments, correspondence, or revenue records.",
-        status: "MISSING_FROM_RECORD",
-        recordSignificance: "Record relies on summary factual statements without document annexures."
-      });
-    }
-
-    return list;
-  }
-
-  private generateFactualSummary(facts: ParsedFacts): string {
-    const isSP = facts.category === "SPECIFIC_PERFORMANCE";
-    const isDP = facts.category === "DECLARATION_AND_POSSESSION";
-    const isInheritance = facts.category === "INHERITANCE_CONSULTATION";
-
-    if (isSP) {
-      return `The dispute arises from a written agreement to sell (Bainapatra) concerning immovable property for a total consideration of BDT ${facts.contractDetails.total.toLocaleString("en-US")}, with BDT ${facts.contractDetails.advance.toLocaleString("en-US")} acknowledged as advance payment. The parties contest whether performance was properly demanded, whether registration formalities were completed, and whether balance consideration was tendered.`;
-    } else if (isDP) {
-      return `The dispute involves a parcel of land where the Plaintiff claims ownership through registered deeds and revenue records, while the Defendant is in physical occupation and is asserted to have erected boundary fencing without consent.`;
-    } else if (isInheritance) {
-      if (facts.isAncestorDeceased) {
-        return `The dispute concerns the estate of late Abdul Karim, who died intestate leaving two sons and one daughter. Prior to his demise, an affidavit and newspaper notice disowning the sons were published. Following his death, the daughter obtained exclusive revenue mutation, while the sons demanded amicable partition and distribution of their inherited shares.`;
-      } else {
-        return `The dispute arises from a living father (Abdul Karim) executing an affidavit and publishing a newspaper notice disowning his two sons regarding his self-acquired property during his lifetime.`;
-      }
-    } else {
-      return `The factual record outlines a civil dispute between the parties concerning property rights and possession.`;
-    }
-  }
-
-  private extractQuantumFacts(text: string, category: string, details: any): string[] {
-    const isSP = category === "SPECIFIC_PERFORMANCE";
-    if (isSP) {
-      return [
-        `Total agreed consideration: BDT ${details.total.toLocaleString("en-US")}`,
-        `Advance paid under Bainapatra: BDT ${details.advance.toLocaleString("en-US")}`,
-        `Remaining balance consideration: BDT ${details.balance.toLocaleString("en-US")}`
-      ];
-    } else {
-      const match = text.match(/(\d+)\s*decimals/i);
-      const decimals = match ? match[1] : "Disputed";
-      return [
-        `Subject matter: ${decimals} decimals of land`,
-        "Claimed possession period: Current disputed occupation"
-      ];
-    }
-  }
-
-  private extractTriggers(text: string, category: string, details: any): any[] {
-    const isSP = category === "SPECIFIC_PERFORMANCE";
-    if (isSP) {
-      return [
-        { domain: "Contract Law", fact: "Written agreement (Bainapatra)", trigger: "Section 2(h) of the Contract Act 1872 & Section 54 of the Transfer of Property Act 1882" },
-        { domain: "Registration Law", fact: "Mandatory registration", trigger: "Section 17A of the Registration Act 1908" },
-        { domain: "Specific Relief", fact: "Mandatory Treasury Deposit", trigger: "Section 21A of the Specific Relief Act 1877" }
-      ];
-    } else {
-      return [
-        { domain: "Specific Relief", fact: "Title ownership & Dispossession", trigger: "Section 8 and 42 of the Specific Relief Act 1877" },
-        { domain: "Civil Law", fact: "Forceful trespass and fence", trigger: "Order XXVI Rule 9 CPC for local inspection of encroachment" }
-      ];
-    }
-  }
-}
-
-function detailsSummary(text: string): string {
-  const match = text.match(/(\d+[\d,]*)\s*(?:taka|bdt|lac|crore)/i);
-  return match ? match[0] : "the stipulated remaining sum";
-}
-
-// ─── PARSED FACTS INTERFACE ───
-interface ParsedFacts {
-  gateF0?: FactConsistencyGateOutput;
-  rawText: string;
-  dates: Array<{ date: string; event: string; parties: string; statutorySignificance?: string; factualSource?: string }>;
-  parties: ParsedParty[];
-  keywords: string[];
-  admitted: string[];
-  disputed: string[];
-  quantum: string[];
-  triggers: Array<{ domain: string; fact: string; trigger: string }>;
-  primarySubject: string;
-  location?: string;
-  category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION";
-  contractDetails: { total: number; advance: number; balance: number; isUsingDefaultAmounts?: boolean };
-  isRegisteredBainapatra: boolean | "unspecified";
-  isBalanceDeposited: boolean | "unspecified";
-  plaintiffHasRegisteredTitle: boolean | "unspecified";
-  dispossessionProven: boolean | "unspecified";
-  isAncestorDeceased: boolean;
-}
-
-interface ParsedParty {
-  name: string;
-  side: "plaintiff" | "defendant";
-  identity: string;
-  capacity: string;
-  causeOfAction?: string;
-  liability?: string;
-}
-
-interface DateInfo {
-  dateStr: string;
-  parsedDate: Date;
-  index: number;
+  private isLeapYear(year: number): boolean { return year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0); }
+  private strictDateTimestamp(value: string | null): number { const d = value ? this.parseStrictDate(value) : null; return d ? d.getTime() : Number.MAX_SAFE_INTEGER; }
+  private getLocationDescription(ctx: ExecutionContext): string { const l = this.getFacts(ctx, "Property", "Location"); return l.length ? l.map((x) => String(x.normalizedValue ?? x.object ?? "UNKNOWN")).join("; ") : "Location UNKNOWN"; }
+  private classifyDomain(ctx: ExecutionContext, claimType: ClaimType): any { return { primaryDomain: claimType === "SPECIFIC_PERFORMANCE" ? "Specific Performance" : claimType === "DECLARATION_AND_POSSESSION" ? "Declaration & Possession" : claimType === "INHERITANCE_CONSULTATION" ? "Partition & Succession" : "General Civil", subsidiaryDomains: [], triggerFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ domain: f.subject, fact: f.proposition, trigger: f.predicate })) }; }
 }
