@@ -1871,6 +1871,7 @@ export class BCCAAEngine {
     return candidates;
   }
 
+  private detectAssertionContext(
     clause: string,
   ): { type: AssertionType; polarity: AssertionPolarity } {
     if (
@@ -2181,6 +2182,8 @@ export class BCCAAEngine {
     return "OTHER";
   }
 
+  private evaluateFact(
+    ctx: ExecutionContext,
     subject: string,
     predicate: string,
     object: string | null,
