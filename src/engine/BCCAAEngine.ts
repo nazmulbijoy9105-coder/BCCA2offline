@@ -3737,19 +3737,19 @@ export class BCCAAEngine {
     return match?.eventDate ?? null;
   }
 
-function getConflictModeFromFacts(
-  ctx: ExecutionContext,
-  subject: string,
-  predicate: string,
-): PredicateConflictMode {
-  return getConflictMode(ctx, subject, predicate);
-}
-
-function rp_authorityIds(rule: LegalRule): string[] {
-  const ids: string[] = [];
-  for (const p of rule.predicates) {
-    if (p.authorityIds) ids.push(...p.authorityIds);
+  private getConflictModeFromFacts(
+    ctx: ExecutionContext,
+    subject: string,
+    predicate: string,
+  ): PredicateConflictMode {
+    return getConflictMode(ctx, subject, predicate);
   }
-  if (rule.authority.authorityId) ids.push(rule.authority.authorityId);
-  return [...new Set(ids)];
-}
+
+  private rp_authorityIds(rule: LegalRule): string[] {
+    const ids: string[] = [];
+    for (const p of rule.predicates) {
+      if (p.authorityIds) ids.push(...p.authorityIds);
+    }
+    if (rule.authority.authorityId) ids.push(rule.authority.authorityId);
+    return [...new Set(ids)];
+  }
