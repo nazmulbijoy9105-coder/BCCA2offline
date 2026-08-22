@@ -85,7 +85,7 @@ export class FactConsistencyGate {
     // A. Death / Vital Status extraction
     const deathMatches = Array.from(
       rawText.matchAll(
-        /(?:died|passed away|demise|death of|expired)\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s+[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s+[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/gi,
+        /(?:died|passed away|demise|death of|expired)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/gi,
       ),
     );
     const livingMatches = Array.from(
