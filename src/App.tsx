@@ -109,13 +109,12 @@ export default function App() {
     }, 400);
 
     try {
-      // OFFLINE ENGINE — NO API CALL
-      const engine = new BCCAAEngine(user, license);
+      // 4.4.0-HARDENED ENGINE — NO API CALL
+      const engine = new BCCAAEngine();
       const result = await engine.analyze({
-        factPattern,
-        focusDomain,
         user,
-        license,
+        license: { licenseId: license.licenseKey, issuedTo: license.issuedTo },
+        input: { factPattern, focusDomain },
       });
 
       user.casesToday++;
@@ -243,9 +242,9 @@ export default function App() {
               Bangladesh Civil Case Analysis Architecture
             </h1>
             <p className="text-[10px] text-[#E5E1D8]/60 font-mono tracking-widest uppercase">
-              BCCAA v2.0 SECURE OFFLINE &bull; SYSTEM STATIC NODE
+              BCCAA 4.4.0-Hardened SECURE OFFLINE &bull; SYSTEM STATIC NODE
             </p>
-            
+
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 text-[11px] font-mono">
               <span className="inline-flex items-center gap-2 bg-[#C5A059]/15 px-2.5 py-1 border border-[#C5A059]/35 text-[#C5A059]">
                 <span className="w-2 h-2 bg-emerald-500 animate-pulse" />
@@ -408,11 +407,11 @@ export default function App() {
               <div className="bg-white border-2 border-[#1E252B] p-6 relative">
                 <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t-2 border-l-2 border-[#C5A059]" />
                 <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t-2 border-r-2 border-[#C5A059]" />
-                
+
                 <h3 className="text-xs font-mono font-bold text-[#C5A059] uppercase tracking-widest border-b border-[#E5E1D8] pb-2.5 mb-4">
                   Secure Offline Protocol
                 </h3>
-                
+
                 <div className="space-y-4 text-xs text-[#4A5560] leading-relaxed">
                   <div className="flex items-start gap-3">
                     <span className="text-[#C5A059] font-bold text-sm flex-shrink-0 leading-none">&#9632;</span>
@@ -552,7 +551,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-xs leading-relaxed text-[#4A5560] mt-6 pt-5 border-t border-[#E5E1D8] italic bg-[#FDFBF7] p-4 border-l-4 border-l-[#C5A059]">
                 <span className="font-mono font-bold text-[10px] text-[#C5A059] uppercase block not-italic mb-1.5 tracking-wider">Executive Synthesis:</span>
                 {analysisResult.stage13.overview}
@@ -632,7 +631,7 @@ export default function App() {
         </div>
         <div className="text-center md:text-right font-mono text-[10px] text-[#4A5560] space-y-0.5">
           <p>Author & Rights Holder: <strong className="text-[#1E252B]">Md. Nazmul Islam</strong></p>
-          <p className="text-[#C5A059] uppercase tracking-wider font-bold">BCCAA v2.0 Client Secure Offline</p>
+          <p className="text-[#C5A059] uppercase tracking-wider font-bold">BCCAA 4.4.0-Hardened Client Secure Offline</p>
         </div>
       </footer>
     </div>
