@@ -1087,7 +1087,6 @@ export class DevelopmentFactValidationProvider implements FactValidationProvider
     return facts.map((f) => ({
       ...f,
       // FIX #4: Set truth to TRUE so predicates can be satisfied.
-      truth: Tristate.TRUE,
       // FIX #5: Set validationStatus to VERIFIED so requireVerified passes.
       validationStatus: ValidationStatus.VERIFIED,
       confidence: FactConfidence.VERIFIED,
