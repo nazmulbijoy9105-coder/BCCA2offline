@@ -90,7 +90,7 @@ export class FactConsistencyGate {
     );
     const livingMatches = Array.from(
       rawText.matchAll(
-        /\b(?:father is alive|living father|during his lifetime|alive and in possession|ancestor is living|while the father is alive)\b/gi,
+        /\b(?:father is alive|living father|alive and in possession|ancestor is living|while the father is alive)\b/gi,
       ),
     );
 
@@ -250,7 +250,25 @@ export class FactConsistencyGate {
     );
     deathChronos.forEach((dc) => extractedDeathDates.push(dc.date.trim()));
 
-    const uniqueDeathDates = Array.from(new Set(extractedDeathDates));
+    // Normalize dates before deduplication to avoid false conflicts
+    function normalizeDateForDedup(raw: string): string {
+      const s = raw.toLowerCase().replace(/(\d+)(st|nd|rd|th)/, "$1").trim();
+      const dmy = s.match(/^(\d{1,2})\s+([a-z]+)\s*,?\s*(\d{4})$/);
+      if (dmy) {
+        const months: Record<string, string> = {
+          jan: "01", january: "01", feb: "02", february: "02", mar: "03", march: "03",
+          apr: "04", april: "04", may: "05", jun: "06", june: "06", jul: "07", july: "07",
+          aug: "08", august: "08", sep: "09", september: "09", oct: "10", october: "10",
+          nov: "11", november: "11", dec: "12", december: "12",
+        };
+        const m = months[dmy[2]];
+        if (m) return `${dmy[3]}-${m}-${dmy[1].padStart(2, "0")}`;
+      }
+      // Already ISO or other format
+      return s;
+    }
+    const normalizedDates = extractedDeathDates.map(normalizeDateForDedup);
+    const uniqueDeathDates = Array.from(new Set(normalizedDates));
     if (uniqueDeathDates.length > 1) {
       conflicts.push({
         conflictId: `CONF-DATE-DEATH-${Date.now().toString(36)}`,
