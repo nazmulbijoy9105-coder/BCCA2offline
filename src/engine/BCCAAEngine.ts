@@ -1945,6 +1945,13 @@ export class BCCAAEngine {
         polarity: AssertionPolarity.POSITIVE,
       };
     }
+    // P0-00c: Official records must be classified as DOCUMENTARY
+    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+      return {
+        type: AssertionType.DOCUMENTARY_FACT,
+        polarity: AssertionPolarity.POSITIVE,
+      };
+    }
     return { type: AssertionType.ALLEGED, polarity: AssertionPolarity.POSITIVE };
   }
 
