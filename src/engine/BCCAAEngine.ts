@@ -1882,9 +1882,7 @@ export class BCCAAEngine {
     } else if (
       /\bunregistered\s+(?:bainapatra|agreement|sale\s*deed)\b/i.test(lower) ||
       /(?:bainapatra|agreement|sale\s*deed)(?:\s+\w+){0,3}\s+(?:not\s+registered|without\s+registration)\b/i.test(lower) ||
-      /\bregistration\s+(?:not\s+done|not\s+completed|not\s+made|pending)\b/i.test(lower) ||
-      /\bwithout\s+(?:registration|being\s+registered)\b/i.test(lower) && /\b(?:bainapatra|agreement)\b/i.test(lower) ||
-      /\bregistration\s+(?:not\s+done|has\s+not\s+been\s+done|pending)\b/i.test(lower) && /\b(?:bainapatra|agreement)\b/i.test(lower)
+      /\bregistration\s+(?:not\s+done|not\s+completed|not\s+made|pending)\b/i.test(lower)
     ) {
       candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "UNREGISTERED" });
     }
