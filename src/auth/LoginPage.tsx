@@ -112,17 +112,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setCustomError(null);
     try {
-      const mockGoogleEmails = {
-        super_admin: "nazmul.islam.bd@gmail.com",
-        admin: "advocate.hossain.dhaka@gmail.com",
-        user: "associate.kamal.bd@gmail.com",
-        DETERMINISTIC_TEST: "test@deterministic.local",
+      DETERMINISTIC_TEST: "test@deterministic.local",
+    user: "associate.kamal.bd@gmail.com",
       };
-      const mockNames = {
-        super_admin: "Md. Nazmul Islam (Super Admin)",
-        admin: "Advocate Hossain (Chamber Lead)",
-        user: "Junior Advocate Kamal (User)",
-        DETERMINISTIC_TEST: "Test Runner",
+      DETERMINISTIC_TEST: "Test Runner",
+    user: "Junior Advocate Kamal (User)",
       };
 
       await registerUser({

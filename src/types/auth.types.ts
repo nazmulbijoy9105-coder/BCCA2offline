@@ -1,4 +1,4 @@
-export type UserRole = "super_admin" | "admin" | "user" | "DETERMINISTIC_TEST";
+export type UserRole = "super_admin" | "admin" | "user" | "DETERMINISTIC_TEST" | "DETERMINISTIC_TEST";
 
 export type Permission =
   | "admin:dashboard"
