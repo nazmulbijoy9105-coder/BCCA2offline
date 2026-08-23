@@ -1,4 +1,30 @@
-import React, { useState } from "react";
+#!/usr/bin/env python3
+"""
+Comprehensive fix for all remaining TypeScript strict-mode errors.
+Place this in your repo root and run:  python3 fix_all_remaining.py
+"""
+import re
+from pathlib import Path
+
+def read(p): return Path(p).read_text(encoding='utf-8')
+def write(p, c): Path(p).write_text(c, encoding='utf-8'); print(f"  patched {p}")
+
+# =============================================================================
+# 1. auth.types.ts  -- deduplicate DETERMINISTIC_TEST
+# =============================================================================
+c = read("src/types/auth.types.ts")
+c = c.replace(' | "DETERMINISTIC_TEST" | "DETERMINISTIC_TEST"', ' | "DETERMINISTIC_TEST"')
+if "DETERMINISTIC_TEST: [" not in c:
+    c = c.replace(
+        '  user: ["case:analyze", "case:export", "case:view_history"],\n};',
+        '  user: ["case:analyze", "case:export", "case:view_history"],\n  DETERMINISTIC_TEST: ["case:analyze"],\n};'
+    )
+write("src/types/auth.types.ts", c)
+
+# =============================================================================
+# 2. LoginPage.tsx  -- complete overwrite with syntactically valid content
+# =============================================================================
+login_clean = r"""import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { Scale, ShieldAlert, Key, Mail, Sparkles, Phone, User, Building, CheckCircle, Smartphone, Globe } from "lucide-react";
 import { generateLicenseKey } from "../utils/license";
@@ -361,3 +387,63 @@ export default function LoginPage() {
     </div>
   );
 }
+"""
+write("src/auth/LoginPage.tsx", login_clean)
+
+# =============================================================================
+# 3. BCCAAEngine.ts  -- export CaseAnalysisResponse + runtime fixes
+# =============================================================================
+c = read("src/engine/BCCAAEngine.ts")
+if "export interface CaseAnalysisResponse" not in c:
+    c = c.replace("interface CaseAnalysisResponse", "export interface CaseAnalysisResponse", 1)
+c = c.replace("input.focusDomain,", "input.focusDomain ?? \"\",")
+c = c.replace("request.input.focusDomain),", "request.input.focusDomain ?? \"\"),")
+c = c.replace(
+    "burdenAssignments: evidenceData?.burdenAssignments ?? [],",
+    "burdenAssignments: (evidenceData?.burdenAssignments as string[] | undefined) ?? [],"
+)
+write("src/engine/BCCAAEngine.ts", c)
+
+# =============================================================================
+# 4. types.ts  -- extend AtomicFact + stage13 _debug
+# =============================================================================
+c = read("src/types/types.ts")
+extras = ["value?: unknown;", "factStatus?: string;", "temporalStatus?: string;", "materiality?: string;", "sourceParagraph?: string;"]
+if "interface AtomicFact {" in c:
+    for field in extras:
+        name = field.split(":")[0]
+        if name not in c:
+            c = c.replace("interface AtomicFact {", f"interface AtomicFact {{\n  {field}")
+c = re.sub(r"atomicFacts:\s*Array<\{[^{}]+\}>", "atomicFacts: AtomicFact[]", c)
+c = re.sub(
+    r"(stage13:\s*\{[^}]*?)(executionPathway:\s*string\s*\|?\s*null?\s*;)",
+    r"\1_debug?: any;\n    \2",
+    c,
+    flags=re.DOTALL,
+)
+write("src/types/types.ts", c)
+
+# =============================================================================
+# 5. FactConsistencyGate.ts  -- cast synthetic facts to any
+# =============================================================================
+c = read("src/engine/FactConsistencyGate.ts")
+c = re.sub(
+    r"(atomicFacts\.push\(\{[\s\S]*?materiality:\s*\"CRITICAL\",[\s\S]*?\}\);)",
+    lambda m: m.group(1).replace("});", "} as any);"),
+    c
+)
+c = re.sub(
+    r"(atomicFacts\.push\(\{[\s\S]*?materiality:\s*\"MATERIAL\",[\s\S]*?\}\);)",
+    lambda m: m.group(1).replace("});", "} as any);"),
+    c
+)
+write("src/engine/FactConsistencyGate.ts", c)
+
+# =============================================================================
+# 6. BCCAAEngine.test.ts  -- remove caseId from input
+# =============================================================================
+c = read("src/engine/BCCAAEngine.test.ts")
+c = c.replace('input: { caseId: "HALT-EMPTY", factPattern,', "input: { factPattern,")
+write("src/engine/BCCAAEngine.test.ts", c)
+
+print("\nDone. Run:  npx tsc --noEmit")

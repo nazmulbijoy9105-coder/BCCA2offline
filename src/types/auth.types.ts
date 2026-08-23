@@ -1,4 +1,4 @@
-export type UserRole = "super_admin" | "admin" | "user" | "DETERMINISTIC_TEST" | "DETERMINISTIC_TEST";
+export type UserRole = "super_admin" | "admin" | "user" | "DETERMINISTIC_TEST";
 
 export type Permission =
   | "admin:dashboard"
@@ -11,6 +11,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   super_admin: ["admin:dashboard", "case:analyze", "case:export", "case:view_history", "user:manage"],
   admin: ["admin:dashboard", "case:analyze", "case:export", "case:view_history"],
   user: ["case:analyze", "case:export", "case:view_history"],
+  DETERMINISTIC_TEST: ["case:analyze"],
 };
 
 export interface AuthUser {

@@ -1370,7 +1370,7 @@ export class BCCAAEngine {
     const { input } = request;
     const claimType = this.resolveClaimType(
       input.factPattern,
-      input.focusDomain,
+      input.focusDomain ?? "",
     );
     // P0-01: Deterministic reference date for limitation analysis
     ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : 0;
@@ -3667,7 +3667,7 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       stage8: {
         evidenceList: evidenceData?.evidenceList ?? [],
-        burdenAssignments: evidenceData?.burdenAssignments ?? [],
+        burdenAssignments: (evidenceData?.burdenAssignments as string[] | undefined) ?? [],
         statutoryPresumptions: evidenceData?.statutoryPresumptions ?? [],
       },
       stage9: {
@@ -3903,7 +3903,7 @@ const plaintiffNameMatches = rawText.matchAll(
       const forensicInputHash = computeForensicHash({
         envelope: {
           caseId,
-          claimType: this.resolveClaimType(request.input.factPattern, request.input.focusDomain),
+          claimType: this.resolveClaimType(request.input.factPattern, request.input.focusDomain ?? ""),
           factCount: facts.length,
         },
         corpusIdentity: this.ruleRegistry.identity,

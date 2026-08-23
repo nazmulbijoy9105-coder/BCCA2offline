@@ -90,7 +90,7 @@ export class FactConsistencyGate {
     engineFacts?: EngineFact[],
     engineConflicts?: EngineConflict[],
   ): FactConsistencyGateOutput {
-    const atomicFacts: AtomicFact[] = [];
+    const atomicFacts: any[] = [];
     const conflicts: FactConflict[] = [];
     const auditTrail: Array<{
       checkId: string;

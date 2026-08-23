@@ -1,9 +1,9 @@
+import { CaseAnalysisResponse } from "../types/types";
 import { describe, it, expect } from "vitest";
 import {
   BCCAAEngine,
   canonicalStringify,
   NoOpFactValidationProvider,
-  type CaseAnalysisResponse,
   type AnalyzeRequest,
 } from "./BCCAAEngine";
 
@@ -37,7 +37,7 @@ function makeRequest(overrides: {
 }
 
 function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
-  const { gateF0, stage0, stage1, stage2, stage3, stage4, stage5, outcome } = response;
+  const { gateF0, stage0, stage1, stage2, stage3, stage4, stage5, outcome } = response as any;
   return canonicalStringify({
     gateF0,
     stage0: {
@@ -47,7 +47,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       disputedFacts: stage0?.disputedFacts,
       unknownFacts: stage0?.unknownFacts,
       quantumFacts: stage0?.quantumFacts,
-      dispossessionProven: stage0?.dispossessionProven,
+      dispossessionProven: (stage0 as any)?.dispossessionProven,
       atomicFactCount: stage0?.atomicFacts?.length ?? 0,
       propositionCount: stage0?.propositions?.length ?? 0,
       assertionCount: stage0?.assertions?.length ?? 0,
@@ -89,7 +89,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       pecuniary: stage5?.pecuniary,
       subjectMatter: stage5?.subjectMatter,
       objectionStrategy: stage5?.objectionStrategy,
-      timelineProgress: stage5?.timelineProgress,
+      timelineProgress: (stage5 as any)?.timelineProgress,
     },
     outcome,
   });
@@ -249,12 +249,12 @@ describe("PHASE 2: Domain Classification & Legislation", () => {
             "The plaintiff cited 43 DLR 234 and 52 DLR 112 for the proposition that unregistered bainapatra is admissible in evidence.",
         })
       );
-      expect(r.stage2.citationValidationAudit.totalCitations).toBeGreaterThanOrEqual(0);
-      expect(r.stage2.citationValidationAudit.validationStandard).toBe(
+      expect(r.stage2!.citationValidationAudit!.totalCitations).toBeGreaterThanOrEqual(0);
+      expect(r.stage2!.citationValidationAudit!.validationStandard).toBe(
         "100% deterministic canonical registry verification"
       );
       expect(["PASS_100_PERCENT_DETERMINISTIC", "FAIL_UNVERIFIED_DETECTED"]).toContain(
-        r.stage2.citationValidationAudit.auditStatus
+        r.stage2!.citationValidationAudit!.auditStatus
       );
     });
   });
@@ -412,7 +412,7 @@ describe("PHASE 6: Equity, Procedure & Appeal", () => {
           factPattern: "The suit was filed on 01 January 2024. Issues were framed on 15 February 2024. Evidence is ongoing.",
         })
       );
-      expect((r.stage5.timelineProgress ?? []).length).toBeGreaterThanOrEqual(0);
+      expect(((r.stage5 as any).timelineProgress ?? []).length).toBeGreaterThanOrEqual(0);
     });
   });
 

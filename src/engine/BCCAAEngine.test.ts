@@ -51,11 +51,11 @@ function makeRequest(overrides: any) {
     license: { licenseId: "test-license", issuedTo: "Test" },
     input: {
       caseId: "TEST",
-      claimType: "SUCCESSION_CERTIFICATE",
+      
       jurisdiction: "BANGLADESH",
       factPattern: "Deceased died on 1 January 2023.",
       ...overrides,
-    },
+    } as any as any,
   };
 }
 
@@ -86,11 +86,11 @@ describe("C2: ILRMF Guarantee Tests", () => {
       user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TESTER" as any as any as any, chamberId: "test-chamber" } as any,
       license: { licenseId: "test-license", issuedTo: "Test" },
       input: {
-        caseId: "HALT-EMPTY",
-        claimType: "SUCCESSION_CERTIFICATE",
+        
+        
         jurisdiction: "BANGLADESH",
         factPattern: "",
-      },
+      } as any as any,
     });
     expect(r.stage13.overview).toContain("HALTED");
     expect(r.stage13.overview).toContain("EMPTY_INPUT");

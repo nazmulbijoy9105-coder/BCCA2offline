@@ -91,7 +91,7 @@ describe("P1-05: Missing law tests", () => {
     }));
     // Default canonical precedents may still be injected; primaryAct must be null
     expect(r.stage2.primaryAct).toBeNull();
-    expect(r.stage2.citationValidationAudit.totalCitations).toBeGreaterThanOrEqual(0);
+    expect(r.stage2!.citationValidationAudit!.totalCitations).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -118,7 +118,7 @@ describe("P1-07: Disputed fact classification", () => {
       factPattern: "The plaintiff claims the property is 10 decimals. The defendant denies this and says it is 5 decimals.",
     }));
     // Check both atomicFacts and assertions registry for dispute markers
-    const disputedFacts = r.stage0.atomicFacts.filter(
+    const disputedFacts = r.stage0!.atomicFacts!.filter(
       (f: any) => f.polarity === "DISPUTED" || f.assertionType === "DENIED"
     );
     const disputedAssertions = (r.stage0.assertions ?? []).filter(
@@ -134,7 +134,7 @@ describe("P1-08: Admitted fact classification", () => {
       caseId: "P1-08",
       factPattern: "The plaintiff admitted the bainapatra was unregistered.",
     }));
-    const admittedFacts = r.stage0.atomicFacts.filter((f: any) => f.assertionType === "ADMITTED");
+    const admittedFacts = r.stage0!.atomicFacts!.filter((f: any) => f.assertionType === "ADMITTED");
     const admittedAssertions = (r.stage0.assertions ?? []).filter(
       (a: any) => a.type === "ADMITTED"
     );
@@ -148,7 +148,7 @@ describe("P1-09: Unknown fact propagation", () => {
       caseId: "P1-09",
       factPattern: "The property might have been transferred to some third party.",
     }));
-    const unknowns = r.stage0.atomicFacts.filter(
+    const unknowns = r.stage0!.atomicFacts!.filter(
       (f: any) => f.truth === "UNKNOWN" || f.confidence === "CANDIDATE"
     );
     // Soft assertion: engine may not yet classify epistemic modality as UNKNOWN
@@ -165,10 +165,10 @@ describe("P1-10: Multiple contradictions on same subject", () => {
     // Look for numeric area values in objects or propositions
     // Engine may not extract all numeric area values as atomic facts;
     // assert at least the input was processed without crash and some facts exist
-    expect(r.stage0.atomicFacts.length).toBeGreaterThanOrEqual(0);
+    expect(r.stage0!.atomicFacts!.length).toBeGreaterThanOrEqual(0);
     const allTexts = [
-      ...r.stage0.atomicFacts.map((f: any) => `${f.predicate} ${f.object} ${f.proposition}`),
-      ...r.stage0.propositions.map((p: any) => String(p)),
+      ...r.stage0!.atomicFacts!.map((f: any) => `${f.predicate} ${f.object} ${f.proposition}`),
+      ...r.stage0!.propositions!.map((p: any) => String(p)),
     ].join(" ").toLowerCase();
     const has10 = allTexts.includes("10");
     const has5 = allTexts.includes("5");
@@ -198,9 +198,9 @@ describe("P1-11: Response structure integrity", () => {
 describe("P1-12: Provenance completeness", () => {
   it("every atomic fact has corresponding provenance entry", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P1-12" }));
-    expect(r.stage0.provenance.length).toBe(r.stage0.atomicFacts.length);
-    r.stage0.provenance.forEach((p: any, i: number) => {
-      expect(p.factId).toBe(r.stage0.atomicFacts[i].factId);
+    expect(r.stage0!.provenance!.length).toBe(r.stage0!.atomicFacts!.length);
+    r.stage0!.provenance!.forEach((p: any, i: number) => {
+      expect(p.factId).toBe(r.stage0!.atomicFacts![i].factId);
       expect(p.sourceType).toBeDefined();
       expect(p.extractionMethod).toBeDefined();
     });
@@ -213,8 +213,8 @@ describe("P1-13: Event timeline structure", () => {
       caseId: "P1-13",
       factPattern: "Bainapatra executed on 15 July 2020. Refusal on 20 August 2020.",
     }));
-    expect(Array.isArray(r.stage0.eventTimeline)).toBe(true);
-    r.stage0.eventTimeline.forEach((e: any) => {
+    expect(Array.isArray(r.stage0!.eventTimeline!)).toBe(true);
+    r.stage0!.eventTimeline!.forEach((e: any) => {
       expect(e).toHaveProperty("date");
       expect(e).toHaveProperty("type");
       expect(Array.isArray(e.sourceFactIds)).toBe(true);

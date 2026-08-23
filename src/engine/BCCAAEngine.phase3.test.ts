@@ -28,7 +28,7 @@ describe("P2-16: No external network dependencies", () => {
       factPattern: "The plaintiff relied on an unregistered bainapatra.",
     }));
     expect(r).toBeDefined();
-    expect(r.stage0.atomicFacts.length).toBeGreaterThan(0);
+    expect(r.stage0!.atomicFacts!.length).toBeGreaterThan(0);
   });
 });
 
@@ -90,7 +90,7 @@ describe("P3-03: Canonical registry verification standard", () => {
       caseId: "P3-03",
       factPattern: "Transfer of Property Act Section 54.",
     }));
-    expect(r.stage2.citationValidationAudit.validationStandard).toMatch(/deterministic/i);
+    expect(r.stage2!.citationValidationAudit!.validationStandard).toMatch(/deterministic/i);
   });
 });
 
@@ -160,8 +160,8 @@ describe("P3-10: Semantic/audit metadata separation", () => {
 describe("P3-11: Audit signature isolation", () => {
   it("audit signatures live only in audit-specific fields", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P3-11" }));
-    expect(r.stage2.citationValidationAudit.registrySignature).toBeDefined();
-    expect(r.stage2.citationValidationAudit.registrySignature).toMatch(/BCCAA/i);
+    expect(r.stage2!.citationValidationAudit!.registrySignature).toBeDefined();
+    expect(r.stage2!.citationValidationAudit!.registrySignature).toMatch(/BCCAA/i);
   });
 });
 

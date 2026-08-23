@@ -133,6 +133,7 @@ export interface ValidationDimensions {
 }
 
 export interface AtomicFact {
+  sourceParagraph?: string;
   materiality?: string;
   temporalStatus?: string;
   factStatus?: string;

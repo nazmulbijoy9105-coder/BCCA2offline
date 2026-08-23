@@ -111,7 +111,7 @@ describe("P2-07: Deterministic citation flag", () => {
 describe("P2-08: Citation audit count accuracy", () => {
   it("audit totals match actual precedent array length", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P2-08" }));
-    expect(r.stage2.citationValidationAudit.totalCitations).toBe(r.stage2.precedents.length);
+    expect(r.stage2!.citationValidationAudit!.totalCitations).toBe(r.stage2.precedents.length);
   });
 });
 
@@ -125,10 +125,10 @@ describe("P2-10: Sequential analysis isolation", () => {
       caseId: "P2-10-B",
       factPattern: "The plaintiff relied on an unregistered bainapatra.",
     }));
-    expect(r1.stage0.atomicFacts.some((f: any) => f.object === "DECEASED")).toBe(true);
-    expect(r2.stage0.atomicFacts.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
-    expect(r1.stage0.atomicFacts.some((f: any) => f.object === "UNREGISTERED")).toBe(false);
-    expect(r2.stage0.atomicFacts.some((f: any) => f.object === "DECEASED")).toBe(false);
+    expect(r1.stage0!.atomicFacts!.some((f: any) => f.object === "DECEASED")).toBe(true);
+    expect(r2.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+    expect(r1.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(false);
+    expect(r2.stage0!.atomicFacts!.some((f: any) => f.object === "DECEASED")).toBe(false);
   });
 });
 
@@ -140,9 +140,9 @@ describe("P2-11: Concurrent analysis isolation", () => {
       makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
     ];
     const results = await Promise.all(inputs.map((i) => engine.analyze(i)));
-    expect(results[0].stage0.atomicFacts.some((f: any) => f.object === "REGISTERED")).toBe(true);
-    expect(results[1].stage0.atomicFacts.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
-    expect(results[2].stage0.atomicFacts.some((f: any) =>
+    expect(results[0]!.stage0!.atomicFacts!.some((f: any) => f.object === "REGISTERED")).toBe(true);
+    expect(results[1]!.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+    expect(results[2]!.stage0!.atomicFacts!.some((f: any) =>
       String(f.object).toLowerCase().includes("20 august 2020") ||
       String(f.proposition).toLowerCase().includes("20 august 2020")
     )).toBe(true);
@@ -157,9 +157,9 @@ describe("P2-11: Concurrent analysis isolation", () => {
       makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
     ];
     const results = await Promise.all(inputs.map((i) => engine.analyze(i)));
-    expect(results[0].stage0.atomicFacts.some((f: any) => f.object === "REGISTERED")).toBe(true);
-    expect(results[1].stage0.atomicFacts.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
-    expect(results[2].stage0.atomicFacts.some((f: any) =>
+    expect(results[0]!.stage0!.atomicFacts!.some((f: any) => f.object === "REGISTERED")).toBe(true);
+    expect(results[1]!.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+    expect(results[2]!.stage0!.atomicFacts!.some((f: any) =>
       String(f.object).toLowerCase().includes("20 august 2020") ||
       String(f.proposition).toLowerCase().includes("20 august 2020")
     )).toBe(true);
