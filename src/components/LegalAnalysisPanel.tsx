@@ -24,11 +24,11 @@ import { generateWatermark } from "../utils/watermark";
 
 // Helper to generate a professional legal consultation draft dynamically from NEUMLEX engine results
 export const generateLegalMemo = (factPattern: string, result: CaseAnalysisResponse): string => {
-  const category = result.stage0?.factsMeta?.category || "GENERAL_CIVIL";
-  const primaryAct = result.stage2?.primaryAct || "Code of Civil Procedure, 1908";
+  const category = result.stage0?.factsMeta?.category;
+  const primaryAct = result.stage2?.primaryAct;
   const limitationStatus = result.stage3?.isTimeBarred ? "TIME-BARRED" : "WITHIN LIMITATION";
-  const courtLevel = result.stage5?.pecuniary?.courtLevel || "Joint District Judge";
-  const courtFeesNotes = result.stage5?.pecuniary?.suitsValuationActNotes || "As per Court Fees Act 1870";
+  const courtLevel = result.stage5?.pecuniary?.courtLevel;
+  const courtFeesNotes = result.stage5?.pecuniary?.suitsValuationActNotes;
   
   let customNarrative = "";
   if (category === "INHERITANCE_CONSULTATION") {
