@@ -1020,7 +1020,6 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
 export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
   constructor() {
     super();
-    console.warn(
       "[DefaultRuleRegistry] Deprecated fixture alias; not validated law.",
     );
   }
@@ -1034,7 +1033,6 @@ export class DefaultAuditSink implements AuditSink {
     const recordHash = canonicalHash({ payload, previousHash });
     const record = { ...payload, previousHash, recordHash };
     this.lastRecord = record;
-    console.warn(
       "[DefaultAuditSink] Development-only, non-durable, non-atomic audit sink.",
     );
     return record;
