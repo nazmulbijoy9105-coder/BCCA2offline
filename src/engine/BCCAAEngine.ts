@@ -1281,7 +1281,7 @@ export class BCCAAEngine {
 
   async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
     const startTime = 0;
-    const caseId = `BCCAA-4.5-DET-${generateSecureId().slice(0, 8)}`;
+    const caseId = request.caseId ?? `BCCAA-4.5-DET-${generateSecureId().slice(0, 8)}`;
     const ctx = newContext();
 
     try {
