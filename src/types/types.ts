@@ -6,7 +6,8 @@ import { AuthUser, LicenseData } from "./auth.types";
 
 export interface EngineInput {
   factPattern: string;
-  focusDomain: string;
+  focusDomain?: string;
+  submissionDate?: string;
 }
 
 export enum Tristate { TRUE = "TRUE", FALSE = "FALSE", UNKNOWN = "UNKNOWN" }
@@ -132,6 +133,10 @@ export interface ValidationDimensions {
 }
 
 export interface AtomicFact {
+  materiality?: string;
+  temporalStatus?: string;
+  factStatus?: string;
+  value?: unknown;
   factId: string;
   propositionId: string;
   assertionId: string;
@@ -345,16 +350,7 @@ export interface FactConsistencyGateOutput {
   gateStatus: "CONSISTENT" | "CONDITIONALLY_CONSISTENT" | "HALT_CRITICAL_CONFLICT";
   certification: "GREEN" | "AMBER" | "RED" | "BLACK";
   summary: string;
-  atomicFacts: Array<{
-    factId: string;
-    proposition: string;
-    value: unknown;
-    sourceParagraph?: string;
-    factStatus: string;
-    temporalStatus: string;
-    confidence: number;
-    materiality: string;
-  }>;
+  atomicFacts: AtomicFact[];
   conflicts: FactConflict[];
   criticalConflictCount: number;
   materialConflictCount: number;
@@ -584,6 +580,7 @@ export interface CaseAnalysisResponse {
     reliefDecree: string | null;
     costsApportionment: string | null;
     equitableBars: string | null;
+    _debug?: any;
     executionPathway: string | null;
   };
   _security?: {

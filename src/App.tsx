@@ -48,7 +48,7 @@ export default function App() {
       const newItem: CaseHistoryItem = {
         id: `case_${Date.now()}`,
         timestamp: Date.now(),
-        title: analysis.stage2.primaryAct,
+        title: analysis.stage2.primaryAct ?? "",
         primaryDomain: analysis.stage1.primaryDomain,
         courtLevel: analysis.stage5.pecuniary.courtLevel,
         isTimeBarred: analysis.stage3.isTimeBarred,

@@ -207,7 +207,7 @@ export async function downloadCaseBriefDOCX(
       new TableRow({
         children: [
           createCell("Primary Statutory Act"),
-          createCell(analysis.stage2.primaryAct, { bold: true }),
+          createCell(analysis.stage2.primaryAct ?? "", { bold: true }),
         ],
       }),
       new TableRow({
@@ -222,7 +222,7 @@ export async function downloadCaseBriefDOCX(
       new TableRow({
         children: [
           createCell("Competent Court Forum"),
-          createCell(analysis.stage5.pecuniary.courtLevel, { bold: true }),
+          createCell(analysis.stage5.pecuniary.courtLevel ?? "", { bold: true }),
         ],
       }),
       new TableRow({
@@ -298,7 +298,7 @@ export async function downloadCaseBriefDOCX(
           new Paragraph({
             children: [
               new TextRun({
-                text: `BCCAA JURISPRUDENTIAL LITIGATION BRIEF  •  ${analysis.stage2.primaryAct.toUpperCase()}`,
+                text: `BCCAA JURISPRUDENTIAL LITIGATION BRIEF  •  ${(analysis.stage2.primaryAct ?? "").toUpperCase()}`,
                 bold: true,
                 size: 20,
                 color: "C5A059",
@@ -547,21 +547,21 @@ export async function downloadCaseBriefDOCX(
           new Paragraph({
             children: [
               new TextRun({ text: "Relief & Decree Structure: ", bold: true, size: 20, font: "Calibri" }),
-              new TextRun({ text: analysis.stage13.reliefDecree, size: 20, font: "Calibri" }),
+              new TextRun({ text: analysis.stage13.reliefDecree ?? "", size: 20, font: "Calibri" }),
             ],
             spacing: { after: 80 },
           }),
           new Paragraph({
             children: [
               new TextRun({ text: "Costs Apportionment: ", bold: true, size: 20, font: "Calibri" }),
-              new TextRun({ text: analysis.stage13.costsApportionment, size: 20, font: "Calibri" }),
+              new TextRun({ text: analysis.stage13.costsApportionment ?? "", size: 20, font: "Calibri" }),
             ],
             spacing: { after: 80 },
           }),
           new Paragraph({
             children: [
               new TextRun({ text: "Execution Pathway: ", bold: true, size: 20, font: "Calibri" }),
-              new TextRun({ text: analysis.stage13.executionPathway, size: 20, font: "Calibri" }),
+              new TextRun({ text: analysis.stage13.executionPathway ?? "", size: 20, font: "Calibri" }),
             ],
             spacing: { after: 120 },
           }),
@@ -592,7 +592,7 @@ export async function downloadCaseBriefDOCX(
   });
 
   const blob = await Packer.toBlob(doc);
-  const cleanAct = analysis.stage2.primaryAct.replace(/[^a-zA-Z0-9]/g, "_");
+  const cleanAct = (analysis.stage2.primaryAct ?? "").replace(/[^a-zA-Z0-9]/g, "_");
   const filename = `BCCAA_Case_Brief_${cleanAct}_${Date.now()}.docx`;
   
   const url = URL.createObjectURL(blob);

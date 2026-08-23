@@ -110,7 +110,7 @@ describe("C2: ILRMF Guarantee Tests", () => {
     }));
     expect(r).toHaveProperty("stage0");
     expect(r).toHaveProperty("stage13");
-    expect(r._security.engineVersion).toBe("4.5.1-Hardened");
+    expect(r._security?.engineVersion).toBe("4.5.1-Hardened");
   });
 });
 

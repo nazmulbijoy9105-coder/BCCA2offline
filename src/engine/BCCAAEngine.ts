@@ -1027,7 +1027,7 @@ export class DefaultAuditSink implements AuditSink {
   readonly isProductionReady = false;
   private lastRecord: AuditRecord | null = null;
   async append(payload: AuditRecordPayload): Promise<AuditRecord> {
-    return { recordId: `noop-${Date.now()}`, timestamp: new Date().toISOString(), payload, status: "ACKNOWLEDGED" } as AuditRecord;
+    return { recordId: `noop-${Date.now()}`, timestamp: new Date().toISOString(), payload, status: "ACKNOWLEDGED" } as unknown as AuditRecord;
     const previousHash = this.lastRecord?.recordHash ?? null;
     const recordHash = canonicalHash({ payload, previousHash });
     const record = { ...payload, previousHash, recordHash };
@@ -3667,7 +3667,7 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       stage8: {
         evidenceList: evidenceData?.evidenceList ?? [],
-        burdenAssignments: evidenceData?.burdenAssignments ?? "",
+        burdenAssignments: evidenceData?.burdenAssignments ?? [],
         statutoryPresumptions: evidenceData?.statutoryPresumptions ?? [],
       },
       stage9: {
