@@ -9,7 +9,7 @@ const engine = new BCCAAEngine({
 function makeRequest(o: any = {}) {
   return {
     caseId: o.caseId ?? "P3-TEST",
-    user: { userId: "test-user", role: "TEST" },
+    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST" as any, chamberId: "test-chamber" } as any,
     license: { licenseId: "TEST", issuedTo: "TEST" },
     input: {
       factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",

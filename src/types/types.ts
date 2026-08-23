@@ -222,7 +222,7 @@ export interface RuleRegistry {
   identity: RuleGraphIdentity;
   getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
   getLegislationMapping(claimType: ClaimType): {
-    primaryAct: string;
+    primaryAct: string | null;
     relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }>;
   };
 }
@@ -429,7 +429,7 @@ export interface CaseAnalysisResponse {
     }>;
   };
   stage2: {
-    primaryAct: string;
+    primaryAct: string | null;
     relevantSections: Array<{
       actName: string;
       sectionOrRule: string;
@@ -464,12 +464,12 @@ export interface CaseAnalysisResponse {
     equityPrinciples: string[];
   };
   stage3: {
-    accrualDate: string;
-    prescribedPeriod: string;
-    limitationArticle: string;
+    accrualDate: string | null;
+    prescribedPeriod: string | null;
+    limitationArticle: string | null;
     isTimeBarred: boolean;
     exceptionsOrExtensions: string;
-    preliminaryAnalysis: string;
+    preliminaryAnalysis: string | null;
     timelineValidation?: {
       agreementDate: string | null;
       refusalDate: string | null;
@@ -494,7 +494,7 @@ export interface CaseAnalysisResponse {
       liabilityType: string;
     }>;
     joinderIssues: string;
-    locusStandiSummary: string;
+    locusStandiSummary: string | null;
   };
   stage5: {
     territorial: {
@@ -513,7 +513,7 @@ export interface CaseAnalysisResponse {
       forum: string;
       governingStatute: string;
     };
-    objectionStrategy: string;
+    objectionStrategy: string | null;
   };
   stage6: {
     plaintChecklist: string[];
@@ -561,7 +561,7 @@ export interface CaseAnalysisResponse {
       application: string;
       weight: string;
     }>;
-    discretionaryReliefCheck: string;
+    discretionaryReliefCheck: string | null;
   };
   stage11: {
     timelineProgress: Array<{
@@ -581,10 +581,10 @@ export interface CaseAnalysisResponse {
   };
   stage13: {
     overview: string;
-    reliefDecree: string;
-    costsApportionment: string;
-    equitableBars: string;
-    executionPathway: string;
+    reliefDecree: string | null;
+    costsApportionment: string | null;
+    equitableBars: string | null;
+    executionPathway: string | null;
   };
   _security?: {
     analyzedBy: string;

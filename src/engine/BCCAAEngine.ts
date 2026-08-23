@@ -696,7 +696,7 @@ export interface FactValidationProvider {
  * FIX #2: No ordinal ordering — each admissibility decision is a set membership check.
  */
 
-const EXTRACTION_SATISFIES: Record<boolean, ReadonlySet<ExtractionStatus>> = {
+const EXTRACTION_SATISFIES: Record<string, ReadonlySet<ExtractionStatus>> = {
   false: new Set([
     ExtractionStatus.NOT_EXECUTED,
     ExtractionStatus.EXTRACTED,
@@ -771,7 +771,7 @@ function meetsValidationRequirements(
   req: ValidationRequirements,
 ): boolean {
   // Extraction: boolean gate
-  if (!EXTRACTION_SATISFIES[req.extractionRequired].has(fact.validation.extractionStatus)) {
+  if (!EXTRACTION_SATISFIES[String(req.extractionRequired)].has(fact.validation.extractionStatus)) {
     return false;
   }
   // Source: enum-to-enum set check
@@ -1020,8 +1020,6 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
 export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
   constructor() {
     super();
-      "[DefaultRuleRegistry] Deprecated fixture alias; not validated law.",
-    );
   }
 }
 
@@ -1033,9 +1031,6 @@ export class DefaultAuditSink implements AuditSink {
     const recordHash = canonicalHash({ payload, previousHash });
     const record = { ...payload, previousHash, recordHash };
     this.lastRecord = record;
-      "[DefaultAuditSink] Development-only, non-durable, non-atomic audit sink.",
-    );
-    return record;
   }
 }
 
@@ -3708,7 +3703,7 @@ const plaintiffNameMatches = rawText.matchAll(
         },
       },
       _security: {
-        analyzedBy: request.user.userId || request.user.email || "UNKNOWN",
+        analyzedBy: (request.user as any).userId || request.user.email || "UNKNOWN",
         analyzedAt: 0,
         licenseId: request.license.licenseId,
         forensicHash: "",
@@ -3718,7 +3713,7 @@ const plaintiffNameMatches = rawText.matchAll(
     };
 
     // Compute and bind forensic hash
-    response._security.forensicHash = this.computeOutputHash(response);
+    if (response._security) if (response._security) response._security.forensicHash = this.computeOutputHash(response);
 
     return response;
   }
@@ -3765,7 +3760,7 @@ const plaintiffNameMatches = rawText.matchAll(
         caseId,
       },
     };
-    response._security.forensicHash = this.computeOutputHash(response);
+    if (response._security) if (response._security) response._security.forensicHash = this.computeOutputHash(response);
     return response;
   }
 
@@ -3862,7 +3857,7 @@ const plaintiffNameMatches = rawText.matchAll(
         executionPathway: null,
       },
       _security: {
-        analyzedBy: request.user.userId || request.user.email || "UNKNOWN",
+        analyzedBy: (request.user as any).userId || request.user.email || "UNKNOWN",
         analyzedAt: 0,
         licenseId: request.license.licenseId,
         forensicHash: "",
@@ -3870,7 +3865,7 @@ const plaintiffNameMatches = rawText.matchAll(
         caseId,
       },
     };
-    response._security.forensicHash = this.computeOutputHash(response);
+    if (response._security) if (response._security) response._security.forensicHash = this.computeOutputHash(response);
     return response;
   }
 
@@ -3932,7 +3927,7 @@ const plaintiffNameMatches = rawText.matchAll(
         forensicInputHash,
         manifest: ENGINE_MANIFEST,
         executionMilliseconds: 0,
-        analyzedByUserId: request.user.userId || request.user.email || "UNKNOWN",
+        analyzedByUserId: (request.user as any).userId || request.user.email || "UNKNOWN",
         outcome,
       };
 

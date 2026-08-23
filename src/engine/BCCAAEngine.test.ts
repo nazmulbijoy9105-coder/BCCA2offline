@@ -47,8 +47,8 @@ function stripNonDeterministic(result: any): any {
 
 function makeRequest(overrides: any) {
   return {
-    user: { userId: "test-user", role: "TESTER" },
-    license: { key: "test-license" },
+    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TESTER" as any as any, chamberId: "test-chamber" } as any,
+    license: { licenseId: "test-license", issuedTo: "Test" },
     input: {
       caseId: "TEST",
       claimType: "SUCCESSION_CERTIFICATE",
@@ -84,8 +84,8 @@ describe("C2: ILRMF Guarantee Tests", () => {
 
   it("fail-closed: EMPTY_INPUT triggers HALT (fail-safe rejection)", async () => {
     const r = await engine.analyze({
-      user: { userId: "test-user", role: "TESTER" },
-      license: { key: "test-license" },
+      user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TESTER" as any as any, chamberId: "test-chamber" } as any,
+      license: { licenseId: "test-license", issuedTo: "Test" },
       input: {
         caseId: "HALT-EMPTY",
         claimType: "SUCCESSION_CERTIFICATE",
