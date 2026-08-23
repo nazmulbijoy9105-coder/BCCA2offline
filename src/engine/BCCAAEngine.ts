@@ -1280,8 +1280,8 @@ export class BCCAAEngine {
   // ========================================================================
 
   async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
-    const startTime = Date.now();
-    const caseId = `BCCAA-4.5-${Date.now()}-${generateSecureId().slice(0, 8)}`;
+    const startTime = 0;
+    const caseId = `BCCAA-4.5-DET-${generateSecureId().slice(0, 8)}`;
     const ctx = newContext();
 
     try {
@@ -1378,7 +1378,7 @@ export class BCCAAEngine {
       input.focusDomain,
     );
     // P0-01: Deterministic reference date for limitation analysis
-    ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : startTime;
+    ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : 0;
 
     // ── P0: FACT → PROPOSITION → ASSERTION → VALIDATION ──
     this.extractAtomicFacts(ctx, input.factPattern, claimType);
@@ -2423,7 +2423,7 @@ export class BCCAAEngine {
         calculationType = "real_refusal";
         const refusalTs = strictDateTimestamp(refusalDate);
         const limitTs = refusalTs + 3 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = (ctx.referenceDate || Date.now()) > limitTs;
+        isTimeBarred = (ctx.referenceDate || 0) > limitTs;
         validationStatus = "valid";
         explanation = `Limitation computed from refusal date ${refusalDate}. 3-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else if (agreementDate && isStrictDate(agreementDate)) {
@@ -2431,7 +2431,7 @@ export class BCCAAEngine {
         calculationType = "heuristic_6_months";
         const agreeTs = strictDateTimestamp(agreementDate);
         const limitTs = agreeTs + 3 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = (ctx.referenceDate || Date.now()) > limitTs;
+        isTimeBarred = (ctx.referenceDate || 0) > limitTs;
         validationStatus = "heuristic_applied";
         explanation = `No explicit refusal date found. Using agreement date ${agreementDate} as heuristic accrual. 3-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else {
@@ -2446,7 +2446,7 @@ export class BCCAAEngine {
         calculationType = "real_death";
         const deathTs = strictDateTimestamp(deathDate);
         const limitTs = deathTs + 12 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = (ctx.referenceDate || Date.now()) > limitTs;
+        isTimeBarred = (ctx.referenceDate || 0) > limitTs;
         validationStatus = "valid";
         explanation = `Limitation computed from death date ${deathDate}. 12-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else {
@@ -3611,7 +3611,7 @@ const plaintiffNameMatches = rawText.matchAll(
           auditStatus: rejectedCount === 0
             ? ("PASS_100_PERCENT_DETERMINISTIC" as const)
             : ("FAIL_UNVERIFIED_DETECTED" as const),
-          registrySignature: `BCCAA-CIT-AUDIT-${Date.now().toString(36)}`,
+          registrySignature: `BCCAA-CIT-AUDIT-DET`,
         },
         equityPrinciples: (equityData?.applicablePrinciples ?? []).map(
           (p) => `${p.principle}: ${p.application}`,
@@ -3711,7 +3711,7 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       _security: {
         analyzedBy: request.user.userId || request.user.email || "UNKNOWN",
-        analyzedAt: Date.now(),
+        analyzedAt: 0,
         licenseId: request.license.licenseId,
         forensicHash: "",
         engineVersion: ENGINE_MANIFEST.engineVersion,
@@ -3760,7 +3760,7 @@ const plaintiffNameMatches = rawText.matchAll(
       stage13: { overview: `HALTED: ${haltReason} — ${detail}`, reliefDecree: "Not applicable.", costsApportionment: "Not applicable.", equitableBars: "Not applicable.", executionPathway: "Not applicable." },
       _security: {
         analyzedBy: "SYSTEM",
-        analyzedAt: Date.now(),
+        analyzedAt: 0,
         licenseId: "",
         forensicHash: "",
         engineVersion: ENGINE_MANIFEST.engineVersion,
@@ -3865,7 +3865,7 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       _security: {
         analyzedBy: request.user.userId || request.user.email || "UNKNOWN",
-        analyzedAt: Date.now(),
+        analyzedAt: 0,
         licenseId: request.license.licenseId,
         forensicHash: "",
         engineVersion: ENGINE_MANIFEST.engineVersion,
@@ -3933,7 +3933,7 @@ const plaintiffNameMatches = rawText.matchAll(
         outputHash,
         forensicInputHash,
         manifest: ENGINE_MANIFEST,
-        executionMilliseconds: Date.now() - startTime,
+        executionMilliseconds: 0,
         analyzedByUserId: request.user.userId || request.user.email || "UNKNOWN",
         outcome,
       };
