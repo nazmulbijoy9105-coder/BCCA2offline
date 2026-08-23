@@ -2630,13 +2630,17 @@ export class BCCAAEngine {
     const defendantNames: string[] = [];
 
     // Look for patterns like "Plaintiff Md. Rafiqul Islam" or "Mr. X, the plaintiff"
-    const plaintiffNameMatches = rawText.matchAll(/(?:plaintiff|petitioner)\s+(?:is\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?:,|\(|\bvs\b|\bagainst\b|\bfiled\b)/gi);
+const plaintiffNameMatches = rawText.matchAll(
+      /(?:plaintiff|petitioner|complainant)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|vs\.?|versus|against|filed|through))/gi
+    );
     for (const match of plaintiffNameMatches) {
       const name = match[1].trim();
       if (name.length > 3 && !plaintiffNames.includes(name)) plaintiffNames.push(name);
     }
 
-    const defendantNameMatches = rawText.matchAll(/(?:defendant|respondent)\s+(?:is\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?:,|\(|\bvs\b|\bfiled\b|\balleging\b)/gi);
+    const defendantNameMatches = rawText.matchAll(
+      /(?:defendant|respondent|opposite\s+party)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|claims?|alleged|filed|through))/gi
+    );
     for (const match of defendantNameMatches) {
       const name = match[1].trim();
       if (name.length > 3 && !defendantNames.includes(name)) defendantNames.push(name);
