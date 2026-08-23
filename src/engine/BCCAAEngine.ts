@@ -2760,6 +2760,46 @@ const plaintiffNameMatches = rawText.matchAll(
     // FIX #21: Frame substantive issues from the fact pattern, not just element codes
     const lower = rawText.toLowerCase();
 
+    if (lower.includes("bainapatra") || lower.includes("agreement for sale") || lower.includes("agreement")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the Bainapatra / Agreement for Sale is valid, binding and enforceable",
+        type: "SUBSTANTIVE",
+        burden: "PLAINTIFF",
+        evidenceRequired: "Original/documentary evidence of agreement; proof of consideration",
+      });
+    }
+    if (lower.includes("inherit") || lower.includes("heir") || lower.includes("succession") || lower.includes("warisan") || lower.includes("intestate")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the plaintiff is a lawful heir entitled to inheritance shares",
+        type: "SUBSTANTIVE",
+        burden: "PLAINTIFF",
+        evidenceRequired: "Death certificate; Warisan Sanad; proof of relationship",
+      });
+    }
+    if (lower.includes("disown")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the alleged disowning declaration is valid in law and fact",
+        type: "SUBSTANTIVE",
+        burden: "DEFENDANT",
+        evidenceRequired: "Documentary evidence of disowning; proof of publication/communication",
+      });
+    }
+    if (lower.includes("dispossess") || lower.includes("ouster") || lower.includes("forcibly entered")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the plaintiff was unlawfully dispossessed by the defendant",
+        type: "SUBSTANTIVE",
+        burden: "PLAINTIFF",
+        evidenceRequired: "Evidence of prior possession; evidence of ouster",
+      });
+    }
+
+    // FIX #21: Frame substantive issues from the fact pattern, not just element codes
+    const lower = rawText.toLowerCase();
+
     // Check for substantive legal questions in the text
     if (lower.includes("bainapatra") || lower.includes("agreement")) {
       issues.push({
