@@ -1901,6 +1901,25 @@ export class BCCAAEngine {
       }
     }
 
+
+    // P0-00d: Additional temporal facts for chronology completeness
+    if (/\b(?:disowning affidavit|affidavit of disown)\b/i.test(lower)) {
+      const affDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (affDate) candidates.push({ subject: "Ancestor", predicate: "Disowning Date", object: affDate[1].trim(), eventDate: affDate[1].trim() });
+    }
+    if (/\b(?:newspaper publication|published in|daily ittefaq)\b/i.test(lower)) {
+      const pubDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (pubDate) candidates.push({ subject: "Media", predicate: "Publication Date", object: pubDate[1].trim(), eventDate: pubDate[1].trim() });
+    }
+    if (/\b(?:warisan sanad|heirship certificate|legal heirship)\b/i.test(lower)) {
+      const wsDate = clause.match(/(?:dated|on)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (wsDate) candidates.push({ subject: "Heirship", predicate: "Certificate Date", object: wsDate[1].trim(), eventDate: wsDate[1].trim() });
+    }
+    if (/\b(?:predeceased|pre-deceased|died before)\b/i.test(lower)) {
+      const preDate = clause.match(/(?:in|on)\s+([0-9]{4}|[0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+      if (preDate) candidates.push({ subject: "Spouse", predicate: "Predeceased Date", object: preDate[1].trim(), eventDate: preDate[1].trim() });
+    }
+
     return candidates;
   }
 
