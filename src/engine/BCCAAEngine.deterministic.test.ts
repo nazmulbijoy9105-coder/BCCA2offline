@@ -25,7 +25,7 @@ function makeRequest(overrides: {
 } = {}): AnalyzeRequest {
   return {
     caseId: overrides.caseId ?? `DET-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    user: { id: "test-id", userId: "test-runner", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST" as any as any, chamberId: "test-chamber" } as any,
+    user: { id: "test-id", userId: "test-runner", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST" as any as any as any, chamberId: "test-chamber" } as any,
     license: { licenseId: "TEST-LIC-001", issuedTo: "DETERMINISTIC_TEST_SUITE" },
     input: {
       factPattern:
