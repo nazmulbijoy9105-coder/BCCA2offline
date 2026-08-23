@@ -1625,6 +1625,13 @@ export class BCCAAEngine {
             sourceSpan: source,
           });
 
+          // P0-00e: Canonical deduplication — skip if same subject|predicate|object exists
+          const canonicalKey = `${candidate.subject}|${candidate.predicate}|${(candidate.object || "").toString().toUpperCase()}`;
+          const isDuplicate = Array.from(ctx.factRegistry.values()).some(
+            f => `${f.subject}|${f.predicate}|${(f.object || "").toString().toUpperCase()}`.toUpperCase() === canonicalKey.toUpperCase()
+          );
+          if (isDuplicate) continue;
+
           const factId = shortId("F", ctx.factCounter++);
           const fact: AtomicFact = {
             factId,
@@ -1901,6 +1908,25 @@ export class BCCAAEngine {
       }
     }
 
+
+    // P0-00d: Additional temporal facts for chronology completeness
+    if (/\b(?:disowning affidavit|affidavit of disown)\b/i.test(lower)) {
+      const affDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (affDate) candidates.push({ subject: "Ancestor", predicate: "Disowning Date", object: affDate[1].trim(), eventDate: affDate[1].trim() });
+    }
+    if (/\b(?:newspaper publication|published in|daily ittefaq)\b/i.test(lower)) {
+      const pubDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (pubDate) candidates.push({ subject: "Media", predicate: "Publication Date", object: pubDate[1].trim(), eventDate: pubDate[1].trim() });
+    }
+    if (/\b(?:warisan sanad|heirship certificate|legal heirship)\b/i.test(lower)) {
+      const wsDate = clause.match(/(?:dated|on)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (wsDate) candidates.push({ subject: "Heirship", predicate: "Certificate Date", object: wsDate[1].trim(), eventDate: wsDate[1].trim() });
+    }
+    if (/\b(?:predeceased|pre-deceased|died before)\b/i.test(lower)) {
+      const preDate = clause.match(/(?:in|on)\s+([0-9]{4}|[0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+      if (preDate) candidates.push({ subject: "Spouse", predicate: "Predeceased Date", object: preDate[1].trim(), eventDate: preDate[1].trim() });
+    }
+
     return candidates;
   }
 
@@ -1940,6 +1966,13 @@ export class BCCAAEngine {
     }
     // FIX #17: Broader documentary fact triggers
     if (/\b(?:document\s+shows|record\s+reveals|registered\s+deed|registered\s+sale\s+deed|kabala|pay\s+order|treasury\s+challan|bainapatra)\b/i.test(clause)) {
+      return {
+        type: AssertionType.DOCUMENTARY_FACT,
+        polarity: AssertionPolarity.POSITIVE,
+      };
+    }
+    // P0-00c: Official records must be classified as DOCUMENTARY
+    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
       return {
         type: AssertionType.DOCUMENTARY_FACT,
         polarity: AssertionPolarity.POSITIVE,
@@ -2630,13 +2663,17 @@ export class BCCAAEngine {
     const defendantNames: string[] = [];
 
     // Look for patterns like "Plaintiff Md. Rafiqul Islam" or "Mr. X, the plaintiff"
-    const plaintiffNameMatches = rawText.matchAll(/(?:plaintiff|petitioner)\s+(?:is\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?:,|\(|\bvs\b|\bagainst\b|\bfiled\b)/gi);
+const plaintiffNameMatches = rawText.matchAll(
+      /(?:plaintiff|petitioner|complainant)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|vs\.?|versus|against|filed|through))/gi
+    );
     for (const match of plaintiffNameMatches) {
       const name = match[1].trim();
       if (name.length > 3 && !plaintiffNames.includes(name)) plaintiffNames.push(name);
     }
 
-    const defendantNameMatches = rawText.matchAll(/(?:defendant|respondent)\s+(?:is\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?:,|\(|\bvs\b|\bfiled\b|\balleging\b)/gi);
+    const defendantNameMatches = rawText.matchAll(
+      /(?:defendant|respondent|opposite\s+party)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|claims?|alleged|filed|through))/gi
+    );
     for (const match of defendantNameMatches) {
       const name = match[1].trim();
       if (name.length > 3 && !defendantNames.includes(name)) defendantNames.push(name);
@@ -2752,6 +2789,46 @@ export class BCCAAEngine {
     }> = [];
 
     let issueNo = 1;
+
+    // FIX #21: Frame substantive issues from the fact pattern, not just element codes
+    const lower = rawText.toLowerCase();
+
+    if (lower.includes("bainapatra") || lower.includes("agreement for sale") || lower.includes("agreement")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the Bainapatra / Agreement for Sale is valid, binding and enforceable",
+        type: "SUBSTANTIVE",
+        burden: "PLAINTIFF",
+        evidenceRequired: "Original/documentary evidence of agreement; proof of consideration",
+      });
+    }
+    if (lower.includes("inherit") || lower.includes("heir") || lower.includes("succession") || lower.includes("warisan") || lower.includes("intestate")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the plaintiff is a lawful heir entitled to inheritance shares",
+        type: "SUBSTANTIVE",
+        burden: "PLAINTIFF",
+        evidenceRequired: "Death certificate; Warisan Sanad; proof of relationship",
+      });
+    }
+    if (lower.includes("disown")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the alleged disowning declaration is valid in law and fact",
+        type: "SUBSTANTIVE",
+        burden: "DEFENDANT",
+        evidenceRequired: "Documentary evidence of disowning; proof of publication/communication",
+      });
+    }
+    if (lower.includes("dispossess") || lower.includes("ouster") || lower.includes("forcibly entered")) {
+      issues.push({
+        issueNo: issueNo++,
+        title: "Whether the plaintiff was unlawfully dispossessed by the defendant",
+        type: "SUBSTANTIVE",
+        burden: "PLAINTIFF",
+        evidenceRequired: "Evidence of prior possession; evidence of ouster",
+      });
+    }
 
     // FIX #21: Frame substantive issues from the fact pattern, not just element codes
     const lower = rawText.toLowerCase();
