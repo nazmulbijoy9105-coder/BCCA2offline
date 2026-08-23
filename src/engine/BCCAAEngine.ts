@@ -2664,7 +2664,7 @@ export class BCCAAEngine {
 
     // Look for patterns like "Plaintiff Md. Rafiqul Islam" or "Mr. X, the plaintiff"
 const plaintiffNameMatches = rawText.matchAll(
-      /(?:plaintiff|petitioner|complainant)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|vs\.?|versus|against|filed|through))/gi
+      /(?:plaintiff|petitioner|complainant)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M\/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|vs\.?|versus|against|filed|through))/gi
     );
     for (const match of plaintiffNameMatches) {
       const name = match[1].trim();
@@ -2672,7 +2672,7 @@ const plaintiffNameMatches = rawText.matchAll(
     }
 
     const defendantNameMatches = rawText.matchAll(
-      /(?:defendant|respondent|opposite\s+party)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|claims?|alleged|filed|through))/gi
+      /(?:defendant|respondent|opposite\s+party)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M\/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|claims?|alleged|filed|through))/gi
     );
     for (const match of defendantNameMatches) {
       const name = match[1].trim();
@@ -2831,7 +2831,6 @@ const plaintiffNameMatches = rawText.matchAll(
     }
 
     // FIX #21: Frame substantive issues from the fact pattern, not just element codes
-    const lower = rawText.toLowerCase();
 
     // Check for substantive legal questions in the text
     if (lower.includes("bainapatra") || lower.includes("agreement")) {
