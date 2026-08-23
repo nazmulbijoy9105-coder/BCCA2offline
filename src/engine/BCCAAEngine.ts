@@ -175,7 +175,7 @@ export type PredicateConflictMode =
 
 /** ISSUE 5-6: Expanded outcome enum — element-only execution must not produce SUCCESS. */
 export type ExecutionOutcome =
-  | "SUCCESS"
+  | "RESERVED_SUCCESS" // Never emitted — structural-only analysis prevents success claims
   | "STRUCTURAL_ONLY"
   | "PARTIAL"
   | "INDETERMINATE"
