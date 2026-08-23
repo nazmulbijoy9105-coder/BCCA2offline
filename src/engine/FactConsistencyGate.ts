@@ -290,7 +290,7 @@ export class FactConsistencyGate {
         "FACT-LIVING-001";
 
       conflicts.push({
-        conflictId: `CONF-VITAL-${Date.now().toString(36)}`,
+        conflictId: `CONF-VITAL-${canonicalHash(left.propositionKey + "|" + right.propositionKey).slice(0,12)}`,
         conflictType: "TEMPORAL_STATUS_CONTRADICTION",
         severity: "CRITICAL",
         factIdA: deathFactId,
@@ -351,7 +351,7 @@ export class FactConsistencyGate {
     const uniqueDeathDates = Array.from(new Set(normalizedDates));
     if (uniqueDeathDates.length > 1) {
       conflicts.push({
-        conflictId: `CONF-DATE-DEATH-${Date.now().toString(36)}`,
+        conflictId: `CONF-DATE-DEATH-${canonicalHash(left.date + "|" + right.date).slice(0,12)}`,
         conflictType: "CHRONOLOGY_DATE_CLASH",
         severity: "CRITICAL",
         factIdA: "FACT-DATE-CLASH-A",
@@ -396,7 +396,7 @@ export class FactConsistencyGate {
       !lower.includes("in the alternative")
     ) {
       conflicts.push({
-        conflictId: `CONF-COA-${Date.now().toString(36)}`,
+        conflictId: `CONF-COA-${canonicalHash(left.claimType + "|" + right.claimType).slice(0,12)}`,
         conflictType: "CAUSE_OF_ACTION_MUTUAL_EXCLUSION",
         severity: "MATERIAL",
         factIdA: "FACT-COA-SP",
@@ -437,7 +437,7 @@ export class FactConsistencyGate {
         lower.includes("trespasser with no relation"));
     if (mentionsCoHeir && mentionsStranger) {
       conflicts.push({
-        conflictId: `CONF-PARTY-ROLE-${Date.now().toString(36)}`,
+        conflictId: `CONF-PARTY-ROLE-${canonicalHash(left.role + "|" + right.role).slice(0,12)}`,
         conflictType: "PARTY_ROLE_INCONSISTENCY",
         severity: "MATERIAL",
         factIdA: "FACT-PARTY-HEIR",

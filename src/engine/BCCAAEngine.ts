@@ -501,6 +501,7 @@ interface ExecutionContext {
   assertionCounter: number;
   /** ISSUE 4: Predicate conflict mode registry. */
   predicateConflictModes: Map<string, PredicateConflictMode>;
+  referenceDate?: number;
 }
 
 /** Common return type for all P1 stage methods. */
@@ -1376,6 +1377,8 @@ export class BCCAAEngine {
       input.factPattern,
       input.focusDomain,
     );
+    // P0-01: Deterministic reference date for limitation analysis
+    ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : startTime;
 
     // ── P0: FACT → PROPOSITION → ASSERTION → VALIDATION ──
     this.extractAtomicFacts(ctx, input.factPattern, claimType);
@@ -2387,7 +2390,7 @@ export class BCCAAEngine {
         calculationType = "real_refusal";
         const refusalTs = strictDateTimestamp(refusalDate);
         const limitTs = refusalTs + 3 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = Date.now() > limitTs;
+        isTimeBarred = (ctx.referenceDate || Date.now()) > limitTs;
         validationStatus = "valid";
         explanation = `Limitation computed from refusal date ${refusalDate}. 3-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else if (agreementDate && isStrictDate(agreementDate)) {
@@ -2395,7 +2398,7 @@ export class BCCAAEngine {
         calculationType = "heuristic_6_months";
         const agreeTs = strictDateTimestamp(agreementDate);
         const limitTs = agreeTs + 3 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = Date.now() > limitTs;
+        isTimeBarred = (ctx.referenceDate || Date.now()) > limitTs;
         validationStatus = "heuristic_applied";
         explanation = `No explicit refusal date found. Using agreement date ${agreementDate} as heuristic accrual. 3-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else {
@@ -2410,7 +2413,7 @@ export class BCCAAEngine {
         calculationType = "real_death";
         const deathTs = strictDateTimestamp(deathDate);
         const limitTs = deathTs + 12 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = Date.now() > limitTs;
+        isTimeBarred = (ctx.referenceDate || Date.now()) > limitTs;
         validationStatus = "valid";
         explanation = `Limitation computed from death date ${deathDate}. 12-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
       } else {
