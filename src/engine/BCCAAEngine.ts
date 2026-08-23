@@ -1625,6 +1625,13 @@ export class BCCAAEngine {
             sourceSpan: source,
           });
 
+          // P0-00e: Canonical deduplication — skip if same subject|predicate|object exists
+          const canonicalKey = `${candidate.subject}|${candidate.predicate}|${(candidate.object || "").toString().toUpperCase()}`;
+          const isDuplicate = Array.from(ctx.factRegistry.values()).some(
+            f => `${f.subject}|${f.predicate}|${(f.object || "").toString().toUpperCase()}`.toUpperCase() === canonicalKey.toUpperCase()
+          );
+          if (isDuplicate) continue;
+
           const factId = shortId("F", ctx.factCounter++);
           const fact: AtomicFact = {
             factId,
