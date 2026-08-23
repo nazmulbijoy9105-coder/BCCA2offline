@@ -1012,7 +1012,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
         primaryAct: "Applicable succession / personal law",
         relevantSections: [],
       };
-    return { primaryAct: "N/A", relevantSections: [] };
+    return { primaryAct: null, relevantSections: [] };
   }
 }
 
@@ -2407,8 +2407,8 @@ export class BCCAAEngine {
     const demandDate = this.findDateFact(facts, "Plaintiff", "Demand Date");
 
     let accrualDate: string | null = null;
-    let prescribedPeriod = "N/A";
-    let limitationArticle = "N/A";
+    let prescribedPeriod = null;
+    let limitationArticle = null;
     let isTimeBarred = false;
     let calculationType: "real_refusal" | "real_death" | "heuristic_6_months" | "missing_dates" | "other_category" = "missing_dates";
     let validationStatus: "valid" | "heuristic_applied" | "invalid_gaps" = "invalid_gaps";
@@ -2696,7 +2696,7 @@ const plaintiffNameMatches = rawText.matchAll(
       name,
       legalIdentity: name.includes("Defendant") ? "NOT_EXTRACTED" : "EXTRACTED_FROM_NARRATIVE",
       capacity: "NOT_DETERMINED",
-      liabilityType: "TO_BE_DETERMINED",
+      liabilityType: null,
     }));
 
     recordTrace(ctx, {
@@ -3074,8 +3074,8 @@ const plaintiffNameMatches = rawText.matchAll(
     const quantumFacts = facts.filter(f => f.predicate === "Quantum Amount" && f.normalizedValue != null);
 
     // FIX #12 / #27: Compute valuation from quantum facts instead of hardcoding
-    let valuation = "TO_BE_DETERMINED";
-    let courtLevel = "TO_BE_DETERMINED";
+    let valuation = null;
+    let courtLevel = null;
 
     if (quantumFacts.length > 0) {
       const totalValue = quantumFacts.reduce((sum, f) => sum + (Number(f.normalizedValue) || 0), 0);
@@ -3583,7 +3583,7 @@ const plaintiffNameMatches = rawText.matchAll(
         ],
       },
       stage2: {
-        primaryAct: legislationData?.legislation.primaryAct ?? "N/A",
+        primaryAct: legislationData?.legislation.primaryAct ?? null,
         relevantSections: legislationData?.legislation.relevantSections ?? [],
         precedents: precedents.map((p) => ({
           citation: p.citation,
@@ -3619,8 +3619,8 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       stage3: {
         accrualDate: limitationData?.accrualDate ?? "NOT_EXTRACTED",
-        prescribedPeriod: limitationData?.prescribedPeriod ?? "N/A",
-        limitationArticle: limitationData?.limitationArticle ?? "N/A",
+        prescribedPeriod: limitationData?.prescribedPeriod ?? null,
+        limitationArticle: limitationData?.limitationArticle ?? null,
         isTimeBarred: limitationData?.isTimeBarred ?? false,
         exceptionsOrExtensions: limitationData?.exceptionsOrExtensions ?? "",
         preliminaryAnalysis: limitationData?.preliminaryAnalysis ?? "Limitation could not be computed.",
@@ -3644,22 +3644,22 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       stage5: {
         territorial: procedureData?.territorial ?? {
-          rule: "N/A",
-          governingSection: "N/A",
-          jurisdictionalFacts: "N/A",
+          rule: null,
+          governingSection: null,
+          jurisdictionalFacts: null,
         },
         pecuniary: procedureData?.pecuniary ?? {
-          valuation: "N/A",
-          courtLevel: "N/A",
-          pecuniaryLimits: "N/A",
-          suitsValuationActNotes: "N/A",
+          valuation: null,
+          courtLevel: null,
+          pecuniaryLimits: null,
+          suitsValuationActNotes: null,
         },
         subjectMatter: procedureData?.subjectMatter ?? {
           isExcluded: false,
           forum: "Civil Court",
-          governingStatute: "N/A",
+          governingStatute: null,
         },
-        objectionStrategy: procedureData?.objectionStrategy ?? "N/A",
+        objectionStrategy: procedureData?.objectionStrategy ?? null,
       },
       stage6: {
         plaintChecklist: pleadingData?.plaintChecklist ?? [],
@@ -3680,7 +3680,7 @@ const plaintiffNameMatches = rawText.matchAll(
       },
       stage10: {
         applicablePrinciples: equityData?.applicablePrinciples ?? [],
-        discretionaryReliefCheck: equityData?.discretionaryReliefCheck ?? "N/A",
+        discretionaryReliefCheck: equityData?.discretionaryReliefCheck ?? null,
       },
       stage11: {
         timelineProgress: procedureData?.timelineProgress ?? [],
@@ -3696,11 +3696,11 @@ const plaintiffNameMatches = rawText.matchAll(
           : synthesis.status === "FAILED"
             ? "Claim structurally unsustainable. No relief decree available."
             : "Indeterminate — cannot formulate relief decree.",
-        costsApportionment: "To be determined by court based on outcome.",
-        equitableBars: equityData?.discretionaryReliefCheck ?? "None detected.",
+        costsApportionment: null,
+        equitableBars: equityData?.discretionaryReliefCheck ?? null,
         executionPathway: synthesis.status === "ELEMENTS_SATISFIED"
           ? "If decree granted, execution under Order XXI CPC 1908."
-          : "Not applicable — claim does not reach decree stage.",
+          : null,
         // FIX #19: Debuggability enhancement
         _debug: {
           missingElements: pipeline.elementGate.missingElements,
@@ -3746,18 +3746,18 @@ const plaintiffNameMatches = rawText.matchAll(
         quantumFacts: [],
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], triggerFacts: [] },
-      stage2: { primaryAct: "N/A", relevantSections: [], precedents: [], equityPrinciples: [] },
-      stage3: { accrualDate: "N/A", prescribedPeriod: "N/A", limitationArticle: "N/A", isTimeBarred: false, exceptionsOrExtensions: "", preliminaryAnalysis: "Not executed." },
-      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "Not executed." },
-      stage5: { territorial: { rule: "N/A", governingSection: "N/A", jurisdictionalFacts: "N/A" }, pecuniary: { valuation: "N/A", courtLevel: "N/A", pecuniaryLimits: "N/A", suitsValuationActNotes: "N/A" }, subjectMatter: { isExcluded: false, forum: "N/A", governingStatute: "N/A" }, objectionStrategy: "N/A" },
+      stage2: { primaryAct: null, relevantSections: [], precedents: [], equityPrinciples: [] },
+      stage3: { accrualDate: null, prescribedPeriod: null, limitationArticle: null, isTimeBarred: false, exceptionsOrExtensions: "", preliminaryAnalysis: null },
+      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: null },
+      stage5: { territorial: { rule: null, governingSection: null, jurisdictionalFacts: null}, pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null}, subjectMatter: { isExcluded: false, forum: null, governingStatute: null}, objectionStrategy: null},
       stage6: { plaintChecklist: [], groundsForRejection: [], writtenStatementDeemedAdmissions: "", counterclaimsOrSetOff: "" },
       stage7: { issues: [] },
       stage8: { evidenceList: [], burdenAssignments: "", statutoryPresumptions: [] },
       stage9: { issueDetails: [] },
-      stage10: { applicablePrinciples: [], discretionaryReliefCheck: "N/A" },
+      stage10: { applicablePrinciples: [], discretionaryReliefCheck: null},
       stage11: { timelineProgress: [] },
       stage12: { appealNodes: [] },
-      stage13: { overview: `HALTED: ${haltReason} — ${detail}`, reliefDecree: "Not applicable.", costsApportionment: "Not applicable.", equitableBars: "Not applicable.", executionPathway: "Not applicable." },
+      stage13: { overview: `HALTED: ${haltReason} — ${detail}`, reliefDecree: null, costsApportionment: null, equitableBars: null, executionPathway: null },
       _security: {
         analyzedBy: "SYSTEM",
         analyzedAt: 0,
@@ -3824,7 +3824,7 @@ const plaintiffNameMatches = rawText.matchAll(
         }],
       },
       stage2: {
-        primaryAct: legislationData?.legislation.primaryAct ?? "N/A",
+        primaryAct: legislationData?.legislation.primaryAct ?? null,
         relevantSections: legislationData?.legislation.relevantSections ?? [],
         precedents: (legislationData?.precedents ?? []).map((p) => ({
           citation: p.citation,
@@ -3846,22 +3846,22 @@ const plaintiffNameMatches = rawText.matchAll(
         })),
         equityPrinciples: [],
       },
-      stage3: { accrualDate: "N/A", prescribedPeriod: "N/A", limitationArticle: "N/A", isTimeBarred: false, exceptionsOrExtensions: "", preliminaryAnalysis: "Not executed — F0 halted." },
-      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "Not executed — F0 halted." },
-      stage5: { territorial: { rule: "N/A", governingSection: "N/A", jurisdictionalFacts: "N/A" }, pecuniary: { valuation: "N/A", courtLevel: "N/A", pecuniaryLimits: "N/A", suitsValuationActNotes: "N/A" }, subjectMatter: { isExcluded: false, forum: "N/A", governingStatute: "N/A" }, objectionStrategy: "N/A" },
+      stage3: { accrualDate: null, prescribedPeriod: null, limitationArticle: null, isTimeBarred: false, exceptionsOrExtensions: "", preliminaryAnalysis: null },
+      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: null },
+      stage5: { territorial: { rule: null, governingSection: null, jurisdictionalFacts: null}, pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null}, subjectMatter: { isExcluded: false, forum: null, governingStatute: null}, objectionStrategy: null},
       stage6: { plaintChecklist: [], groundsForRejection: [], writtenStatementDeemedAdmissions: "", counterclaimsOrSetOff: "" },
       stage7: { issues: [] },
       stage8: { evidenceList: [], burdenAssignments: "", statutoryPresumptions: [] },
       stage9: { issueDetails: [] },
-      stage10: { applicablePrinciples: [], discretionaryReliefCheck: "N/A" },
+      stage10: { applicablePrinciples: [], discretionaryReliefCheck: null},
       stage11: { timelineProgress: [] },
       stage12: { appealNodes: [] },
       stage13: {
         overview: synthesis.conclusion,
-        reliefDecree: "Not applicable — F0 halted.",
-        costsApportionment: "Not applicable.",
-        equitableBars: "Not applicable.",
-        executionPathway: "Not applicable.",
+        reliefDecree: null,
+        costsApportionment: null,
+        equitableBars: null,
+        executionPathway: null,
       },
       _security: {
         analyzedBy: request.user.userId || request.user.email || "UNKNOWN",
