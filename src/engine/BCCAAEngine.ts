@@ -1073,7 +1073,7 @@ export class NoOpFactValidationProvider implements FactValidationProvider {
   }
 }
 
-// FIX #4 / #5: Development provider that assigns TRUE truth and VERIFIED status
+// FIX #4 / #5: Development provider assigns VERIFIED status and VERIFIED status
 // so that rule predicates can actually be satisfied in development mode.
 export class DevelopmentFactValidationProvider implements FactValidationProvider {
   readonly isProductionReady = false;
