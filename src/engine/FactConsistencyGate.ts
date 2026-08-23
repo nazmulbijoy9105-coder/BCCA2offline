@@ -33,6 +33,24 @@ export interface AncestorEvaluationInput {
   };
 }
 
+/** FIX #8: Lightweight interfaces so F0 can consume engine-built artefacts. */
+interface EngineFact {
+  factId: string;
+  subject: string;
+  predicate: string;
+  object: string | null;
+  truth: string;
+  eventDate?: string | null;
+  proposition: string;
+}
+
+interface EngineConflict {
+  propositionKey: string;
+  leftFactId: string;
+  rightFactId: string;
+  status: string;
+}
+
 export class FactConsistencyGate {
   /**
    * Evaluates the raw fact pattern and extracted chronology for critical contradictions,
@@ -42,6 +60,10 @@ export class FactConsistencyGate {
    *         `ancestorEvaluation: AncestorEvaluationInput | null`.
    * The gate can now make nuanced decisions based on evaluation confidence,
    * conflicts, and validation dimensions — not just a boolean collapse.
+   *
+   * FIX #8: Added `engineFacts` and `engineConflicts` so the gate consumes the
+   * engine's already-built fact registry and contradiction graph instead of
+   * re-parsing raw text with divergent regexes.
    */
   public static evaluate(
     rawText: string,
@@ -64,6 +86,8 @@ export class FactConsistencyGate {
     }>,
     category: string,
     ancestorEvaluation: AncestorEvaluationInput | null,
+    engineFacts?: EngineFact[],
+    engineConflicts?: EngineConflict[],
   ): FactConsistencyGateOutput {
     const atomicFacts: AtomicFact[] = [];
     const conflicts: FactConflict[] = [];
@@ -82,19 +106,49 @@ export class FactConsistencyGate {
     let factCounter = 1;
     const nextId = () => `FACT-${String(factCounter++).padStart(5, "0")}`;
 
+    // FIX #8: Prefer engine facts over re-parsing raw text.
+    // If engine facts are supplied, derive death / living assertions from them.
+    const engineDeathFacts = (engineFacts ?? []).filter(
+      (f) =>
+        f.subject.toUpperCase() === "ANCESTOR" &&
+        f.predicate.toUpperCase() === "VITAL STATUS" &&
+        f.object?.toUpperCase() === "DECEASED",
+    );
+    const engineLivingFacts = (engineFacts ?? []).filter(
+      (f) =>
+        f.subject.toUpperCase() === "ANCESTOR" &&
+        f.predicate.toUpperCase() === "VITAL STATUS" &&
+        f.object?.toUpperCase() === "ALIVE",
+    );
+
     // A. Death / Vital Status extraction
     const deathMatches = Array.from(
       rawText.matchAll(
         /(?:died|passed away|demise|death of|expired)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/gi,
       ),
     );
+    // FIX #1: Removed "during his lifetime" and "while the father is alive"
+    // — these are past-temporal qualifiers, not assertions of current living status.
     const livingMatches = Array.from(
       rawText.matchAll(
-        /\b(?:father is alive|living father|alive and in possession|ancestor is living|while the father is alive)\b/gi,
+        /\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/gi,
       ),
     );
 
-    if (deathMatches.length > 0) {
+    if (engineDeathFacts.length > 0) {
+      engineDeathFacts.forEach((f, idx) => {
+        atomicFacts.push({
+          factId: f.factId,
+          proposition: `Ancestor death event #${idx + 1}`,
+          value: { dateString: f.eventDate ?? "UNKNOWN", rawMatch: f.proposition },
+          sourceParagraph: f.proposition,
+          factStatus: "ALLEGED",
+          temporalStatus: "PAST",
+          confidence: 0.95,
+          materiality: "CRITICAL",
+        });
+      });
+    } else if (deathMatches.length > 0) {
       deathMatches.forEach((m, idx) => {
         atomicFacts.push({
           factId: nextId(),
@@ -109,7 +163,20 @@ export class FactConsistencyGate {
       });
     }
 
-    if (livingMatches.length > 0) {
+    if (engineLivingFacts.length > 0) {
+      engineLivingFacts.forEach((f, idx) => {
+        atomicFacts.push({
+          factId: f.factId,
+          proposition: `Ancestor vital status assertion (alive) #${idx + 1}`,
+          value: { status: "ALIVE", rawMatch: f.proposition },
+          sourceParagraph: f.proposition,
+          factStatus: "ALLEGED",
+          temporalStatus: "CURRENT",
+          confidence: 0.9,
+          materiality: "CRITICAL",
+        });
+      });
+    } else if (livingMatches.length > 0) {
       livingMatches.forEach((m, idx) => {
         atomicFacts.push({
           factId: nextId(),
@@ -182,19 +249,32 @@ export class FactConsistencyGate {
     const isAncestorDeceased = ancestorEvaluation?.status === "TRUE";
     const ancestorHasConflicts = ancestorEvaluation?.conflictDetected === true;
 
+    // FIX #8: Import critical edges from the engine's contradiction graph
+    // so F0 does not invent conflicts independently.
+    const importedCriticalEdges = (engineConflicts ?? []).filter(
+      (e) => e.status === "CRITICAL",
+    );
+    const importedCriticalCount = importedCriticalEdges.length;
+
     // CHECK 1: Vital Status Contradiction (Dead vs. Living)
-    const hasDeathFact = atomicFacts.some(
-      (f) =>
-        f.proposition.includes("Ancestor death event") ||
-        f.proposition.toLowerCase().includes("demise"),
-    );
-    const hasLivingFact = atomicFacts.some((f) =>
-      f.proposition.includes("vital status assertion (alive)"),
-    );
+    // FIX #8: Use engine facts / ancestor evaluation as primary source.
+    const hasDeathFact =
+      engineDeathFacts.length > 0 ||
+      atomicFacts.some(
+        (f) =>
+          f.proposition.includes("Ancestor death event") ||
+          f.proposition.toLowerCase().includes("demise"),
+      );
+    const hasLivingFact =
+      engineLivingFacts.length > 0 ||
+      atomicFacts.some((f) =>
+        f.proposition.includes("vital status assertion (alive)"),
+      );
     const textHasDeath = /\b(?:died|demise|passed away|deceased|death of|succession opened)\b/i.test(
       lower,
     );
-    const textHasAlive = /\b(?:father is alive|living father|during his lifetime|while the father is alive)\b/i.test(
+    // FIX #1: Removed "during his lifetime" and "while the father is alive"
+    const textHasAlive = /\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(
       lower,
     );
 
@@ -307,6 +387,8 @@ export class FactConsistencyGate {
         lower.includes("co-heir")) &&
       (lower.includes("partition") || lower.includes("disown"));
 
+    // FIX #28: Only run this check when BOTH claim types are actually present.
+    // Also skip if pleaded in the alternative.
     if (
       hasSPClaims &&
       hasInheritanceClaims &&
