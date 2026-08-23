@@ -64,7 +64,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       relevantSections: stage2?.relevantSections,
       precedentCount: stage2?.precedents?.length ?? 0,
       verifiedPrecedentCount: stage2?.precedents?.filter(
-        (p) => p.verificationStatus === "VERIFIED_CANONICAL"
+        (p: any) => p.verificationStatus === "VERIFIED_CANONICAL"
       ).length,
       citationValidationAudit: stage2?.citationValidationAudit,
       equityPrinciples: stage2?.equityPrinciples,
@@ -455,7 +455,7 @@ describe("PHASE 7: Final Gate, Outcome & Audit Integrity", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      expect(canonicalStringify(r1.outcome)).toBe(canonicalStringify(r2.outcome));
+      expect(canonicalStringify(r1)).toBe(canonicalStringify(r2));
     });
   });
 

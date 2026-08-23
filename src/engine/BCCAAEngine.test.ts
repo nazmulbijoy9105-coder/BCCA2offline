@@ -64,7 +64,6 @@ describe("C2: ILRMF Guarantee Tests", () => {
 
   beforeEach(() => {
     engine = new BCCAAEngine({
-      corpusMode: "DEVELOPMENT",
       ruleRegistry: mockRegistry as any,
       auditSink: mockAuditSink as any,
       factValidationProvider: mockValidator as any,
@@ -120,7 +119,6 @@ describe("H3: UNREGISTERED extraction patterns", () => {
 
   beforeEach(() => {
     engine = new BCCAAEngine({
-      corpusMode: "DEVELOPMENT",
       ruleRegistry: mockRegistry as any,
       auditSink: mockAuditSink as any,
       factValidationProvider: mockValidator as any,

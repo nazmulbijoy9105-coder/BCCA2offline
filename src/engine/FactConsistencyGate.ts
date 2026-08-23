@@ -1,3 +1,4 @@
+import { canonicalHash } from "./BCCAAEngine";
 import { AtomicFact, FactConflict, FactConsistencyGateOutput } from "../types/types";
 
 /**

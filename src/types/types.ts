@@ -375,7 +375,7 @@ export interface CaseHistoryItem {
   timestamp: number;
   title: string;
   primaryDomain: string;
-  courtLevel: string;
+  courtLevel: string | null;
   isTimeBarred: boolean;
   factPattern: string;
   focusDomain: string;
@@ -498,20 +498,20 @@ export interface CaseAnalysisResponse {
   };
   stage5: {
     territorial: {
-      rule: string;
-      governingSection: string;
-      jurisdictionalFacts: string;
+      rule: string | null;
+      governingSection: string | null;
+      jurisdictionalFacts: string | null;
     };
     pecuniary: {
-      valuation: string;
-      courtLevel: string;
-      pecuniaryLimits: string;
-      suitsValuationActNotes: string;
+      valuation: string | null;
+      courtLevel: string | null;
+      pecuniaryLimits: string | null;
+      suitsValuationActNotes: string | null;
     };
     subjectMatter: {
       isExcluded: boolean;
-      forum: string;
-      governingStatute: string;
+      forum: string | null;
+      governingStatute: string | null;
     };
     objectionStrategy: string | null;
   };
@@ -535,7 +535,7 @@ export interface CaseAnalysisResponse {
       item: string;
       source: string;
       type: string;
-      governingSection: string;
+      governingSection: string | null;
       admissibilityChallenge: string;
     }>;
     burdenAssignments: string[];
@@ -576,7 +576,7 @@ export interface CaseAnalysisResponse {
       level: string;
       authority: string;
       scope: string;
-      governingSection: string;
+      governingSection: string | null;
     }>;
   };
   stage13: {
