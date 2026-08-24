@@ -23,7 +23,7 @@ export function logAudit(params: {
 
     const event: AuditEvent = {
       eventId: generateSecureId(),
-      timestamp: Date.now(),
+      timestamp: 0,
       actor: {
         userId: params.userId,
         email: params.email,

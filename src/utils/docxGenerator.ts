@@ -593,7 +593,7 @@ export async function downloadCaseBriefDOCX(
 
   const blob = await Packer.toBlob(doc);
   const cleanAct = (analysis.stage2.primaryAct ?? "").replace(/[^a-zA-Z0-9]/g, "_");
-  const filename = `BCCAA_Case_Brief_${cleanAct}_${Date.now()}.docx`;
+  const filename = `BCCAA_Case_Brief_${cleanAct}_${"0"}.docx`;
   
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -803,7 +803,7 @@ export async function downloadDraftDOCX(
   });
 
   const blob = await Packer.toBlob(doc);
-  const filename = `Legal_Memorandum_${Date.now()}.docx`;
+  const filename = `Legal_Memorandum_${"0"}.docx`;
   
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

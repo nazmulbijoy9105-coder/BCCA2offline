@@ -7,11 +7,6 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     // All tests in ONE fork — eliminates Windows spawn timeout
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
     testTimeout: 120000,
     hookTimeout: 120000,
     coverage: {

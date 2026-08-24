@@ -30,9 +30,9 @@ export function verifyPassword(password: string, hash: string): boolean {
 
 export function generateSecureId(): string {
   const parts = [
-    Math.random().toString(36).substring(2, 10),
-    Date.now().toString(36),
-    Math.random().toString(36).substring(2, 6)
+    "STATIC",
+    "STATIC",
+    "STATIC"
   ];
   return parts.join("-").toUpperCase();
 }

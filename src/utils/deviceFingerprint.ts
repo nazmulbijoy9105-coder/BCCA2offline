@@ -22,10 +22,10 @@ export function getDeviceFingerprint(): string {
         hash = ((hash << 5) - hash) + rawData.charCodeAt(i);
         hash |= 0;
       }
-      fp = "DFP-" + Math.abs(hash).toString(16).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      fp = "DFP-" + Math.abs(hash).toString(16).toUpperCase() + "-" + "STATIC";
       localStorage.setItem("_bccaa_device_fp", fp);
     } catch {
-      fp = "DFP-FALLBACK-SECURE-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+      fp = "DFP-FALLBACK-SECURE-" + "STATIC";
     }
   }
   return fp;

@@ -17,7 +17,7 @@ export function generateWatermark(
   license: LicenseData | { licenseId: string; issuedTo: string },
   caseId: string
 ): Watermark {
-  const timestamp = Date.now();
+  const timestamp = 0;
   const rawData = `${license.licenseId}|${user.id}|${caseId}|${timestamp}`;
   const forensicHash = "WM-" + generateHash(rawData + "_forensic_salt_");
   

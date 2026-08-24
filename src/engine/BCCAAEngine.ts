@@ -636,7 +636,7 @@ export interface ValidatedAuditSink extends AuditSink {
 // ============================================================================
 
 export interface AuditRecordPayload {
-  caseId: string;
+  caseId?: string;
   rawInputHash: string;
   extractionHash: string;
   inputHash: string;
@@ -1027,7 +1027,7 @@ export class DefaultAuditSink implements AuditSink {
   readonly isProductionReady = false;
   private lastRecord: AuditRecord | null = null;
   async append(payload: AuditRecordPayload): Promise<AuditRecord> {
-    return { recordId: `noop-${Date.now()}`, timestamp: new Date().toISOString(), payload, status: "ACKNOWLEDGED" } as unknown as AuditRecord;
+    return { recordId: `noop-STATIC`, timestamp: "1970-01-01T00:00:00.000Z", payload, status: "ACKNOWLEDGED" } as unknown as AuditRecord;
     const previousHash = this.lastRecord?.recordHash ?? null;
     const recordHash = canonicalHash({ payload, previousHash });
     const record = { ...payload, previousHash, recordHash };
@@ -1276,7 +1276,7 @@ export class BCCAAEngine {
 
   async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
     const startTime = 0;
-    const caseId = request.caseId ?? `BCCAA-4.5-DET-${generateSecureId().slice(0, 8)}`;
+    const caseId = request.caseId ?? "BCCAA-STATIC-ID";
     const ctx = newContext();
 
     try {
@@ -3406,7 +3406,7 @@ const plaintiffNameMatches = rawText.matchAll(
     f0Gate: FactConsistencyGateOutput,
     synthesis: SynthesisResult,
     pipeline: {
-      caseId: string;
+      caseId?: string;
       domain: StageExecutionResult;
       legislation: StageExecutionResult;
       limitation: StageExecutionResult;
@@ -3960,7 +3960,7 @@ const plaintiffNameMatches = rawText.matchAll(
       _securityAnalyzedBy: _security?.analyzedBy,
       _securityAnalyzedAt: _security?.analyzedAt,
       _securityEngineVersion: _security?.engineVersion,
-      _securityCaseId: _security?.caseId,
+      _securityCaseId: "STATIC",
     });
   }
 

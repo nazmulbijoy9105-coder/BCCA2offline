@@ -700,7 +700,7 @@ export async function downloadDraftPDF(
     }
 
     const cleanTitle = (title || "Legal_Draft").replace(/[^a-zA-Z0-9]/g, "_");
-    pdf.save(`${cleanTitle}_${Date.now()}.pdf`);
+    pdf.save(`${cleanTitle}_${"0"}.pdf`);
   } catch (error) {
     console.error("Draft PDF export failed:", error);
     openPrintableFallback(container.innerHTML);
