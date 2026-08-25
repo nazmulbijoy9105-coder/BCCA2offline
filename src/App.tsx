@@ -51,7 +51,7 @@ export default function App() {
         title: analysis.stage2.primaryAct ?? "",
         primaryDomain: analysis.stage1.primaryDomain,
         courtLevel: analysis.stage5.pecuniary.courtLevel,
-        isTimeBarred: analysis.stage3.isTimeBarred,
+        isTimeBarred: analysis.stage3.isTimeBarred ?? false,
         factPattern: facts,
         focusDomain: domain,
         analysis,

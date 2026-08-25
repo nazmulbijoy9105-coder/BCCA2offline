@@ -562,7 +562,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   {analysis.stage3.timelineValidation && (
                     <TimelineValidation 
                       timeline={analysis.stage3.timelineValidation}
-                      isTimeBarred={analysis.stage3.isTimeBarred}
+                      isTimeBarred={analysis.stage3.isTimeBarred ?? false}
                       accrualDate={analysis.stage3.accrualDate ?? ""}
                       category={analysis.stage0.factsMeta?.category}
                     />

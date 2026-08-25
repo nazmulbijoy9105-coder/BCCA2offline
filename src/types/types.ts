@@ -391,6 +391,10 @@ export interface CaseAnalysisResponse {
   claimType?: string;
   domain?: string;
   legislation?: any;
+  f0Gate?: FactConsistencyGateOutput;
+  claimType?: string;
+  domain?: string;
+  legislation?: any;
   stage0: {
     factualSummary: string;
     chronology: Array<{
@@ -401,7 +405,7 @@ export interface CaseAnalysisResponse {
       conflictInfo?: {
         total: number;
         critical: number;
-        edges: Array<{
+        edges?: Array<{
           propositionKey: string;
           leftFactId: string;
           rightFactId: string;
@@ -426,7 +430,7 @@ export interface CaseAnalysisResponse {
       dispossessionProven: boolean | "unspecified";
       isUsingDefaultAmounts?: boolean;
     };
-    executionTrace?: string[];
+    executionTrace?: any[];
     // 4.4.0 forensic extensions (optional in UI)
     atomicFacts?: any[];
     propositions?: any[];
@@ -439,7 +443,7 @@ export interface CaseAnalysisResponse {
     primaryDomain: string;
     subsidiaryDomains: string[];
     domainConfidence?: string;
-    triggerFacts: Array<{
+    triggerFacts?: Array<{
       domain: string;
       fact: string;
       statutoryTrigger: string;
