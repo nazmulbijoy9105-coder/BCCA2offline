@@ -388,6 +388,10 @@ export interface CaseHistoryItem {
 export interface CaseAnalysisResponse {
   gateF0?: FactConsistencyGateOutput;
   f0Gate?: FactConsistencyGateOutput;
+  claimType?: string;
+  domain?: string;
+  legislation?: any;
+  f0Gate?: FactConsistencyGateOutput;
   
   stage0: {
     factualSummary: string;
@@ -620,12 +624,12 @@ export interface CaseAnalysisResponse {
     appealGrounds?: any[];
   };
   stage13: {
-    overview: string;
-    reliefDecree: string | null;
-    costsApportionment: string | null;
-    equitableBars: string | null;
+    overview?: string;
+    reliefDecree?: string | null;
+    costsApportionment?: string | null;
+    equitableBars?: string | null;
     _debug?: any;
-    executionPathway: string | null;
+    executionPathway?: string | null;
     conclusion?: string;
     confidence?: string;
     requiresHumanReview?: boolean;
