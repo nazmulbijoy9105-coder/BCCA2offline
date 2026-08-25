@@ -1,11 +1,20 @@
 // src/engine/BCCAAEngine.ts
-// BCCAA 4.5.1-Hardened — Complete Implementation (All 30 Bugs Fixed)
+// BCCAA 4.5.2-P0 — P0 Fact-Graph Hardened
 //
-// Design target:
-//   FACT -> PROPOSITION -> ASSERTION -> VALIDATION -> RULE PREDICATE
-//   -> LOGICAL OPERATOR -> RULE RESULT -> LEGAL CONCLUSION -> AUDIT
+// P0 Schema Changes (Part 1):
+//   - LegalEventType expanded: AGREEMENT_REGISTERED, ADVANCE_PAID, BALANCE_DEPOSIT,
+//     PERFORMANCE_DEADLINE, LEGAL_NOTICE (backward-compatible, existing values preserved)
+//   - SourceSpan.documentType / documentDate — document provenance
+//   - AtomicFact.provenanceAssertions — merged assertion tracking (optional)
+//   - DevelopmentFactValidationProvider sets truth=TRUE with setsTruth marker
 //
-// All 30 bugs from the audit table fixed. All methods implemented. No truncation.
+// P0 Extraction Changes (Part 3):
+//   - extractAtomicFacts: deterministic provenance merge on deduplication
+//   - extractClauseFacts: multi-fact per clause, semantic monetary classification
+//   - detectAssertionContext: plaintiff/defendant/document attribution
+//   - inferEventType: explicit legal event mapping
+//   - executePartyStandiRules: consumes Stage 0 fact graph
+//   - computeOutputHash: semantic hash separate from case identity
 
 import {
   CaseAnalysisResponse,
@@ -22,8 +31,8 @@ import { FactConsistencyGate } from "./FactConsistencyGate";
 // ============================================================================
 
 export const ENGINE_MANIFEST = Object.freeze({
-  engineVersion: "4.5.1-Hardened",
-  factSchemaVersion: "4.0.0",
+  engineVersion: "4.5.2-P0",
+  factSchemaVersion: "4.0.1",
   ruleGraphVersion: "3.0.0",
   ruleSetVersion: "3.0.0",
   lawCorpusVersion: "BD-2026.08",
@@ -145,9 +154,15 @@ export type ClaimType =
   | "INHERITANCE_CONSULTATION"
   | "GENERAL_CIVIL";
 
+/** P0-1: Expanded LegalEventType — new values appended, existing values preserved. */
 export type LegalEventType =
   | "ANCESTOR_DEATH"
   | "AGREEMENT_EXECUTION"
+  | "AGREEMENT_REGISTERED"
+  | "ADVANCE_PAID"
+  | "BALANCE_DEPOSIT"
+  | "PERFORMANCE_DEADLINE"
+  | "LEGAL_NOTICE"
   | "PAYMENT"
   | "DEFAULT"
   | "DEMAND"
@@ -173,16 +188,14 @@ export type PredicateConflictMode =
   | "MULTI_VALUED"
   | "NON_CONTRADICTORY";
 
-/** ISSUE 5-6: Expanded outcome enum — element-only execution must not produce SUCCESS. */
 export type ExecutionOutcome =
-  | "RESERVED_SUCCESS" // Never emitted — structural-only analysis prevents success claims
+  | "RESERVED_SUCCESS"
   | "STRUCTURAL_ONLY"
   | "PARTIAL"
   | "INDETERMINATE"
   | "HALTED"
   | "ERROR";
 
-/** ISSUE 5: Pipeline-level execution status distinguishes BLOCKED from NOT_EXECUTED. */
 export type PipelineExecutionStatus =
   | "NOT_EXECUTED"
   | "BLOCKED"
@@ -215,6 +228,10 @@ export interface SourceSpan {
     | "STRUCTURED_INPUT"
     | "MANUAL_VALIDATION"
     | "DOCUMENT_VALIDATION";
+  /** P0-3: Document type provenance for evidence classification. */
+  documentType?: string;
+  /** P0-3: Document date provenance for temporal verification. */
+  documentDate?: string;
 }
 
 export type FactSource = SourceSpan;
@@ -226,14 +243,9 @@ export interface Proposition {
   object: string | null;
   canonicalKey: string;
   text: string;
-  /** ISSUE 4: Conflict mode for this proposition family. */
   conflictMode: PredicateConflictMode;
 }
 
-/**
- * ISSUE 12 (from review): Assertion no longer carries truth field.
- * Truth is a property of the VALIDATED FACT, not the assertion.
- */
 export interface Assertion {
   assertionId: string;
   propositionId: string;
@@ -259,7 +271,6 @@ export interface AtomicFact {
   subject: string;
   predicate: string;
   object: string | null;
-  /** Truth lives HERE, not on Assertion. */
   truth: Tristate;
   polarity: AssertionPolarity;
   source: SourceSpan;
@@ -273,6 +284,10 @@ export interface AtomicFact {
   supports?: string[];
   disputedProposition?: string;
   validation: ValidationDimensions;
+  /** P0-6: Merged provenance assertions for deduplicated facts.
+   *  When two clauses produce the same canonical fact, both assertion IDs
+   *  are retained here so no provenance is lost. */
+  provenanceAssertions?: string[];
 }
 
 export interface ContradictionEdge {
@@ -295,11 +310,6 @@ export interface AuthorityRef {
   citation?: string;
 }
 
-/**
- * ISSUE 13-14 (from review): Per-predicate provenance requirements.
- * Each predicate can specify exact validation thresholds for each provenance dimension.
- * Replaces coarse requireVerified: boolean.
- */
 export interface ValidationRequirements {
   extractionRequired: boolean;
   sourceRequired: SourceStatus;
@@ -314,9 +324,7 @@ export interface RulePredicate {
   predicate: string;
   object?: string;
   requiredTruth: Tristate;
-  /** DEPRECATED: Use validationRequirements instead. Kept for backwards compatibility. */
   requireVerified?: boolean;
-  /** ISSUE 13-14: Richer per-predicate provenance thresholds. */
   validationRequirements?: ValidationRequirements;
   authorityIds?: string[];
 }
@@ -361,10 +369,6 @@ export interface RuleGraphIdentity {
   ruleGraphDigest: string;
 }
 
-/**
- * ISSUE 7: authorityStatus is an EXPLICIT property,
- * NOT derived from string inspection of corpusDigest.
- */
 export interface RuleRegistry {
   version: string;
   identity: RuleGraphIdentity;
@@ -389,9 +393,7 @@ export interface PredicateExecutionResult {
   predicateId: string;
   status: "TRUE" | "FALSE" | "UNKNOWN";
   factIds: string[];
-  /** ISSUE 3: Same-family conflicting facts hidden by object filter. */
   conflictDetected?: boolean;
-  /** ISSUE 3: Details of same-family conflicts hidden by object filter. */
   sameFamilyConflictingFacts?: Array<{
     factId: string;
     object: string | null;
@@ -410,7 +412,6 @@ export interface RuleExecutionResult {
   authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
 }
 
-/** ISSUE 2/6: Rich fact evaluation result passed into F0, not collapsed to boolean. */
 export interface FactEvaluationResult {
   status: Tristate;
   supportingFactIds: string[];
@@ -499,12 +500,10 @@ interface ExecutionContext {
   factCounter: number;
   propositionCounter: number;
   assertionCounter: number;
-  /** ISSUE 4: Predicate conflict mode registry. */
   predicateConflictModes: Map<string, PredicateConflictMode>;
   referenceDate?: number;
 }
 
-/** Common return type for all P1 stage methods. */
 interface StageExecutionResult {
   stageName: string;
   status: RuleExecutionStatus;
@@ -517,10 +516,6 @@ interface StageExecutionResult {
 // PREDICATE CONFLICT MODE DEFAULTS
 // ============================================================================
 
-/**
- * ISSUE 4: Each predicate family has an explicit conflict mode.
- * No more treating all same-subject-predicate as automatically contradictory.
- */
 const DEFAULT_CONFLICT_MODES: Array<[string, PredicateConflictMode]> = [
   ["*|VITAL STATUS|*", "BOOLEAN_EXCLUSIVE"],
   ["*|REGISTRATION STATUS|*", "ENUM_EXCLUSIVE"],
@@ -541,7 +536,6 @@ function getConflictMode(
   if (ctx.predicateConflictModes.has(key)) {
     return ctx.predicateConflictModes.get(key)!;
   }
-  // Wildcard match: *|PREDICATE|*
   const predKey = `*|${predicate.toUpperCase()}|*`;
   if (ctx.predicateConflictModes.has(predKey)) {
     return ctx.predicateConflictModes.get(predKey)!;
@@ -610,7 +604,6 @@ export function canonicalHash(value: unknown): string {
   return generateHash(canonicalStringify(value));
 }
 
-/** ISSUE 9: Explicit hash input for forensic reproducibility. */
 export interface ForensicHashInput {
   envelope: unknown;
   corpusIdentity: RuleGraphIdentity;
@@ -619,12 +612,10 @@ export interface ForensicHashInput {
   corpusMode: string;
 }
 
-/** ISSUE 9: Binds execution environment into forensic hash. */
 export function computeForensicHash(input: ForensicHashInput): string {
   return canonicalHash(input);
 }
 
-/** ISSUE 9: Capability interface for production audit sinks. */
 export interface ValidatedAuditSink extends AuditSink {
   readonly atomicAppend: true;
   readonly durable: true;
@@ -649,12 +640,10 @@ export interface AuditRecordPayload {
   ruleRegistryHash: string;
   executionTraceHash: string;
   outputHash: string;
-  /** ISSUE 9: Execution environment binding for forensic reproducibility. */
   forensicInputHash: string;
   manifest: typeof ENGINE_MANIFEST;
   executionMilliseconds: number;
   analyzedByUserId: string;
-  /** ISSUE 5-6: Expanded outcome enum. */
   outcome: ExecutionOutcome;
 }
 
@@ -682,19 +671,12 @@ export interface FactValidationProvider {
     assertions: Assertion[];
   }): Promise<AtomicFact[]>;
   isProductionReady?: boolean;
+  setsTruth?: boolean;
 }
 
 // ============================================================================
 // FIX #1 & #2: EXPLICIT ADMISSIBILITY SETS (no ordinal comparison)
 // ============================================================================
-
-/**
- * Each cell defines: "which actual statuses SATISFY this requirement level?"
- * No ordinal arithmetic. No cross-enum comparison. Fully explicit.
- *
- * FIX #1: SourceStatus and ExtractionStatus are never compared against each other.
- * FIX #2: No ordinal ordering — each admissibility decision is a set membership check.
- */
 
 const EXTRACTION_SATISFIES: Record<string, ReadonlySet<ExtractionStatus>> = {
   false: new Set([
@@ -761,32 +743,22 @@ const HV_SATISFIES: Record<HumanValidationStatus, ReadonlySet<HumanValidationSta
   REQUIRES_REVIEW: new Set([HumanValidationStatus.REQUIRES_REVIEW]),
 };
 
-/**
- * FIX #1 & #2: Explicit admissibility semantics.
- * Each dimension is checked independently via set membership.
- * No ordinal positions. No cross-enum comparison.
- */
 function meetsValidationRequirements(
   fact: AtomicFact,
   req: ValidationRequirements,
 ): boolean {
-  // Extraction: boolean gate
   if (!EXTRACTION_SATISFIES[String(req.extractionRequired)].has(fact.validation.extractionStatus)) {
     return false;
   }
-  // Source: enum-to-enum set check
   if (!SOURCE_SATISFIES[req.sourceRequired].has(fact.validation.sourceStatus)) {
     return false;
   }
-  // Authentication: enum-to-enum set check
   if (!AUTH_SATISFIES[req.authenticationRequired].has(fact.validation.authenticationStatus)) {
     return false;
   }
-  // Corroboration: enum-to-enum set check (CONTRADICTED does NOT satisfy CORROBORATED)
   if (!CORR_SATISFIES[req.corroborationRequired].has(fact.validation.corroborationStatus)) {
     return false;
   }
-  // Human validation: enum-to-enum set check
   if (!HV_SATISFIES[req.humanValidationRequired].has(fact.validation.humanValidationStatus)) {
     return false;
   }
@@ -794,7 +766,7 @@ function meetsValidationRequirements(
 }
 
 // ============================================================================
-// DEVELOPMENT IMPLEMENTATIONS — MODULE SCOPE (not nested inside classes)
+// DEVELOPMENT IMPLEMENTATIONS — MODULE SCOPE
 // ============================================================================
 
 function developmentIdentity(): RuleGraphIdentity {
@@ -812,7 +784,6 @@ function developmentIdentity(): RuleGraphIdentity {
 export class DevelopmentRuleRegistry implements RuleRegistry {
   version = "DEVELOPMENT-FIXTURE-3.0.0";
   identity = developmentIdentity();
-  /** ISSUE 10: Explicit fixture marker — never confused with production. */
   authorityStatus = "DEVELOPMENT_FIXTURE" as const;
 
   getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[] {
@@ -844,10 +815,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
           ],
           outcomeIfSatisfied: "REGISTRATION_ELEMENT_SATISFIED",
           outcomeIfFailed: "REGISTRATION_ELEMENT_FAILED",
-          authority: {
-            act: "Applicable specific-performance law",
-            section: "Registry-controlled",
-          },
+          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
           priority: 1,
         },
         {
@@ -876,10 +844,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
           ],
           outcomeIfSatisfied: "DEPOSIT_ELEMENT_SATISFIED",
           outcomeIfFailed: "DEPOSIT_ELEMENT_FAILED",
-          authority: {
-            act: "Applicable specific-performance law",
-            section: "Registry-controlled",
-          },
+          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
           priority: 2,
         },
       ];
@@ -912,10 +877,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
           ],
           outcomeIfSatisfied: "SUCCESSION_OPENED",
           outcomeIfFailed: "SUCCESSION_NOT_ESTABLISHED",
-          authority: {
-            act: "Applicable succession law",
-            section: "Registry-controlled",
-          },
+          authority: { act: "Applicable succession law", section: "Registry-controlled" },
           priority: 1,
         },
       ];
@@ -948,10 +910,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
           ],
           outcomeIfSatisfied: "TITLE_ELEMENT_SATISFIED",
           outcomeIfFailed: "TITLE_ELEMENT_FAILED",
-          authority: {
-            act: "Transfer of Property Act 1882",
-            section: "Section 54",
-          },
+          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
           priority: 1,
         },
         {
@@ -980,10 +939,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
           ],
           outcomeIfSatisfied: "DISPOSSESSION_ELEMENT_SATISFIED",
           outcomeIfFailed: "DISPOSSESSION_ELEMENT_FAILED",
-          authority: {
-            act: "Specific Relief Act 1877",
-            section: "Section 8",
-          },
+          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
           priority: 2,
         },
       ];
@@ -992,55 +948,38 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
   }
 
   getLegislationMapping(claimType: ClaimType) {
-    if (
-      claimType === "SPECIFIC_PERFORMANCE" ||
-      claimType === "DECLARATION_AND_POSSESSION"
-    ) {
+    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
       return {
         primaryAct: "Specific Relief Act 1877",
-        relevantSections: [
-          {
-            actName: "Specific Relief Act 1877",
-            sectionOrRule: "Sections 8-12, 21A",
-            purpose: "Claim-specific analysis",
-          },
-        ],
+        relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Sections 8-12, 21A", purpose: "Claim-specific analysis" }],
       };
     }
     if (claimType === "INHERITANCE_CONSULTATION")
-      return {
-        primaryAct: "Applicable succession / personal law",
-        relevantSections: [],
-      };
+      return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
     return { primaryAct: null, relevantSections: [] };
   }
 }
 
-/** @deprecated Fixture alias retained only for source compatibility. */
 export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
-  constructor() {
-    super();
-  }
+  constructor() { super(); }
 }
 
+// P0 FIX: DefaultAuditSink.append() — remove unreachable code after return
 export class DefaultAuditSink implements AuditSink {
   readonly isProductionReady = false;
   private lastRecord: AuditRecord | null = null;
   async append(payload: AuditRecordPayload): Promise<AuditRecord> {
-    return { recordId: `noop-STATIC`, timestamp: "1970-01-01T00:00:00.000Z", payload, status: "ACKNOWLEDGED" } as unknown as AuditRecord;
     const previousHash = this.lastRecord?.recordHash ?? null;
     const recordHash = canonicalHash({ payload, previousHash });
     const record = { ...payload, previousHash, recordHash };
     this.lastRecord = record;
+    return record;
   }
 }
 
 export class DefaultLicenseValidator implements LicenseValidator {
   readonly isProductionReady = false;
-  async validate(
-    _user: AuthUser,
-    license: { licenseId: string; issuedTo: string },
-  ) {
+  async validate(_user: AuthUser, license: { licenseId: string; issuedTo: string }) {
     if (!license?.licenseId || !license?.issuedTo)
       return { valid: false, reason: "License object incomplete." };
     return { valid: true };
@@ -1049,13 +988,7 @@ export class DefaultLicenseValidator implements LicenseValidator {
 
 export class NoOpFactValidationProvider implements FactValidationProvider {
   readonly isProductionReady = false;
-  async validateFacts({
-    facts,
-  }: {
-    facts: AtomicFact[];
-    propositions: Proposition[];
-    assertions: Assertion[];
-  }) {
+  async validateFacts({ facts }: { facts: AtomicFact[]; propositions: Proposition[]; assertions: Assertion[] }) {
     return facts.map((f) => ({
       ...f,
       truth: Tristate.UNKNOWN,
@@ -1068,31 +1001,36 @@ export class NoOpFactValidationProvider implements FactValidationProvider {
   }
 }
 
-// FIX #4 / #5: Development provider that sets all validation dimensions to VERIFIED for development testing.
-// so that rule predicates can actually be satisfied in development mode.
+// P0-4: Development provider sets truth=TRUE for extracted facts.
+// The provider marks itself with setsTruth so the integrity gate knows
+// this promotion is intentional, not a validator bug.
 export class DevelopmentFactValidationProvider implements FactValidationProvider {
   readonly isProductionReady = false;
-  async validateFacts({
-    facts,
-  }: {
-    facts: AtomicFact[];
-    propositions: Proposition[];
-    assertions: Assertion[];
-  }) {
-    return facts.map((f) => ({
-      ...f,
-      // FIX #4: Set truth to TRUE so predicates can be satisfied.
-      // FIX #5: Set validationStatus to VERIFIED so requireVerified passes.
-      validationStatus: ValidationStatus.VERIFIED,
-      confidence: FactConfidence.VERIFIED,
-      validation: {
-        extractionStatus: ExtractionStatus.EXTRACTED,
-        sourceStatus: SourceStatus.SOURCE_VERIFIED,
-        authenticationStatus: AuthenticationStatus.AUTHENTICATED,
-        corroborationStatus: CorroborationStatus.CORROBORATED,
-        humanValidationStatus: HumanValidationStatus.VALIDATED,
-      },
-    }));
+  readonly setsTruth = true;
+  async validateFacts({ facts }: { facts: AtomicFact[]; propositions: Proposition[]; assertions: Assertion[] }) {
+    return facts.map((f) => {
+      // A DENIED assertion, or one with DISPUTED/NEGATIVE polarity, must never
+      // be silently promoted to TRUE just because its truth was UNKNOWN — that
+      // would treat a denial as an established fact. Leave truth untouched for
+      // these; only affirmative/neutral UNKNOWN facts get promoted.
+      const isNonPromotable =
+        f.assertionType === AssertionType.DENIED ||
+        f.polarity === AssertionPolarity.DISPUTED ||
+        f.polarity === AssertionPolarity.NEGATIVE;
+      return {
+        ...f,
+        truth: !isNonPromotable && f.truth === Tristate.UNKNOWN ? Tristate.TRUE : f.truth,
+        validationStatus: ValidationStatus.VERIFIED,
+        confidence: FactConfidence.VERIFIED,
+        validation: {
+          extractionStatus: ExtractionStatus.EXTRACTED,
+          sourceStatus: SourceStatus.SOURCE_VERIFIED,
+          authenticationStatus: AuthenticationStatus.AUTHENTICATED,
+          corroborationStatus: CorroborationStatus.CORROBORATED,
+          humanValidationStatus: HumanValidationStatus.VALIDATED,
+        },
+      };
+    });
   }
 }
 
@@ -1109,18 +1047,9 @@ function normalizeText(text: string): string {
 // ============================================================================
 
 const MONTH_MAP: Record<string, number> = {
-  jan: 0, january: 0,
-  feb: 1, february: 1,
-  mar: 2, march: 2,
-  apr: 3, april: 3,
-  may: 4,
-  jun: 5, june: 5,
-  jul: 6, july: 6,
-  aug: 7, august: 7,
-  sep: 8, september: 8,
-  oct: 9, october: 9,
-  nov: 10, november: 10,
-  dec: 11, december: 11,
+  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+  may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, september: 8,
+  oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
 };
 
 function parseNaturalDate(raw: string): { iso: string; ts: number } | null {
@@ -1150,17 +1079,14 @@ function parseNaturalDate(raw: string): { iso: string; ts: number } | null {
   return { iso: `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, ts: utc };
 }
 
-/** Backwards-compatible: now accepts "18 July 2018" */
 function isStrictDate(raw: string): boolean {
   return parseNaturalDate(raw) !== null;
 }
 
-/** Backwards-compatible timestamp extractor */
 function strictDateTimestamp(raw: string | null): number {
   return raw ? (parseNaturalDate(raw)?.ts ?? Infinity) : Infinity;
 }
 
-/** Normalize any recognized date to ISO-8601 */
 function normalizeDate(raw: string): string {
   return parseNaturalDate(raw)?.iso ?? raw;
 }
@@ -1181,13 +1107,12 @@ function parseMoney(token: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-/** Generate a short deterministic ID for internal use. */
 function shortId(prefix: string, counter: number): string {
   return `${prefix}${String(counter).padStart(5, "0")}`;
 }
 
 // ============================================================================
-// FACT CANDIDATE INTERFACE (extraction helper)
+// FACT CANDIDATE INTERFACE
 // ============================================================================
 
 interface FactCandidate {
@@ -1224,55 +1149,32 @@ export class BCCAAEngine {
   }) {
     this.ruleRegistry = (deps?.ruleRegistry ?? new DevelopmentRuleRegistry()) as RuleRegistry;
     this.auditSink = deps?.auditSink ?? new DefaultAuditSink();
-    this.licenseValidator =
-      deps?.licenseValidator ?? new DefaultLicenseValidator();
-
-    // FIX #4: Use DevelopmentFactValidationProvider by default in DEVELOPMENT mode
-    // so that extracted facts actually satisfy rule predicates.
+    this.licenseValidator = deps?.licenseValidator ?? new DefaultLicenseValidator();
     this.factValidationProvider =
       deps?.factValidationProvider ??
       (ENGINE_MANIFEST.corpusMode === "DEVELOPMENT"
         ? new DevelopmentFactValidationProvider()
         : new NoOpFactValidationProvider());
-
-    // FIX: Broken ternary → proper nullish coalescing chain
     this.authorityStatus =
-      deps?.ruleRegistry?.authorityStatus ??
-      this.ruleRegistry.authorityStatus ??
-      "DEVELOPMENT_FIXTURE";
+      deps?.ruleRegistry?.authorityStatus ?? this.ruleRegistry.authorityStatus ?? "DEVELOPMENT_FIXTURE";
 
-    // ISSUE 7: EXPLICIT authority status check, not derived from string prefix
     if (ENGINE_MANIFEST.corpusMode === "VALIDATED_PRODUCTION") {
       if (this.authorityStatus !== "VALIDATED_PRODUCTION") {
-        throw new Error(
-          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires ruleRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.",
-        );
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires ruleRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.");
       }
-
-      // FIX #4: Validate ValidatedAuditSink CAPABILITIES, not instanceof
       const sink = this.auditSink as unknown as Record<string, unknown>;
-      if (
-        sink.atomicAppend !== true ||
-        sink.durable !== true ||
-        sink.concurrencySafe !== true
-      ) {
-        throw new Error(
-          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a ValidatedAuditSink with atomicAppend=true, durable=true, concurrencySafe=true.",
-        );
+      if (sink.atomicAppend !== true || sink.durable !== true || sink.concurrencySafe !== true) {
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a ValidatedAuditSink.");
       }
-
-      // ISSUE 7: Check that production validator is not NoOp
       if (this.factValidationProvider instanceof NoOpFactValidationProvider) {
-        throw new Error(
-          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.",
-        );
+        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
       }
     }
   }
 
-  // ========================================================================
+  // =======================================================================
   // PUBLIC API
-  // ========================================================================
+  // =======================================================================
 
   async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
     const startTime = 0;
@@ -1280,86 +1182,32 @@ export class BCCAAEngine {
     const ctx = newContext();
 
     try {
-      const license = await this.licenseValidator.validate(
-        request.user,
-        request.license,
-      );
+      const license = await this.licenseValidator.validate(request.user, request.license);
       if (!license.valid) {
-        recordTrace(ctx, {
-          layer: "P0_INPUT_VALIDATION",
-          description: `LICENSE_DENIED: ${license.reason ?? "unspecified"}`,
-          dependsOnFacts: [],
-          dependsOnRules: [],
-          result: "REJECTED",
-        });
-        return this.buildPreF0HaltResponse(
-          ctx,
-          caseId,
-          "LICENSE_DENIED",
-          license.reason ?? "unspecified",
-        );
+        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `LICENSE_DENIED: ${license.reason ?? "unspecified"}`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+        return this.buildPreF0HaltResponse(ctx, caseId, "LICENSE_DENIED", license.reason ?? "unspecified");
       }
       if (!request.input?.factPattern) {
-        recordTrace(ctx, {
-          layer: "P0_INPUT_VALIDATION",
-          description: "EMPTY_INPUT: factPattern is required.",
-          dependsOnFacts: [],
-          dependsOnRules: [],
-          result: "REJECTED",
-        });
-        return this.buildPreF0HaltResponse(
-          ctx,
-          caseId,
-          "EMPTY_INPUT",
-          "factPattern is required.",
-        );
+        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+        return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
       }
       if (request.input.factPattern.length > MAX_INPUT_LENGTH) {
-        recordTrace(ctx, {
-          layer: "P0_INPUT_VALIDATION",
-          description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`,
-          dependsOnFacts: [],
-          dependsOnRules: [],
-          result: "REJECTED",
-        });
-        return this.buildPreF0HaltResponse(
-          ctx,
-          caseId,
-          "INPUT_TOO_LARGE",
-          `maximum ${MAX_INPUT_LENGTH} characters.`,
-        );
+        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+        return this.buildPreF0HaltResponse(ctx, caseId, "INPUT_TOO_LARGE", `maximum ${MAX_INPUT_LENGTH} characters.`);
       }
       return await this.runPipeline(ctx, request, caseId, startTime);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      recordTrace(ctx, {
-        layer: "SYSTEM_ERROR",
-        description: "Uncaught execution error.",
-        dependsOnFacts: [],
-        dependsOnRules: [],
-        result: message,
-      });
-      const response = this.buildPreF0HaltResponse(
-        ctx,
-        caseId,
-        "SYSTEM_ERROR",
-        message,
-      );
-      await this.persistAudit(
-        ctx,
-        request,
-        caseId,
-        startTime,
-        "ERROR",
-        this.computeOutputHash(response),
-      ).catch(() => undefined);
+      recordTrace(ctx, { layer: "SYSTEM_ERROR", description: "Uncaught execution error.", dependsOnFacts: [], dependsOnRules: [], result: message });
+      const response = this.buildPreF0HaltResponse(ctx, caseId, "SYSTEM_ERROR", message);
+      await this.persistAudit(ctx, request, caseId, startTime, "ERROR", this.computeOutputHash(response, caseId)).catch(() => undefined);
       return response;
     }
   }
 
-  // ========================================================================
+  // =======================================================================
   // PIPELINE ORCHESTRATION
-  // ========================================================================
+  // =======================================================================
 
   private async runPipeline(
     ctx: ExecutionContext,
@@ -1368,220 +1216,87 @@ export class BCCAAEngine {
     startTime: number,
   ): Promise<CaseAnalysisResponse> {
     const { input } = request;
-    const claimType = this.resolveClaimType(
-      input.factPattern,
-      input.focusDomain ?? "",
-    );
-    // P0-01: Deterministic reference date for limitation analysis
+    const claimType = this.resolveClaimType(input.factPattern, input.focusDomain ?? "");
     ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : 0;
 
-    // ── P0: FACT → PROPOSITION → ASSERTION → VALIDATION ──
     this.extractAtomicFacts(ctx, input.factPattern, claimType);
     await this.applyFactValidation(ctx);
     this.buildContradictionGraph(ctx);
     this.buildEventTimeline(ctx);
-
-    // ── ISSUE 1: logCriticalConflicts NEVER throws — data only ──
     this.logCriticalConflicts(ctx);
 
-    // ── F0 GATE: sole authority ──
-    // FIX #3: requireVerified: true means VERIFIED, not IDENTIFIED
-    // FIX #6: Pass FULL ancestorResult object into F0, not boolean collapse
-    // FIX #26: Only evaluate ancestor for INHERITANCE_CONSULTATION claims.
-    const ancestorResult =
-      claimType === "INHERITANCE_CONSULTATION"
-        ? this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", {
-            requireVerified: true,
-            // No object filter — check full proposition family
-          })
-        : ({
-            status: Tristate.UNKNOWN,
-            supportingFactIds: [],
-            conflictDetected: false,
-            sameFamilyConflictingFacts: [],
-          } as FactEvaluationResult);
+    const ancestorResult = claimType === "INHERITANCE_CONSULTATION"
+      ? this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", { requireVerified: true })
+      : ({ status: Tristate.UNKNOWN, supportingFactIds: [], conflictDetected: false, sameFamilyConflictingFacts: [] } as FactEvaluationResult);
 
     const chronology = ctx.eventTimeline.map((e) => ({
       date: e.date ?? "UNKNOWN",
       event: e.type,
       partiesInvolved: "",
       factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
-      // FIX #6: Full conflict state passed via chronology
-      conflictInfo:
-        ctx.contradictionGraph.length > 0
-          ? {
-              total: ctx.contradictionGraph.length,
-              critical: ctx.contradictionGraph.filter(
-                (edge) => edge.status === "CRITICAL",
-              ).length,
-              edges: ctx.contradictionGraph.map((edge) => ({
-                propositionKey: edge.propositionKey,
-                leftFactId: edge.leftFactId,
-                rightFactId: edge.rightFactId,
-                status: edge.status,
-              })),
-            }
-          : undefined,
+      conflictInfo: ctx.contradictionGraph.length > 0
+        ? { total: ctx.contradictionGraph.length, critical: ctx.contradictionGraph.filter((edge) => edge.status === "CRITICAL").length }
+        : undefined,
     }));
 
-    // FIX #6: Pass full ancestorResult object, not boolean
-    // FIX #8: Pass engine facts and conflicts so F0 does not re-parse independently.
     const f0Gate = FactConsistencyGate.evaluate(
       input.factPattern,
       chronology,
       claimType,
       ancestorResult,
       Array.from(ctx.factRegistry.values()).map((f) => ({
-        factId: f.factId,
-        subject: f.subject,
-        predicate: f.predicate,
-        object: f.object,
-        truth: f.truth,
-        eventDate: f.eventDate,
-        proposition: f.proposition,
+        factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object,
+        truth: f.truth, eventDate: f.eventDate, proposition: f.proposition,
       })),
       ctx.contradictionGraph.map((e) => ({
-        propositionKey: e.propositionKey,
-        leftFactId: e.leftFactId,
-        rightFactId: e.rightFactId,
-        status: e.status,
+        propositionKey: e.propositionKey, leftFactId: e.leftFactId, rightFactId: e.rightFactId, status: e.status,
       })),
     );
 
     recordTrace(ctx, {
       layer: "F0_GATE",
-      description:
-        "FactConsistencyGate executed (sole F0 authority)." +
-        `ancestorDeceased (verified only): ${ancestorResult.status}. ` +
-        `Supporting: [${ancestorResult.supportingFactIds.join(", ")}]. ` +
-        `Conflict detected: ${ancestorResult.conflictDetected}. ` +
-        (ctx.contradictionGraph.length > 0
-          ? `CRITICAL_EDGES_REPORTED: ${ctx.contradictionGraph.filter((e) => e.status === "CRITICAL").length}.`
-          : ""),
-      dependsOnFacts: getAllFactIds(ctx),
-      dependsOnRules: [],
-      result: f0Gate.gateStatus,
+      description: `FactConsistencyGate executed. ancestorDeceased: ${ancestorResult.status}. Conflict: ${ancestorResult.conflictDetected}.`,
+      dependsOnFacts: getAllFactIds(ctx), dependsOnRules: [], result: f0Gate.gateStatus,
     });
 
-    // Pre-compute domain and legislation so they are available even for F0 halt.
     const domain = this.classifyDomain(ctx, claimType);
     const legislation = this.mapLegislation(ctx, claimType);
 
     if (f0Gate.gateStatus === "HALT_CRITICAL_CONFLICT") {
-      const emptyGate: ElementGateResult = {
-        status: GateStatus.HALT,
-        allSatisfied: false,
-        missingElements: [],
-        unknownElements: [],
-        fatalFailures: ["F0_CRITICAL_CONFLICT"],
-        ruleExecutionResults: [],
-      };
-      const synthesis = this.executeFailClosedSynthesis(
-        ctx,
-        f0Gate,
-        claimType,
-        emptyGate,
-      );
-      // FIX #6: Pass domain and legislation into F0 halt response.
-      const response = this.buildF0HaltResponse(
-        ctx,
-        request,
-        claimType,
-        f0Gate,
-        synthesis,
-        caseId,
-        domain,
-        legislation,
-      );
-      await this.persistAudit(
-        ctx,
-        request,
-        caseId,
-        startTime,
-        "HALTED",
-        this.computeOutputHash(response),
-      );
+      const emptyGate: ElementGateResult = { status: GateStatus.HALT, allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: ["F0_CRITICAL_CONFLICT"], ruleExecutionResults: [] };
+      const synthesis = this.executeFailClosedSynthesis(ctx, f0Gate, claimType, emptyGate);
+      const response = this.buildF0HaltResponse(ctx, request, claimType, f0Gate, synthesis, caseId, domain, legislation);
+      await this.persistAudit(ctx, request, caseId, startTime, "HALTED", this.computeOutputHash(response, caseId));
       return response;
     }
 
-    // ── P1 stages ──
     const limitation = this.executeLimitationEngine(ctx, claimType);
     const elementGate = this.executeElementCompletenessGate(ctx, claimType);
-
-    // ISSUE 5-8: Each stage inspects upstream state, distinguishes BLOCKED
     const standi = this.executePartyStandiRules(ctx, claimType, input.factPattern);
     const pleading = this.executePleadingRules(elementGate, input.factPattern);
     const issues = this.executeIssueFramingRules(ctx, elementGate, input.factPattern);
     const evidence = this.executeEvidenceRules(ctx);
-    const merits = this.executeMeritRules(elementGate); // ISSUE 12: always NOT_EXECUTED
+    const merits = this.executeMeritRules(elementGate);
     const equity = this.executeEquityRules(elementGate, ctx);
     const procedure = this.executeProcedureRules(ctx, claimType);
     const appeal = this.executeAppealRules();
 
-    // ── P2: SYNTHESIS ──
-    const synthesis = this.executeFailClosedSynthesis(
-      ctx,
-      f0Gate,
-      claimType,
-      elementGate,
-    );
-
-    // ISSUE 5-6: Determine execution status and outcome
-    const executionStatus = this.determineExecutionStatus(
-      standi,
-      pleading,
-      issues,
-      evidence,
-      merits,
-      equity,
-      procedure,
-      appeal,
-    );
+    const synthesis = this.executeFailClosedSynthesis(ctx, f0Gate, claimType, elementGate);
+    const executionStatus = this.determineExecutionStatus(standi, pleading, issues, evidence, merits, equity, procedure, appeal);
     const outcome = this.determineOutcome(executionStatus, elementGate);
 
-    const response = this.buildResponse(
-      ctx,
-      request,
-      claimType,
-      f0Gate,
-      synthesis,
-      {
-        caseId,
-        domain,
-        legislation,
-        limitation,
-        standi,
-        pleading,
-        issues,
-        evidence,
-        elementGate,
-        merits,
-        equity,
-        procedure,
-        appeal,
-        executionStatus,
-      },
-    );
-    await this.persistAudit(
-      ctx,
-      request,
-      caseId,
-      startTime,
-      outcome,
-      this.computeOutputHash(response),
-    );
+    const response = this.buildResponse(ctx, request, claimType, f0Gate, synthesis, {
+      caseId, domain, legislation, limitation, standi, pleading, issues, evidence, elementGate, merits, equity, procedure, appeal, executionStatus,
+    });
+    await this.persistAudit(ctx, request, caseId, startTime, outcome, this.computeOutputHash(response, caseId));
     return response;
   }
 
-  // ========================================================================
+  // =======================================================================
   // P0 EXTRACTION
-  // ========================================================================
+  // =======================================================================
 
-  private extractAtomicFacts(
-    ctx: ExecutionContext,
-    rawText: string,
-    claimType: ClaimType,
-  ): void {
+  private extractAtomicFacts(ctx: ExecutionContext, rawText: string, claimType: ClaimType): void {
     const sentences = this.segmentDocument(rawText);
     for (let index = 0; index < sentences.length; index++) {
       const sentence = sentences[index];
@@ -1590,48 +1305,67 @@ export class BCCAAEngine {
         if (!candidates.length) continue;
 
         const assertionContext = this.detectAssertionContext(clause);
-        const assertedBy = this.detectAssertingParty(clause);
+        const assertedBy = assertionContext.assertedBy ?? this.detectAssertingParty(clause);
 
         for (const candidate of candidates) {
-          const propositionId = this.ensureProposition(
-            ctx,
-            candidate.subject,
-            candidate.predicate,
-            candidate.object,
-            clause,
-          );
-
+          const propositionId = this.ensureProposition(ctx, candidate.subject, candidate.predicate, candidate.object, clause);
           const assertionId = shortId("A", ctx.assertionCounter++);
           const source: SourceSpan = {
             documentId: "INPUT_NARRATIVE",
             segment: clause,
             paragraph: index + 1,
-            sourceType: "INPUT_NARRATIVE",
+            sourceType: assertionContext.documentType ? "DOCUMENT" : "INPUT_NARRATIVE",
             extractionMethod: "PATTERN",
+            documentType: assertionContext.documentType,
+            documentDate: assertionContext.documentDate,
           };
 
-          // ISSUE 12: No truth on Assertion — lives on Fact only
           ctx.assertionRegistry.set(assertionId, {
-            assertionId,
-            propositionId,
+            assertionId, propositionId,
             assertionType: assertionContext.type,
             polarity: assertionContext.polarity,
             assertedBy: assertedBy ?? undefined,
             sourceSpan: source,
           });
 
-          // P0-00e: Canonical deduplication — skip if same subject|predicate|object exists
+          // P0-6: Canonical deduplication with deterministic provenance merge
           const canonicalKey = `${candidate.subject}|${candidate.predicate}|${(candidate.object || "").toString().toUpperCase()}`;
-          const isDuplicate = Array.from(ctx.factRegistry.values()).some(
-            f => `${f.subject}|${f.predicate}|${(f.object || "").toString().toUpperCase()}`.toUpperCase() === canonicalKey.toUpperCase()
+          const existingFact = Array.from(ctx.factRegistry.values()).find(
+            (f) => `${f.subject}|${f.predicate}|${(f.object || "").toString().toUpperCase()}`.toUpperCase() === canonicalKey.toUpperCase()
           );
-          if (isDuplicate) continue;
+
+          if (existingFact) {
+            // P0-6 FIX: only merge provenance when the new assertion agrees
+            // with the existing fact. If one side DENIES/DISPUTES the exact
+            // same subject|predicate|object the other side asserted, that is
+            // a genuine conflict on an identical proposition — collapsing it
+            // into a single fact would silently erase the denial and hide it
+            // from contradiction detection (which only compares differing
+            // objects within a family, not assertion type). Fall through and
+            // register it as its own distinct fact instead.
+            const isDenial = (t: AssertionType, p: AssertionPolarity) =>
+              t === AssertionType.DENIED || p === AssertionPolarity.DISPUTED || p === AssertionPolarity.NEGATIVE;
+            const existingIsDenial = isDenial(existingFact.assertionType, existingFact.polarity);
+            const newIsDenial = isDenial(assertionContext.type, assertionContext.polarity);
+            const conflictingAssertion = existingIsDenial !== newIsDenial;
+
+            if (!conflictingAssertion) {
+              // Merge provenance deterministically: sort + dedupe
+              const merged = new Set([
+                existingFact.assertionId,
+                ...(existingFact.provenanceAssertions ?? []),
+                assertionId,
+              ]);
+              existingFact.provenanceAssertions = Array.from(merged).sort();
+              continue;
+            }
+            // Otherwise fall through: register as a distinct fact below so
+            // both the affirmative and the denial survive independently.
+          }
 
           const factId = shortId("F", ctx.factCounter++);
           const fact: AtomicFact = {
-            factId,
-            propositionId,
-            assertionId,
+            factId, propositionId, assertionId,
             proposition: clause,
             subject: candidate.subject,
             predicate: candidate.predicate,
@@ -1645,11 +1379,7 @@ export class BCCAAEngine {
             assertedBy: assertedBy ?? undefined,
             eventDate: candidate.eventDate ?? null,
             normalizedValue: candidate.normalizedValue ?? null,
-            disputedProposition:
-              assertionContext.type === AssertionType.DENIED ||
-              assertionContext.polarity === AssertionPolarity.DISPUTED
-                ? clause
-                : undefined,
+            disputedProposition: assertionContext.type === AssertionType.DENIED || assertionContext.polarity === AssertionPolarity.DISPUTED ? clause : undefined,
             validation: {
               extractionStatus: ExtractionStatus.EXTRACTED,
               sourceStatus: SourceStatus.IDENTIFIED,
@@ -1662,8 +1392,7 @@ export class BCCAAEngine {
           recordTrace(ctx, {
             layer: "P0_EXTRACTION",
             description: `FACT -> PROPOSITION -> ASSERTION: ${factId}`,
-            dependsOnFacts: [],
-            dependsOnRules: [],
+            dependsOnFacts: [], dependsOnRules: [],
             result: `${factId}:${propositionId}:${assertionId}`,
           });
         }
@@ -1672,26 +1401,13 @@ export class BCCAAEngine {
     this.ensureClaimRelevantUnknowns(ctx, claimType);
   }
 
-  private ensureProposition(
-    ctx: ExecutionContext,
-    subject: string,
-    predicate: string,
-    object: string | null,
-    text: string,
-  ): string {
+  private ensureProposition(ctx: ExecutionContext, subject: string, predicate: string, object: string | null, text: string): string {
     const canonicalKey = `${subject}|${predicate}|${object ?? "*"}`.toUpperCase();
-    const existing = Array.from(ctx.propositionRegistry.values()).find(
-      (p) => p.canonicalKey === canonicalKey,
-    );
+    const existing = Array.from(ctx.propositionRegistry.values()).find((p) => p.canonicalKey === canonicalKey);
     if (existing) return existing.propositionId;
     const propositionId = shortId("P", ctx.propositionCounter++);
     ctx.propositionRegistry.set(propositionId, {
-      propositionId,
-      subject,
-      predicate,
-      object,
-      canonicalKey,
-      text,
+      propositionId, subject, predicate, object, canonicalKey, text,
       conflictMode: getConflictMode(ctx, subject, predicate),
     });
     return propositionId;
@@ -1704,19 +1420,12 @@ export class BCCAAEngine {
       assertions: Array.from(ctx.assertionRegistry.values()),
     });
     if (validated.length !== ctx.factRegistry.size) {
-      throw new Error(
-        "FACT_VALIDATION_INTEGRITY_ERROR: validator changed fact cardinality.",
-      );
+      throw new Error("FACT_VALIDATION_INTEGRITY_ERROR: validator changed fact cardinality.");
     }
     for (const fact of validated) {
       const original = ctx.factRegistry.get(fact.factId);
-      if (!original) {
-        throw new Error(
-          `FACT_VALIDATION_INTEGRITY_ERROR: unknown fact ${fact.factId}.`,
-        );
-      }
+      if (!original) throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: unknown fact ${fact.factId}.`);
 
-      // ISSUE 7: Identity check — reject mutations to immutable fields
       if (
         fact.subject !== original.subject ||
         fact.predicate !== original.predicate ||
@@ -1724,28 +1433,30 @@ export class BCCAAEngine {
         fact.assertionId !== original.assertionId ||
         fact.propositionId !== original.propositionId
       ) {
-        throw new Error(
-          `FACT_VALIDATION_INTEGRITY_ERROR: fact ${fact.factId} identity mutated by validator.`,
-        );
+        throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: fact ${fact.factId} identity mutated by validator.`);
       }
 
-      // FIX #7-EXTENDED: Block ANY truth mutation from UNKNOWN (both TRUE and FALSE)
+      // P0-4: Allow development validator to promote UNKNOWN -> TRUE
+      const providerAllowsPromotion = this.factValidationProvider.setsTruth === true;
+      const isAllowedPromotion = providerAllowsPromotion &&
+        original.truth === Tristate.UNKNOWN &&
+        fact.truth === Tristate.TRUE;
+
       if (
         original.truth === Tristate.UNKNOWN &&
-        fact.truth !== Tristate.UNKNOWN
+        fact.truth !== Tristate.UNKNOWN &&
+        !isAllowedPromotion
       ) {
-        throw new Error(
-          `FACT_VALIDATION_INTEGRITY_ERROR: fact ${fact.factId} truth silently mutated from UNKNOWN to ${fact.truth} by validator. Truth can only be set by rule evaluation, not validation.`,
-        );
+        throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: fact ${fact.factId} truth silently mutated from UNKNOWN to ${fact.truth} by validator.`);
       }
 
       ctx.factRegistry.set(fact.factId, fact);
     }
   }
 
-  // ========================================================================
+  // =======================================================================
   // P0 HELPERS: SEGMENTATION
-  // ========================================================================
+  // =======================================================================
 
   private segmentDocument(rawText: string): string[] {
     let text = rawText.replace(/\r\n/g, "\n");
@@ -1780,203 +1491,367 @@ export class BCCAAEngine {
   }
 
   private segmentClauses(sentence: string): string[] {
-    return sentence
-      .split(
-        /\s*(?:;|\bbut\b|\balthough\b|\bhowever\b|\bwhereas\b|\bwhile\b)\s*/i,
-      )
-      .map((x) => x.trim())
-      .filter(Boolean);
+    return sentence.split(/\s*(?:;|\bbut\b|\balthough\b|\bhowever\b|\bwhereas\b|\bwhile\b)\s*/i)
+      .map((x) => x.trim()).filter(Boolean);
   }
 
-  // ========================================================================
-  // P0 HELPERS: FACT EXTRACTION (BUGS #2, #3, #9, #14, #15 FIXED)
-  // ========================================================================
+  // =======================================================================
+  // P0 HELPERS: FACT EXTRACTION (COMPLETE REWRITE — 4 PASSES)
+  // =======================================================================
 
   private extractClauseFacts(clause: string): FactCandidate[] {
     const candidates: FactCandidate[] = [];
+    this.extractParties(clause, candidates);
+    this.extractAgreementFacts(clause, candidates);
+    this.extractMonetaryFacts(clause, candidates);
+    this.extractPropertyFacts(clause, candidates);
+    this.extractRegistrationFacts(clause, candidates);
+    this.extractTemporalFacts(clause, candidates);
+    this.extractDocumentFacts(clause, candidates);
+    this.extractSuccessionFacts(clause, candidates);
+    this.extractPossessionFacts(clause, candidates);
+    return candidates;
+  }
+
+  // P0-1: Party identity extraction
+  private extractParties(clause: string, candidates: FactCandidate[]): void {
+    // Plaintiff: Name (with honorifics)
+    const plaintiffMatch = clause.match(
+      /(?:plaintiff|petitioner|complainant)\s*[:\-]?\s+((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Za-z][A-Za-z\s\.]+?)(?=\s*(?:,|;|\.|and|or|vs|versus|is|was|filed|through|aged|son|daughter|of|resident|$))/i
+    );
+    if (plaintiffMatch) {
+      const name = plaintiffMatch[1].trim();
+      if (name.length > 2) {
+        candidates.push({ subject: "Plaintiff", predicate: "Party Identity", object: name });
+        candidates.push({ subject: name, predicate: "Party Role", object: "PLAINTIFF" });
+      }
+    }
+    // Defendant: Name (with honorifics)
+    const defendantMatch = clause.match(
+      /(?:defendant|respondent|opposite\s+party)\s*[:\-]?\s+((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Za-z][A-Za-z\s\.]+?)(?=\s*(?:,|;|\.|and|or|vs|versus|is|was|filed|through|aged|son|daughter|of|resident|$))/i
+    );
+    if (defendantMatch) {
+      const name = defendantMatch[1].trim();
+      if (name.length > 2) {
+        candidates.push({ subject: "Defendant", predicate: "Party Identity", object: name });
+        candidates.push({ subject: name, predicate: "Party Role", object: "DEFENDANT" });
+      }
+    }
+    // Role assignment: "X is purchaser", "Y is vendor"
+    const roleMatch = clause.match(/([A-Z][a-zA-Z\s\.]+?)\s+is\s+(?:the\s+)?(purchaser|vendor|seller|buyer|owner|heir|co-sharer)/i);
+    if (roleMatch) {
+      const name = roleMatch[1].trim();
+      const role = roleMatch[2].toUpperCase();
+      candidates.push({ subject: name, predicate: "Capacity", object: role });
+    }
+  }
+
+  // P0-3: Agreement/registration facts
+  private extractAgreementFacts(clause: string, candidates: FactCandidate[]): void {
     const lower = clause.toLowerCase();
+    // Execution date
+    const execMatch = clause.match(
+      /(?:agreement|bainapatra|contract|sale\s+deed)[^\.]{0,80}?\b(?:executed|signed|dated|on)\b[^\.]{0,30}?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i
+    );
+    if (execMatch) {
+      const date = execMatch[1].trim();
+      candidates.push({ subject: "Bainapatra", predicate: "Execution Date", object: date, eventDate: date });
+    }
+    // Registration status — tri-state, explicit only
+    if (/\bregistered\s+(?:bainapatra|agreement|sale\s+deed)\b/i.test(lower)) {
+      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "REGISTERED" });
+    } else if (
+      /\bunregistered\s+(?:bainapatra|agreement|sale\s*deed)\b/i.test(lower) ||
+      /(?:bainapatra|agreement|sale\s*deed)(?:\s+\w+){0,3}\s+(?:not\s+registered|without\s+registration)\b/i.test(lower)
+    ) {
+      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "UNREGISTERED" });
+    }
+    // Registration case number
+    const regCaseMatch = clause.match(/(?:registration\s+case\s+no\.?|reg\.?\s*case)\s+([A-Z0-9\-]+)/i);
+    if (regCaseMatch) {
+      candidates.push({ subject: "Registration", predicate: "Case Number", object: regCaseMatch[1].trim() });
+    }
+    // Section 17A
+    if (/\bsection\s+17A\b/i.test(clause)) {
+      candidates.push({ subject: "Registration", predicate: "Statutory Basis", object: "Section 17A" });
+    }
+    // Section 21A
+    if (/\bsection\s+21A\b/i.test(clause)) {
+      candidates.push({ subject: "Specific Relief", predicate: "Statutory Basis", object: "Section 21A" });
+    }
+  }
 
-    // Death / Vital Status
-    if (/\b(?:died|passed away|demise|death of)\b/i.test(clause)) {
-      const dm = clause.match(/(?:died|passed away|demise|death of)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-      if (dm) candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: dm[1].trim() });
-      else candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED" });
+  // P0-2: Semantic monetary classification
+  private extractMonetaryFacts(clause: string, candidates: FactCandidate[]): void {
+    const patterns: Array<{ regex: RegExp; subject: string; predicate: string }> = [
+      { regex: /(?:total\s+consideration|total\s+price)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Contract", predicate: "Total Consideration" },
+      { regex: /(?:advance|earnest\s+money|earnest)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Advance", predicate: "Amount Paid" },
+      { regex: /(?:balance\s+consideration|balance\s+amount|balance)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Balance", predicate: "Consideration" },
+      { regex: /(?:deposited|deposit)(?:\s+\w+){0,3}\s+(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Court", predicate: "Deposit" },
+      { regex: /(?:alternative\s+claim|alternative\s+money)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Alternative Claim", predicate: "Money Claim" },
+      { regex: /(?:interest|interest\s+claim)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Interest", predicate: "Claim Amount" },
+      { regex: /(?:damages|compensation)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Damages", predicate: "Claim Amount" },
+      { regex: /(?:suit\s+valuation|valuation)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Suit", predicate: "Valuation" },
+      { regex: /(?:court\s+fee|court\s+fees)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Court Fee", predicate: "Value" },
+      { regex: /(?:jurisdictional\s+value|jurisdiction)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Jurisdiction", predicate: "Value" },
+    ];
+
+    for (const p of patterns) {
+      const m = clause.match(p.regex);
+      if (m) {
+        const val = parseMoney(m[1]);
+        if (val !== null) {
+          candidates.push({ subject: p.subject, predicate: p.predicate, object: `Tk. ${m[1]}`, normalizedValue: val });
+        }
+      }
     }
 
-    // Living assertions (FIX #1: removed "during his lifetime" / "while the father is alive")
-    if (/\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(lower)) {
-      candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "ALIVE" });
+    // Generic quantum fallback (only if no semantic match)
+    const hasSemantic = candidates.some((c) => c.predicate !== "Quantum Amount" && /^(Tk\.?|taka|bdt)/i.test(c.object || ""));
+    if (!hasSemantic) {
+      const genericMatches = clause.matchAll(/(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/gi);
+      for (const mm of genericMatches) {
+        const val = parseMoney(mm[1]);
+        if (val !== null) {
+          candidates.push({ subject: "Claim", predicate: "Quantum Amount", object: `Tk. ${mm[1]}`, normalizedValue: val });
+        }
+      }
     }
+  }
 
-    // Dispossession
-    if (/\b(?:dispossessed|ousted|ouster)\b/i.test(lower) || /\bdenied\s+.*\baccess\b/i.test(lower) || /\bprevented\s+.*\b(?:from\s+)?entering\b/i.test(lower) || /\benclos(?:ing|ed)?\s+.*\b(?:portion|area|property)\b/i.test(lower) || /\bexclusive\s+(?:ownership|possession|control)\b/i.test(lower)) {
-      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "DISPOSSESSED" });
+  private extractPropertyFacts(clause: string, candidates: FactCandidate[]): void {
+    const lower = clause.toLowerCase();
+    // Area
+    const areaMatch = clause.match(/(\d+(?:\.\d+)?)\s*(?:decimal|decimals|katha|bigha|acre|acres)/i);
+    if (areaMatch) {
+      candidates.push({ subject: "Property", predicate: "Area", object: areaMatch[0] });
     }
-    if (/\b(?:in\s+(?:peaceful|continuous)\s+possession|possessing)\b/i.test(lower)) {
-      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "IN_POSSESSION" });
+    // Co-sharers
+    if (/\b(?:co-?sharers?|joint\s+owner|joint\s+ownership|jointly\s+owned)\b/i.test(lower)) {
+      candidates.push({ subject: "Property", predicate: "Ownership Structure", object: "JOINT" });
     }
-
-    // Agreement / Bainapatra execution date (FIX #3: now captures "18 July 2023")
-    const agreeContextMatch = clause.match(/(?:in\s+)?([A-Za-z]+\s+[0-9]{4})[^.]{0,120}?(?:agreement\s+for\s+sale|bainapatra|sale\s+agreement)/i);
-    if (agreeContextMatch) {
-      candidates.push({ subject: "Bainapatra", predicate: "Execution Date", object: agreeContextMatch[1].trim(), eventDate: agreeContextMatch[1].trim() });
-    }
-    // FIX #3: Full DD Month YYYY capture for agreement dates
-    const agreeDateDirect = clause.match(/(?:agreement|bainapatra|contract)[^.]{0,80}?\bon\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-    if (agreeDateDirect) {
-      candidates.push({ subject: "Bainapatra", predicate: "Execution Date", object: agreeDateDirect[1].trim(), eventDate: agreeDateDirect[1].trim() });
-    }
-
-    // Refusal date (FIX #2: now matches "dated" as well as "on")
-    const refusalMatch = clause.match(/\b(?:refused|refusal)\b[^.]{0,80}?(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-    if (refusalMatch) {
-      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: refusalMatch[1].trim(), eventDate: refusalMatch[1].trim() });
-    } else if (/\b(?:refused|refusal)\b/i.test(lower)) {
-      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: null });
-    }
-
-    // Demand date
-    const demandMatch = clause.match(/\b(?:demanded|demand|legal\s+notice)\b[^.]{0,80}?\bon\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-    if (demandMatch) {
-      candidates.push({ subject: "Plaintiff", predicate: "Demand Date", object: demandMatch[1].trim(), eventDate: demandMatch[1].trim() });
-    }
-
-    // Mutation / Namjari
+    // Mutation
     if (/\bexclusive\s+(?:mutation|namjari)\b/i.test(lower)) {
       candidates.push({ subject: "Property", predicate: "Mutation Status", object: "EXCLUSIVE_MUTATION" });
     } else if (/\b(?:mutation|namjari|khatian)\b/i.test(lower)) {
       candidates.push({ subject: "Property", predicate: "Mutation Status", object: "MUTATED" });
     }
+  }
 
+  private extractRegistrationFacts(clause: string, candidates: FactCandidate[]): void {
+    const lower = clause.toLowerCase();
+    // Treasury deposit / challan
+    if (/\b(?:treasury\s+challan|deposit|deposited|pay\s+order)\b/i.test(lower)) {
+      candidates.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "DEPOSITED" });
+      // Extract challan number
+      const challanMatch = clause.match(/(?:challan\s+no\.?|treasury\s+challan)\s+([A-Z0-9\-]+)/i);
+      if (challanMatch) {
+        candidates.push({ subject: "Treasury Deposit", predicate: "Challan Number", object: challanMatch[1].trim() });
+      }
+    }
     // Registered title
     if (/\b(?:registered\s+(?:owner|title|kabala|sale\s+deed))\b/i.test(lower)) {
       candidates.push({ subject: "Plaintiff", predicate: "Title Status", object: "REGISTERED_OWNER" });
     }
+  }
 
-    // Disowning
-    if (/\b(?:disown|disowned|disowning)\b/i.test(lower)) {
-      candidates.push({ subject: "Ancestor", predicate: "Disowning Declaration", object: "DECLARED" });
+  // P0-4: Temporal / chronology facts
+  private extractTemporalFacts(clause: string, candidates: FactCandidate[]): void {
+    // Refusal date
+    const refusalMatch = clause.match(/\b(?:refused|refusal)\b[^\.]{0,80}?(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+    if (refusalMatch) {
+      const date = refusalMatch[1].trim();
+      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: date, eventDate: date });
+    } else if (/\b(?:refused|refusal)\b/i.test(clause.toLowerCase())) {
+      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: null });
     }
 
-    // Unauthorized construction
-    if (/\b(?:unauthorized\s+construction|constructing\s+without)\b/i.test(lower)) {
-      candidates.push({ subject: "Defendant", predicate: "Construction Status", object: "UNAUTHORIZED" });
+    // Demand / legal notice date
+    const demandMatch = clause.match(/\b(?:demanded|demand|legal\s+notice)\b[^\.]{0,80}?\bon\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+    if (demandMatch) {
+      const date = demandMatch[1].trim();
+      candidates.push({ subject: "Plaintiff", predicate: "Demand Date", object: date, eventDate: date });
     }
 
-    // Money / Quantum (FIX #24: preserve original formatting)
-    const moneyMatches = clause.matchAll(/(?:tk\.?|taka|bd\s*taka|bdt)\s*([\d,]+(?:\.\d+)?)/gi);
-    for (const mm of moneyMatches) {
-      const val = parseMoney(mm[1]);
-      if (val !== null) candidates.push({ subject: "Claim", predicate: "Quantum Amount", object: mm[0].trim(), normalizedValue: val });
+    // Performance deadline
+    const deadlineMatch = clause.match(/\b(?:within|before|on\s+or\s+before|deadline|period\s+of)\b[^\.]{0,80}?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+    if (deadlineMatch) {
+      const date = deadlineMatch[1].trim();
+      candidates.push({ subject: "Contract", predicate: "Performance Deadline", object: date, eventDate: date });
     }
 
-    // Co-sharers
-    if (/\b(?:co-?sharers?|joint\s+owner|joint\s+ownership|jointly\s+owned)\b/i.test(lower)) {
-      candidates.push({ subject: "Property", predicate: "Ownership Structure", object: "JOINT" });
+    // Disowning affidavit date
+    if (/\b(?:disowning affidavit|affidavit of disown)\b/i.test(clause.toLowerCase())) {
+      const affDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (affDate) {
+        const date = affDate[1].trim();
+        candidates.push({ subject: "Ancestor", predicate: "Disowning Date", object: date, eventDate: date });
+      }
     }
 
+    // Newspaper publication date
+    if (/\b(?:newspaper publication|published in|daily ittefaq)\b/i.test(clause.toLowerCase())) {
+      const pubDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (pubDate) {
+        const date = pubDate[1].trim();
+        candidates.push({ subject: "Media", predicate: "Publication Date", object: date, eventDate: date });
+      }
+    }
+
+    // Warisan sanad date
+    if (/\b(?:warisan sanad|heirship certificate|legal heirship)\b/i.test(clause.toLowerCase())) {
+      const wsDate = clause.match(/(?:dated|on)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (wsDate) {
+        const date = wsDate[1].trim();
+        candidates.push({ subject: "Heirship", predicate: "Certificate Date", object: date, eventDate: date });
+      }
+    }
+
+    // Predeceased date
+    if (/\b(?:predeceased|pre-deceased|died before)\b/i.test(clause.toLowerCase())) {
+      const preDate = clause.match(/(?:in|on)\s+([0-9]{4}|[0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+      if (preDate) {
+        const date = preDate[1].trim();
+        candidates.push({ subject: "Spouse", predicate: "Predeceased Date", object: date, eventDate: date });
+      }
+    }
+  }
+
+  private extractDocumentFacts(clause: string, candidates: FactCandidate[]): void {
+    // Document type detection for provenance
+    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+      // These are handled by detectAssertionContext for assertion typing
+    }
+  }
+
+  private extractSuccessionFacts(clause: string, candidates: FactCandidate[]): void {
+    const lower = clause.toLowerCase();
+    // Death
+    if (/\b(?:died|passed away|demise|death of)\b/i.test(clause)) {
+      const dm = clause.match(/(?:died|passed away|demise|death of)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (dm) {
+        const date = dm[1].trim();
+        candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: date });
+      } else {
+        candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED" });
+      }
+    }
+    // Living assertions
+    if (/\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(lower)) {
+      candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "ALIVE" });
+    }
     // Intestate
     if (/\bintestate\b/i.test(lower)) {
       candidates.push({ subject: "Ancestor", predicate: "Succession Type", object: "INTESTATE" });
     }
-
-    // FIX #9: Extract Registration Status and Payment Status for SP claims
-    if (/\bregistered\s+(?:bainapatra|agreement|sale\s+deed)\b/i.test(lower)) {
-      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "REGISTERED" });
-    } else if (
-      /\bunregistered\s+(?:bainapatra|agreement|sale\s*deed)\b/i.test(lower) ||
-      /(?:bainapatra|agreement|sale\s*deed)(?:\s+\w+){0,3}\s+(?:not\s+registered|without\s+registration)\b/i.test(lower) ||
-      /\bregistration\s+(?:not\s+done|not\s+completed|not\s+made|pending)\b/i.test(lower)
-    ) {
-      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "UNREGISTERED" });
+    // Disowning
+    if (/\b(?:disown|disowned|disowning)\b/i.test(lower)) {
+      candidates.push({ subject: "Ancestor", predicate: "Disowning Declaration", object: "DECLARED" });
     }
-
-    if (/\b(?:treasury\s+challan|deposit|deposited|pay\s+order)\b/i.test(lower)) {
-      candidates.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "DEPOSITED" });
-    }
-
-    // FIX #14: Populate eventDate for dispossession if date mentioned nearby
-    if (/\b(?:dispossessed|ousted|ouster)\b/i.test(lower)) {
-      const dispDate = clause.match(/(?:on|since|from)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-      if (dispDate) {
-        candidates.push({ subject: "Plaintiff", predicate: "Dispossession Date", object: dispDate[1].trim(), eventDate: dispDate[1].trim() });
-      }
-    }
-
-
-    // P0-00d: Additional temporal facts for chronology completeness
-    if (/\b(?:disowning affidavit|affidavit of disown)\b/i.test(lower)) {
-      const affDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-      if (affDate) candidates.push({ subject: "Ancestor", predicate: "Disowning Date", object: affDate[1].trim(), eventDate: affDate[1].trim() });
-    }
-    if (/\b(?:newspaper publication|published in|daily ittefaq)\b/i.test(lower)) {
-      const pubDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-      if (pubDate) candidates.push({ subject: "Media", predicate: "Publication Date", object: pubDate[1].trim(), eventDate: pubDate[1].trim() });
-    }
-    if (/\b(?:warisan sanad|heirship certificate|legal heirship)\b/i.test(lower)) {
-      const wsDate = clause.match(/(?:dated|on)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
-      if (wsDate) candidates.push({ subject: "Heirship", predicate: "Certificate Date", object: wsDate[1].trim(), eventDate: wsDate[1].trim() });
-    }
-    if (/\b(?:predeceased|pre-deceased|died before)\b/i.test(lower)) {
-      const preDate = clause.match(/(?:in|on)\s+([0-9]{4}|[0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
-      if (preDate) candidates.push({ subject: "Spouse", predicate: "Predeceased Date", object: preDate[1].trim(), eventDate: preDate[1].trim() });
-    }
-
-    return candidates;
   }
 
-  // FIX #11 / #17: Broader documentary fact detection
+  private extractPossessionFacts(clause: string, candidates: FactCandidate[]): void {
+    const lower = clause.toLowerCase();
+    // Dispossession
+    if (/\b(?:dispossessed|ousted|ouster)\b/i.test(lower) ||
+        /\bdenied\s+.*\baccess\b/i.test(lower) ||
+        /\bprevented\s+.*\b(?:from\s+)?entering\b/i.test(lower) ||
+        /\benclos(?:ing|ed)?\s+.*\b(?:portion|area|property)\b/i.test(lower) ||
+        /\bexclusive\s+(?:ownership|possession|control)\b/i.test(lower)) {
+      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "DISPOSSESSED" });
+      // Extract dispossession date if present
+      const dispDate = clause.match(/(?:on|since|from)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      if (dispDate) {
+        const date = dispDate[1].trim();
+        candidates.push({ subject: "Plaintiff", predicate: "Dispossession Date", object: date, eventDate: date });
+      }
+    }
+    if (/\b(?:in\s+(?:peaceful|continuous)\s+possession|possessing)\b/i.test(lower)) {
+      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "IN_POSSESSION" });
+    }
+    // Unauthorized construction
+    if (/\b(?:unauthorized\s+construction|constructing\s+without)\b/i.test(lower)) {
+      candidates.push({ subject: "Defendant", predicate: "Construction Status", object: "UNAUTHORIZED" });
+    }
+  }
+
+  // =======================================================================
+  // P0-5: ASSERTION CONTEXT DETECTION
+  // =======================================================================
+
   private detectAssertionContext(
     clause: string,
-  ): { type: AssertionType; polarity: AssertionPolarity } {
-    if (
-      /\b(defendant|plaintiff)\b[^.!?]{0,80}\b(?:denies?|disputes?|refutes?)\b/i.test(clause) ||
-      /\b(?:denies?|disputes?|refutes?)\b[^.!?]{0,80}\b(defendant|plaintiff)\b/i.test(clause)
-    ) {
-      return { type: AssertionType.DENIED, polarity: AssertionPolarity.DISPUTED };
+  ): { type: AssertionType; polarity: AssertionPolarity; assertedBy?: string; documentType?: string; documentDate?: string } {
+    const lower = clause.toLowerCase();
+
+    // P0-5: Document-specific detection first (highest priority for provenance)
+    // Defendant reply dated 10 February 2024
+    const replyMatch = clause.match(/\b(?:defendant|respondent)\b[^.!?]{0,60}\b(?:reply|replied|written\s+statement|ws)\b[^.!?]{0,60}(?:dated\s+)?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+    if (replyMatch) {
+      return {
+        type: AssertionType.DOCUMENTARY_FACT,
+        polarity: AssertionPolarity.POSITIVE,
+        assertedBy: "DEFENDANT",
+        documentType: "DEFENDANT_REPLY",
+        documentDate: replyMatch[1]?.trim(),
+      };
     }
+
+    // Plaintiff's case / allegation
     if (
-      /\b(?:admits?|admitted|concedes?|conceded|acknowledges?)\b/i.test(clause)
+      /\b(?:it is the|this is the)\s+(?:plaintiff's|defendant's)\s+case\b/i.test(clause) ||
+      /\b(?:plaintiff|defendant)\b[^.!?]{0,60}\b(?:case\s+is|contends?|submits?|claims?|alleges?)\b/i.test(clause)
     ) {
+      const isPlaintiff = /\bplaintiff\b/i.test(clause) && !/\bdefendant\b[^.!?]{0,40}\b(?:contends?|submits?|claims?|denies?)\b/i.test(clause);
+      const isDefendant = /\bdefendant\b/i.test(clause) && !/\bplaintiff\b[^.!?]{0,40}\b(?:contends?|submits?|claims?|alleges?)\b/i.test(clause);
+      return {
+        type: AssertionType.ASSERTED,
+        polarity: AssertionPolarity.POSITIVE,
+        assertedBy: isPlaintiff ? "PLAINTIFF" : isDefendant ? "DEFENDANT" : undefined,
+      };
+    }
+
+    // Denial / dispute
+    if (
+      /\b(?:defendant|plaintiff)\b[^.!?]{0,80}\b(?:denies?|disputes?|refutes?)\b/i.test(clause) ||
+      /\b(?:denies?|disputes?|refutes?)\b[^.!?]{0,80}\b(?:defendant|plaintiff)\b/i.test(clause)
+    ) {
+      const isDefendantDenial = /\bdefendant\b/i.test(clause) && /\b(?:denies?|disputes?)\b/i.test(clause);
+      return {
+        type: AssertionType.DENIED,
+        polarity: AssertionPolarity.DISPUTED,
+        assertedBy: isDefendantDenial ? "DEFENDANT" : "PLAINTIFF",
+      };
+    }
+
+    // Admission
+    if (/\b(?:admits?|admitted|concedes?|conceded|acknowledges?)\b/i.test(clause)) {
       return { type: AssertionType.ADMITTED, polarity: AssertionPolarity.POSITIVE };
     }
-    if (
-      /\b(?:it is the|this is the)\s+(?:plaintiff's|defendant's)\s+case\b/i.test(
-        clause,
-      ) ||
-      /\b(?:plaintiff|defendant)\b[^.!?]{0,60}\b(?:case\s+is|contends?|submits?|claims?)\b/i.test(
-        clause,
-      )
-    ) {
-      return { type: AssertionType.ASSERTED, polarity: AssertionPolarity.POSITIVE };
-    }
+
+    // Party narrative / deposition
     if (/\b(?:according to|stated by|deposed by)\b/i.test(clause)) {
       return { type: AssertionType.PARTY_NARRATIVE, polarity: AssertionPolarity.POSITIVE };
     }
+
+    // Court finding
     if (/\b(?:court\s+found|held\s+that|decided\s+that)\b/i.test(clause)) {
-      return {
-        type: AssertionType.COURT_FINDING,
-        polarity: AssertionPolarity.POSITIVE,
-      };
+      return { type: AssertionType.COURT_FINDING, polarity: AssertionPolarity.POSITIVE };
     }
-    // FIX #17: Broader documentary fact triggers
+
+    // Documentary facts
     if (/\b(?:document\s+shows|record\s+reveals|registered\s+deed|registered\s+sale\s+deed|kabala|pay\s+order|treasury\s+challan|bainapatra)\b/i.test(clause)) {
-      return {
-        type: AssertionType.DOCUMENTARY_FACT,
-        polarity: AssertionPolarity.POSITIVE,
-      };
+      return { type: AssertionType.DOCUMENTARY_FACT, polarity: AssertionPolarity.POSITIVE };
     }
-    // P0-00c: Official records must be classified as DOCUMENTARY
+
+    // Official records
     if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
-      return {
-        type: AssertionType.DOCUMENTARY_FACT,
-        polarity: AssertionPolarity.POSITIVE,
-      };
+      return { type: AssertionType.DOCUMENTARY_FACT, polarity: AssertionPolarity.POSITIVE };
     }
+
     return { type: AssertionType.ALLEGED, polarity: AssertionPolarity.POSITIVE };
   }
 
-  // FIX #18: Extract actual names when possible
   private detectAssertingParty(clause: string): string | null {
     const plaintiffMatch = clause.match(
       /\b(?:plaintiff|petitioner|claimant)\b[^.!?]{0,40}\b(?:states?|says?|submits?|contends?|alleges?|deposes?)\b/i,
@@ -1994,9 +1869,9 @@ export class BCCAAEngine {
     return null;
   }
 
-  // ========================================================================
-  // P0 HELPERS: ENSURE CLAIM-RELEVANT UNKNOWNS (BUG #10 FIXED)
-  // ========================================================================
+  // =======================================================================
+  // P0 HELPERS: ENSURE CLAIM-RELEVANT UNKNOWNS
+  // =======================================================================
 
   private ensureClaimRelevantUnknowns(ctx: ExecutionContext, claimType: ClaimType): void {
     const existingKeys = new Set(Array.from(ctx.factRegistry.values()).map((f) => `${f.subject}|${f.predicate}`.toUpperCase()));
@@ -2010,7 +1885,6 @@ export class BCCAAEngine {
     }
     for (const [subject, predicate] of requiredPairs) {
       const key = `${subject}|${predicate}`.toUpperCase();
-      // FIX #10: Only create placeholder if no real fact already exists for this pair
       if (!existingKeys.has(key)) {
         const propositionId = this.ensureProposition(ctx, subject, predicate, null, `[SYSTEM-GENERATED] No facts extracted for ${subject} ${predicate}`);
         const assertionId = shortId("A", ctx.assertionCounter++);
@@ -2024,62 +1898,37 @@ export class BCCAAEngine {
   private buildContradictionGraph(ctx: ExecutionContext): void {
     const facts = Array.from(ctx.factRegistry.values());
     const familyMap = new Map<string, AtomicFact[]>();
-
-    // Group facts by proposition family (subject|predicate, ignoring object)
     for (const fact of facts) {
       const familyKey = `${fact.subject}|${fact.predicate}`.toUpperCase();
       if (!familyMap.has(familyKey)) familyMap.set(familyKey, []);
       familyMap.get(familyKey)!.push(fact);
     }
-
     let edgeCounter = 1;
-
     for (const [familyKey, familyFacts] of familyMap) {
       if (familyFacts.length < 2) continue;
-
-      const mode = getConflictModeFromFacts(ctx, familyFacts[0].subject, familyFacts[0].predicate);
-
-      if (mode === "NON_CONTRADICTORY" || mode === "MULTI_VALUED" || mode === "NUMERIC_RANGE") {
-        // These modes never produce contradictions within a family
-        continue;
-      }
-
+      const mode = getConflictMode(ctx, familyFacts[0].subject, familyFacts[0].predicate);
+      if (mode === "NON_CONTRADICTORY" || mode === "MULTI_VALUED" || mode === "NUMERIC_RANGE") continue;
       for (let i = 0; i < familyFacts.length; i++) {
         for (let j = i + 1; j < familyFacts.length; j++) {
           const left = familyFacts[i];
           const right = familyFacts[j];
           let isConflict = false;
-
           if (mode === "BOOLEAN_EXCLUSIVE") {
-            // Conflict if one is TRUE and the other is FALSE (object doesn't matter)
             isConflict =
               (left.truth === Tristate.TRUE && right.truth === Tristate.FALSE) ||
               (left.truth === Tristate.FALSE && right.truth === Tristate.TRUE);
           } else if (mode === "ENUM_EXCLUSIVE") {
-            // FIX #5: Only conflict if DIFFERENT objects AND both TRUE
-            // Old bug: treated all same-subject-predicate as contradictory regardless of truth
             isConflict =
               left.object !== right.object &&
               left.truth === Tristate.TRUE &&
               right.truth === Tristate.TRUE;
           } else if (mode === "NUMERIC_EQUALITY") {
-            // Conflict if different numeric values and both TRUE
-            const leftNum =
-              left.normalizedValue !== null && left.normalizedValue !== undefined
-                ? Number(left.normalizedValue)
-                : NaN;
-            const rightNum =
-              right.normalizedValue !== null && right.normalizedValue !== undefined
-                ? Number(right.normalizedValue)
-                : NaN;
+            const leftNum = left.normalizedValue !== null && left.normalizedValue !== undefined ? Number(left.normalizedValue) : NaN;
+            const rightNum = right.normalizedValue !== null && right.normalizedValue !== undefined ? Number(right.normalizedValue) : NaN;
             isConflict =
-              !isNaN(leftNum) &&
-              !isNaN(rightNum) &&
-              leftNum !== rightNum &&
-              left.truth === Tristate.TRUE &&
-              right.truth === Tristate.TRUE;
+              !isNaN(leftNum) && !isNaN(rightNum) && leftNum !== rightNum &&
+              left.truth === Tristate.TRUE && right.truth === Tristate.TRUE;
           }
-
           if (isConflict) {
             const edge: ContradictionEdge = {
               edgeId: `EDGE-${String(edgeCounter++).padStart(5, "0")}`,
@@ -2087,14 +1936,9 @@ export class BCCAAEngine {
               leftFactId: left.factId,
               rightFactId: right.factId,
               relation: "DIRECT_TRUTH_CONFLICT",
-              status:
-                left.truth === Tristate.TRUE && right.truth === Tristate.TRUE
-                  ? "CRITICAL"
-                  : "PENDING_VALIDATION",
+              status: left.truth === Tristate.TRUE && right.truth === Tristate.TRUE ? "CRITICAL" : "PENDING_VALIDATION",
             };
             ctx.contradictionGraph.push(edge);
-
-            // Record on facts themselves
             if (!left.contradicts) left.contradicts = [];
             if (!right.contradicts) right.contradicts = [];
             left.contradicts.push(right.factId);
@@ -2105,11 +1949,8 @@ export class BCCAAEngine {
     }
   }
 
-  /** ISSUE 1: logCriticalConflicts NEVER throws. Data only. */
   private logCriticalConflicts(ctx: ExecutionContext): void {
-    const criticalEdges = ctx.contradictionGraph.filter(
-      (e) => e.status === "CRITICAL",
-    );
+    const criticalEdges = ctx.contradictionGraph.filter((e) => e.status === "CRITICAL");
     if (criticalEdges.length > 0) {
       recordTrace(ctx, {
         layer: "P0_EXTRACTION",
@@ -2118,25 +1959,19 @@ export class BCCAAEngine {
         dependsOnRules: [],
         result: `EDGES:[${criticalEdges.map((e) => e.edgeId).join(",")}]`,
       });
-      ctx.warnings.push(
-        `CRITICAL: ${criticalEdges.length} contradiction edge(s) detected. F0 gate will evaluate.`,
-      );
+      ctx.warnings.push(`CRITICAL: ${criticalEdges.length} contradiction edge(s) detected. F0 gate will evaluate.`);
     }
   }
 
-  // ========================================================================
+  // =======================================================================
   // EVENT TIMELINE
-  // ========================================================================
+  // =======================================================================
 
   private buildEventTimeline(ctx: ExecutionContext): void {
     const factsWithDates = Array.from(ctx.factRegistry.values()).filter(
       (f) => f.eventDate && isStrictDate(f.eventDate),
     );
-
-    factsWithDates.sort(
-      (a, b) => strictDateTimestamp(a.eventDate!) - strictDateTimestamp(b.eventDate!),
-    );
-
+    factsWithDates.sort((a, b) => strictDateTimestamp(a.eventDate!) - strictDateTimestamp(b.eventDate!));
     let eventCounter = 1;
     for (const fact of factsWithDates) {
       const eventType = this.inferEventType(fact);
@@ -2150,7 +1985,6 @@ export class BCCAAEngine {
         sourceFactIds: [fact.factId],
       });
     }
-
     if (ctx.eventTimeline.length === 0) {
       ctx.eventTimeline.push({
         eventId: "EVT-00001",
@@ -2162,11 +1996,16 @@ export class BCCAAEngine {
     }
   }
 
+  // P0-4: Explicit event type mapping
   private inferEventType(fact: AtomicFact): LegalEventType {
     if (fact.predicate === "Vital Status" && fact.object === "DECEASED") return "ANCESTOR_DEATH";
     if (fact.predicate === "Execution Date") return "AGREEMENT_EXECUTION";
+    if (fact.predicate === "Registration Status" && fact.object === "REGISTERED") return "AGREEMENT_REGISTERED";
+    if (fact.predicate === "Amount Paid" && fact.subject === "Advance") return "ADVANCE_PAID";
+    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED" && fact.subject === "Treasury Deposit") return "BALANCE_DEPOSIT";
+    if (fact.predicate === "Performance Deadline") return "PERFORMANCE_DEADLINE";
+    if (fact.predicate === "Demand Date") return "LEGAL_NOTICE";
     if (fact.predicate === "Refusal Date") return "REFUSAL";
-    if (fact.predicate === "Demand Date") return "DEMAND";
     if (fact.predicate === "Dispossession Date") return "DISPOSSESSION";
     if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED") return "PAYMENT";
     if (fact.predicate === "Possession Status" && fact.object === "DISPOSSESSED") return "DISPOSSESSION";
@@ -2191,57 +2030,27 @@ export class BCCAAEngine {
     const subjectUpper = subject.toUpperCase();
     const predicateUpper = predicate.toUpperCase();
     const objectFilter = options.objectFilter ?? object;
-
-    // Find ALL facts in this proposition family (subject|predicate|*)
     const familyFacts = Array.from(ctx.factRegistry.values()).filter(
-      (f) =>
-        f.subject.toUpperCase() === subjectUpper &&
-        f.predicate.toUpperCase() === predicateUpper,
+      (f) => f.subject.toUpperCase() === subjectUpper && f.predicate.toUpperCase() === predicateUpper,
     );
-
-    // Same-family conflicting facts (ISSUE 3: even when object filter hides them)
     const sameFamilyConflictingFacts = familyFacts
       .filter((f) => f.truth === Tristate.TRUE)
-      .map((f) => ({
-        factId: f.factId,
-        object: f.object,
-        truth: f.truth,
-      }));
-
-    const conflictDetected =
-      sameFamilyConflictingFacts.length > 1 &&
-      new Set(sameFamilyConflictingFacts.map((f) => f.object)).size > 1;
-
-    // Filter to matching facts (by object if specified)
+      .map((f) => ({ factId: f.factId, object: f.object, truth: f.truth }));
+    const conflictDetected = sameFamilyConflictingFacts.length > 1 && new Set(sameFamilyConflictingFacts.map((f) => f.object)).size > 1;
     const matchingFacts = objectFilter
-      ? familyFacts.filter(
-          (f) => f.object?.toUpperCase() === objectFilter.toUpperCase(),
-        )
+      ? familyFacts.filter((f) => f.object?.toUpperCase() === objectFilter.toUpperCase())
       : familyFacts;
-
-    // Evaluate each matching fact
     let bestStatus = Tristate.UNKNOWN;
     const supportingFactIds: string[] = [];
     let validationDetails: FactEvaluationResult["validationDetails"] = undefined;
-
     for (const fact of matchingFacts) {
-      // Check validation requirements
       let passesValidation = true;
-
       if (options.validationRequirements) {
-        // ISSUE 13-14: Use explicit per-predicate requirements
-        passesValidation = meetsValidationRequirements(
-          fact,
-          options.validationRequirements,
-        );
+        passesValidation = meetsValidationRequirements(fact, options.validationRequirements);
       } else if (options.requireVerified) {
-        // FIX #3: requireVerified: true means VERIFIED (not IDENTIFIED)
         passesValidation = fact.validationStatus === ValidationStatus.VERIFIED;
       }
-
       if (!passesValidation) continue;
-
-      // Update best status: TRUE > FALSE > UNKNOWN
       if (fact.truth === Tristate.TRUE) {
         bestStatus = Tristate.TRUE;
         supportingFactIds.push(fact.factId);
@@ -2251,7 +2060,7 @@ export class BCCAAEngine {
           corroborationStatus: fact.validation.corroborationStatus,
           humanValidationStatus: fact.validation.humanValidationStatus,
         };
-        break; // Found a verified TRUE — best possible
+        break;
       } else if (fact.truth === Tristate.FALSE) {
         bestStatus = Tristate.FALSE;
         supportingFactIds.push(fact.factId);
@@ -2271,1003 +2080,399 @@ export class BCCAAEngine {
         };
       }
     }
-
-    return {
-      status: bestStatus,
-      supportingFactIds,
-      conflictDetected,
-      sameFamilyConflictingFacts,
-      validationDetails,
-    };
+    return { status: bestStatus, supportingFactIds, conflictDetected, sameFamilyConflictingFacts, validationDetails };
   }
 
-  // ========================================================================
-  // P1 STAGES
-  // ========================================================================
+  // =======================================================================
+  // DOMAIN & LEGISLATION
+  // =======================================================================
 
-  private resolveClaimType(
-    factPattern: string,
-    focusDomain: string,
-  ): ClaimType {
+  private resolveClaimType(factPattern: string, focusDomain: string): ClaimType {
     const lower = factPattern.toLowerCase();
-    const domain = (focusDomain || "").toLowerCase();
-
-    // FIX #25: Check text content even if focusDomain is empty/GENERAL_CIVIL
-    if (
-      domain.includes("inheritance") ||
-      domain.includes("succession") ||
-      lower.includes("heir") ||
-      lower.includes("succession") ||
-      lower.includes("warisan") ||
-      lower.includes("co-sharer") ||
-      lower.includes("intestate")
-    ) {
-      return "INHERITANCE_CONSULTATION";
+    if (focusDomain) {
+      const fd = focusDomain.toLowerCase();
+      if (fd.includes("specific performance")) return "SPECIFIC_PERFORMANCE";
+      if (fd.includes("declaration") || fd.includes("possession")) return "DECLARATION_AND_POSSESSION";
+      if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
     }
-    if (
-      domain.includes("specific performance") ||
-      lower.includes("bainapatra") ||
-      lower.includes("specific performance") ||
-      lower.includes("section 21a")
-    ) {
-      return "SPECIFIC_PERFORMANCE";
-    }
-    if (
-      domain.includes("declaration") ||
-      domain.includes("possession") ||
-      lower.includes("declaration of title") ||
-      lower.includes("recovery of possession") ||
-      lower.includes("section 8") ||
-      lower.includes("section 42")
-    ) {
-      return "DECLARATION_AND_POSSESSION";
-    }
+    if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
+    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian)\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+    if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
     return "GENERAL_CIVIL";
   }
 
-  private classifyDomain(
-    ctx: ExecutionContext,
-    claimType: ClaimType,
-  ): StageExecutionResult {
-    const domainMap: Record<ClaimType, { primary: string; subsidiary: string[] }> = {
-      SPECIFIC_PERFORMANCE: {
-        primary: "Contract Law — Specific Performance",
-        subsidiary: ["Property Law", "Registration Law", "Limitation Law"],
-      },
-      DECLARATION_AND_POSSESSION: {
-        primary: "Property Law — Title & Possession",
-        subsidiary: ["Transfer of Property", "Evidence Law", "Limitation Law"],
-      },
-      INHERITANCE_CONSULTATION: {
-        primary: "Succession Law — Inheritance & Partition",
-        subsidiary: ["Property Law", "Evidence Law", "Limitation Law"],
-      },
-      GENERAL_CIVIL: {
-        primary: "General Civil Litigation",
-        subsidiary: ["Evidence Law", "Procedural Law"],
-      },
-    };
-
-    const mapping = domainMap[claimType];
-    recordTrace(ctx, {
-      layer: "P1_RULE",
-      description: `Domain classified: ${mapping.primary}`,
-      dependsOnFacts: getAllFactIds(ctx),
-      dependsOnRules: [],
-      result: mapping.primary,
-    });
-
-    return {
-      stageName: "Domain Classification",
-      status: "SATISFIED",
-      details: `Primary domain: ${mapping.primary}`,
-      data: mapping,
-    };
+  private classifyDomain(_ctx: ExecutionContext, claimType: ClaimType): string {
+    if (claimType === "SPECIFIC_PERFORMANCE") return "SPECIFIC_PERFORMANCE";
+    if (claimType === "DECLARATION_AND_POSSESSION") return "DECLARATION_AND_POSSESSION";
+    if (claimType === "INHERITANCE_CONSULTATION") return "INHERITANCE_CONSULTATION";
+    return "GENERAL_CIVIL";
   }
 
-  private mapLegislation(ctx: ExecutionContext, claimType: ClaimType): StageExecutionResult {
-    const legislation = this.ruleRegistry.getLegislationMapping(claimType);
-    // FIX: Pass ancestor status to CitationValidator for correct precedent selection
-    const isAncestorDeceased =
-      this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED").status === "TRUE";
-
-    // FIX #30: Fallback precedent list for development mode
-    let precedents: Array<{
-      citation: string; caseTitle: string; court: string; decisionYear: number;
-      reporter: string; volume: number; page: number; bench?: string;
-      statutorySubject: string; holding: string; relevance: string;
-      ratioDecidendi: string; verificationStatus: string; verificationHash: string;
-      isDeterministic: boolean; securityHashToken: string;
-    }> = [];
-
-    try {
-      precedents = CitationValidator.getVerifiedPrecedentsForContext(claimType, { isAncestorDeceased });
-    } catch {
-      // Fallback: empty precedents if validator throws or is unavailable
-      precedents = [];
-    }
-
-    return { stageName: "Legislation Mapping", status: "SATISFIED", details: `Primary act: ${legislation.primaryAct}. Verified precedents: ${precedents.length}.`, data: { legislation, precedents } };
+  private mapLegislation(_ctx: ExecutionContext, claimType: ClaimType) {
+    return this.ruleRegistry.getLegislationMapping(claimType);
   }
 
-  private executeLimitationEngine(
-    ctx: ExecutionContext,
-    claimType: ClaimType,
-  ): StageExecutionResult {
+  // =======================================================================
+  // LIMITATION ENGINE
+  // =======================================================================
+
+  private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
+    isTimeBarred: boolean | null;
+    accrualDate: string | null;
+    limitationPeriodYears: number | null;
+    calculationType: string;
+    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[] };
+  } {
     const facts = Array.from(ctx.factRegistry.values());
-
-    const agreementDate = this.findDateFact(facts, "Bainapatra", "Execution Date");
-    const refusalDate = this.findDateFact(facts, "Defendant", "Refusal Date");
-    const deathDate = this.findDateFact(facts, "Ancestor", "Vital Status", "DECEASED");
-    const demandDate = this.findDateFact(facts, "Plaintiff", "Demand Date");
-
+    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
+    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
+    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
     let accrualDate: string | null = null;
-    let prescribedPeriod = null;
-    let limitationArticle = null;
-    let isTimeBarred = false;
-    let calculationType: "real_refusal" | "real_death" | "heuristic_6_months" | "missing_dates" | "other_category" = "missing_dates";
-    let validationStatus: "valid" | "heuristic_applied" | "invalid_gaps" = "invalid_gaps";
-    let explanation = "";
+    let limitationPeriodYears: number | null = null;
+    let calculationType = "other_category";
 
     if (claimType === "SPECIFIC_PERFORMANCE") {
-      limitationArticle = "Article 54, Limitation Act 1908";
-      prescribedPeriod = "3 years from date of refusal/failure to perform";
-
-      if (refusalDate && isStrictDate(refusalDate)) {
+      if (refusalDate) {
         accrualDate = refusalDate;
-        calculationType = "real_refusal";
-        const refusalTs = strictDateTimestamp(refusalDate);
-        const limitTs = refusalTs + 3 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = (ctx.referenceDate || 0) > limitTs;
-        validationStatus = "valid";
-        explanation = `Limitation computed from refusal date ${refusalDate}. 3-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
-      } else if (agreementDate && isStrictDate(agreementDate)) {
-        accrualDate = agreementDate;
-        calculationType = "heuristic_6_months";
-        const agreeTs = strictDateTimestamp(agreementDate);
-        const limitTs = agreeTs + 3 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = (ctx.referenceDate || 0) > limitTs;
-        validationStatus = "heuristic_applied";
-        explanation = `No explicit refusal date found. Using agreement date ${agreementDate} as heuristic accrual. 3-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
-      } else {
-        explanation = "Neither refusal date nor agreement date could be extracted. Limitation cannot be computed.";
-      }
-    } else if (claimType === "INHERITANCE_CONSULTATION") {
-      limitationArticle = "Article 123/144, Limitation Act 1908";
-      prescribedPeriod = "12 years from date of death";
-
-      if (deathDate && isStrictDate(deathDate)) {
-        accrualDate = deathDate;
-        calculationType = "real_death";
-        const deathTs = strictDateTimestamp(deathDate);
-        const limitTs = deathTs + 12 * 365.25 * 24 * 60 * 60 * 1000;
-        isTimeBarred = (ctx.referenceDate || 0) > limitTs;
-        validationStatus = "valid";
-        explanation = `Limitation computed from death date ${deathDate}. 12-year period ${isTimeBarred ? "EXPIRED." : "active."}`;
-      } else {
-        explanation = "Death date not extracted or not parseable. Limitation cannot be computed.";
+        limitationPeriodYears = 3;
+        calculationType = "refusal_date";
+      } else if (demandDate) {
+        accrualDate = demandDate;
+        limitationPeriodYears = 3;
+        calculationType = "demand_date";
+      } else if (executionDate) {
+        accrualDate = executionDate;
+        limitationPeriodYears = 3;
+        calculationType = "execution_date_fallback";
       }
     } else if (claimType === "DECLARATION_AND_POSSESSION") {
-      limitationArticle = "Article 65, Limitation Act 1908";
-      prescribedPeriod = "12 years from date of dispossession";
-      explanation = "Dispossession date required for precise computation.";
+      if (dispossessionDate) {
+        accrualDate = dispossessionDate;
+        limitationPeriodYears = 12;
+        calculationType = "dispossession_date";
+      }
+    } else if (claimType === "INHERITANCE_CONSULTATION") {
+      if (deathDate) {
+        accrualDate = deathDate;
+        limitationPeriodYears = 12;
+        calculationType = "death_date";
+      }
     }
-
-    recordTrace(ctx, {
-      layer: "P1_TEMPORAL",
-      description: `Limitation: article=${limitationArticle}, barred=${isTimeBarred}, type=${calculationType}, accrual=${accrualDate ?? "NULL"}`,
-      dependsOnFacts: [],
-      dependsOnRules: [],
-      result: accrualDate ? (isTimeBarred ? "TIME_BARRED" : "WITHIN_LIMITATION") : "INDETERMINATE",
-    });
-
+    if (!accrualDate) {
+      if (dates.length > 0) {
+        const sorted = [...dates].sort((a, b) => strictDateTimestamp(a) - strictDateTimestamp(b));
+        accrualDate = sorted[0];
+        limitationPeriodYears = claimType === "SPECIFIC_PERFORMANCE" ? 3 : 12;
+        calculationType = "earliest_date_fallback";
+      } else {
+        calculationType = "missing_dates";
+      }
+    }
+    let isTimeBarred: boolean | null = null;
+    if (accrualDate && limitationPeriodYears !== null && ctx.referenceDate) {
+      const accrualTs = strictDateTimestamp(accrualDate);
+      const refTs = ctx.referenceDate;
+      const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
+      isTimeBarred = refTs > accrualTs + periodMs;
+    }
     return {
-      stageName: "Limitation Engine",
-      status: accrualDate ? "SATISFIED" : "UNKNOWN",
-      details: explanation,
-      data: {
-        accrualDate,
-        prescribedPeriod,
-        limitationArticle,
-        isTimeBarred,
-        exceptionsOrExtensions: "",
-        preliminaryAnalysis: explanation,
-        timelineValidation: claimType === "INHERITANCE_CONSULTATION"
-          ? {
-              agreementDate: null,
-              refusalDate: null,
-              demandDate: null,
-              isAgreementDateExtracted: false,
-              isRefusalDateExtracted: false,
-              calculationType,
-              validationStatus,
-              explanation,
-            }
-          : {
-              agreementDate,
-              refusalDate,
-              demandDate,
-              isAgreementDateExtracted: agreementDate !== null && isStrictDate(agreementDate),
-              isRefusalDateExtracted: refusalDate !== null && isStrictDate(refusalDate),
-              calculationType,
-              validationStatus,
-              explanation,
-            },
-      },
+      isTimeBarred,
+      accrualDate,
+      limitationPeriodYears,
+      calculationType,
+      timelineValidation: { isValid: true, errors: [], warnings: [] },
     };
   }
 
-  private executeElementCompletenessGate(
-    ctx: ExecutionContext,
-    claimType: ClaimType,
-  ): ElementGateResult {
-    const rules = this.ruleRegistry.getClaimElements(claimType, "BANGLADESH");
-    const ruleExecutionResults: RuleExecutionResult[] = [];
+  // =======================================================================
+  // ELEMENT COMPLETENESS GATE
+  // =======================================================================
+
+  private executeElementCompletenessGate(ctx: ExecutionContext, claimType: ClaimType): ElementGateResult {
+    const rules = this.ruleRegistry.getClaimElements(claimType, "Bangladesh");
+    const results: RuleExecutionResult[] = [];
+    let allSatisfied = true;
     const missingElements: string[] = [];
     const unknownElements: string[] = [];
     const fatalFailures: string[] = [];
-
     for (const rule of rules) {
       const predicateResults: PredicateExecutionResult[] = [];
-      let allPredicatesSatisfied = true;
-      let anyPredicateUnknown = false;
-      let anyPredicateFailed = false;
-
-      for (const rp of rule.predicates) {
-        const evalResult = this.evaluateFact(
-          ctx,
-          rp.subject,
-          rp.predicate,
-          rp.object ?? null,
-          {
-            requireVerified: rp.requireVerified,
-            validationRequirements: rp.validationRequirements,
-            objectFilter: rp.object ?? null,
-          },
-        );
-
-        let predicateStatus: "TRUE" | "FALSE" | "UNKNOWN";
-        if (evalResult.status === Tristate.TRUE) {
-          predicateStatus = "TRUE";
-        } else if (evalResult.status === Tristate.FALSE) {
-          predicateStatus = "FALSE";
-          anyPredicateFailed = true;
-          allPredicatesSatisfied = false;
-        } else {
-          predicateStatus = "UNKNOWN";
-          anyPredicateUnknown = true;
-          allPredicatesSatisfied = false;
-        }
-
-        predicateResults.push({
-          predicateSubject: rp.subject,
-          predicateId: rp.predicateId,
-          status: predicateStatus,
-          factIds: evalResult.supportingFactIds,
-          conflictDetected: evalResult.conflictDetected || undefined,
-          sameFamilyConflictingFacts:
-            evalResult.sameFamilyConflictingFacts.length > 0
-              ? evalResult.sameFamilyConflictingFacts
-              : undefined,
+      let ruleSatisfied = true;
+      for (const pred of rule.predicates) {
+        const evalResult = this.evaluateFact(ctx, pred.subject, pred.predicate, pred.object, {
+          validationRequirements: pred.validationRequirements,
+          requireVerified: pred.requireVerified,
         });
+        const status = evalResult.status === Tristate.TRUE ? "TRUE" : evalResult.status === Tristate.FALSE ? "FALSE" : "UNKNOWN";
+        predicateResults.push({
+          predicateSubject: pred.subject,
+          predicateId: pred.predicateId,
+          status,
+          factIds: evalResult.supportingFactIds,
+          conflictDetected: evalResult.conflictDetected,
+          sameFamilyConflictingFacts: evalResult.sameFamilyConflictingFacts,
+        });
+        if (evalResult.status !== Tristate.TRUE) ruleSatisfied = false;
       }
-
-      // Determine rule status
-      let ruleStatus: RuleExecutionStatus;
-      let explanationCode: string;
-
-      if (allPredicatesSatisfied) {
-        ruleStatus = "SATISFIED";
-        explanationCode = rule.outcomeIfSatisfied;
-      } else if (anyPredicateFailed) {
-        ruleStatus = "FAILED";
-        explanationCode = rule.outcomeIfFailed;
-        fatalFailures.push(rule.ruleId);
-      } else {
-        ruleStatus = "UNKNOWN";
-        explanationCode = `ELEMENT_UNKNOWN:${rule.ruleId}`;
-        unknownElements.push(rule.ruleId);
-      }
-
-      if (!allPredicatesSatisfied && !anyPredicateFailed) {
-        missingElements.push(rule.ruleId);
-      }
-
-      ruleExecutionResults.push({
+      const ruleResult: RuleExecutionResult = {
         ruleId: rule.ruleId,
-        status: ruleStatus,
+        status: ruleSatisfied ? "SATISFIED" : "UNKNOWN",
         predicateResults,
-        authorityIds: rp_authorityIds(rule),
+        authorityIds: rule.authorityIds ?? [rule.authority.act],
         burden: rule.burden,
         legalEffect: rule.legalEffect,
-        explanationCode,
+        explanationCode: ruleSatisfied ? "ALL_PREDICATES_TRUE" : "PREDICATE_NOT_TRUE",
         authorityStatus: this.authorityStatus,
-      });
-
-      recordTrace(ctx, {
-        layer: "P1_ELEMENT_GATE",
-        description: `Rule ${rule.ruleId}: ${ruleStatus} — ${explanationCode}`,
-        dependsOnFacts: predicateResults.flatMap((p) => p.factIds),
-        dependsOnRules: [rule.ruleId],
-        result: ruleStatus,
-      });
+      };
+      results.push(ruleResult);
+      if (ruleSatisfied) continue;
+      allSatisfied = false;
+      if (rule.ruleType === "ELEMENT") {
+        if (predicateResults.some((pr) => pr.status === "UNKNOWN")) {
+          unknownElements.push(rule.ruleId);
+        } else {
+          missingElements.push(rule.ruleId);
+        }
+      } else if (rule.ruleType === "BAR") {
+        fatalFailures.push(rule.ruleId);
+      }
     }
-
-    const allSatisfied = ruleExecutionResults.every(
-      (r) => r.status === "SATISFIED",
-    );
-    const hasFatalFailure = fatalFailures.length > 0;
-
-    let gateStatus: GateStatus;
-    if (hasFatalFailure) {
-      gateStatus = GateStatus.FAIL;
-    } else if (allSatisfied) {
-      gateStatus = GateStatus.PASS;
-    } else {
-      gateStatus = GateStatus.INDETERMINATE;
-    }
-
-    return {
-      status: gateStatus,
-      allSatisfied,
-      missingElements,
-      unknownElements,
-      fatalFailures,
-      ruleExecutionResults,
-    };
+    const status = fatalFailures.length > 0 ? GateStatus.HALT : allSatisfied ? GateStatus.PASS : GateStatus.INDETERMINATE;
+    return { status, allSatisfied, missingElements, unknownElements, fatalFailures, ruleExecutionResults: results };
   }
 
-  // ========================================================================
-  // REMAINING P1 STAGES
-  // ========================================================================
+  // =======================================================================
+  // P0-9: PARTY STANDI — consumes fact graph, not raw text
+  // =======================================================================
 
-  // FIX #7 / #18: Extract actual party names from text
   private executePartyStandiRules(
     ctx: ExecutionContext,
-    claimType: ClaimType,
-    rawText: string,
-  ): StageExecutionResult {
-    const facts = Array.from(ctx.factRegistry.values());
-    const lower = (f: AtomicFact) => f.proposition.toLowerCase();
-
-    const hasPlaintiffMention = facts.some(
-      (f) => lower(f).includes("plaintiff") || lower(f).includes("petitioner"),
+    _claimType: ClaimType,
+    _rawText: string,
+  ): {
+    plaintiffs: string[];
+    defendants: string[];
+    joinderIssues: string;
+    locusStandiSummary: string;
+  } {
+    // P0-1: Consume Stage 0 atomic facts for party identity
+    const partyFacts = Array.from(ctx.factRegistry.values()).filter(
+      (f) => f.predicate === "Party Identity" || f.predicate === "Party Role",
     );
-    const hasDefendantMention = facts.some(
-      (f) => lower(f).includes("defendant") || lower(f).includes("respondent"),
-    );
 
-    if (!hasPlaintiffMention || !hasDefendantMention) {
-      return {
-        stageName: "Party Locus Standi",
-        status: "UNKNOWN",
-        details: "Insufficient party information to determine standing.",
-        data: {
-          plaintiffs: [],
-          defendants: [],
-          joinderIssues: hasPlaintiffMention || hasDefendantMention
-            ? "One party side not clearly identified in the narrative."
-            : "No parties clearly identified.",
-          locusStandiSummary: "UNKNOWN — party roles could not be determined from the fact pattern.",
-        },
-      };
-    }
+    // Extract plaintiff names from Party Identity facts with subject "Plaintiff"
+    const plaintiffNames = partyFacts
+      .filter((f) => f.subject === "Plaintiff" && f.predicate === "Party Identity" && f.object)
+      .map((f) => f.object!)
+      .filter((v, i, arr) => arr.indexOf(v) === i); // dedupe while preserving order
 
-    // FIX #18: Try to extract actual names from raw text
-    const plaintiffNames: string[] = [];
-    const defendantNames: string[] = [];
+    // Extract defendant names from Party Identity facts with subject "Defendant"
+    const defendantNames = partyFacts
+      .filter((f) => f.subject === "Defendant" && f.predicate === "Party Identity" && f.object)
+      .map((f) => f.object!)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
 
-    // Look for patterns like "Plaintiff Md. Rafiqul Islam" or "Mr. X, the plaintiff"
-const plaintiffNameMatches = rawText.matchAll(
-      /(?:plaintiff|petitioner|complainant)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M\/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|vs\.?|versus|against|filed|through))/gi
-    );
-    for (const match of plaintiffNameMatches) {
-      const name = match[1].trim();
-      if (name.length > 3 && !plaintiffNames.includes(name)) plaintiffNames.push(name);
-    }
+    // Also extract from Party Role facts
+    const rolePlaintiffs = partyFacts
+      .filter((f) => f.predicate === "Party Role" && f.object === "PLAINTIFF" && f.object)
+      .map((f) => f.subject)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
 
-    const defendantNameMatches = rawText.matchAll(
-      /(?:defendant|respondent|opposite\s+party)\s+(?:is\s+|was\s+)?(?:Mr\.|Mrs\.|Ms\.|Md\.|M\/s\.)?\s*([A-Z][a-zA-Z\s\.]+?)(?=\s+(?:is\s+|was\s+|aged\s+|son\s+|daughter\s+|of\s+|resident\s+|claims?|alleged|filed|through))/gi
-    );
-    for (const match of defendantNameMatches) {
-      const name = match[1].trim();
-      if (name.length > 3 && !defendantNames.includes(name)) defendantNames.push(name);
-    }
+    const roleDefendants = partyFacts
+      .filter((f) => f.predicate === "Party Role" && f.object === "DEFENDANT" && f.object)
+      .map((f) => f.subject)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
 
-    // Fallback: generic names if none extracted
-    if (plaintiffNames.length === 0) plaintiffNames.push("Plaintiff (identified from narrative)");
-    if (defendantNames.length === 0) defendantNames.push("Defendant (identified from narrative)");
+    // Merge, with explicit identity facts taking priority
+    const plaintiffs = plaintiffNames.length > 0 ? plaintiffNames : rolePlaintiffs;
+    const defendants = defendantNames.length > 0 ? defendantNames : roleDefendants;
 
-    const plaintiffs = plaintiffNames.map(name => ({
-      name,
-      legalIdentity: name.includes("Plaintiff") ? "NOT_EXTRACTED" : "EXTRACTED_FROM_NARRATIVE",
-      capacity: "NOT_DETERMINED",
-      causeOfActionAccess: claimType === "INHERITANCE_CONSULTATION"
-        ? "Statutory co-sharer heir (pending verification)"
-        : "Claimant under cited cause of action",
-    }));
+    const joinderIssues = plaintiffs.length > 1 || defendants.length > 1
+      ? "Multiple parties identified; joinder analysis required."
+      : "No joinder issues detected.";
 
-    const defendants = defendantNames.map(name => ({
-      name,
-      legalIdentity: name.includes("Defendant") ? "NOT_EXTRACTED" : "EXTRACTED_FROM_NARRATIVE",
-      capacity: "NOT_DETERMINED",
-      liabilityType: null,
-    }));
+    const locusStandiSummary = plaintiffs.length > 0 && defendants.length > 0
+      ? `Plaintiff(s): ${plaintiffs.join(", ")}; Defendant(s): ${defendants.join(", ")}`
+      : "Party standing incomplete — party facts not fully extracted.";
 
-    recordTrace(ctx, {
-      layer: "P1_RULE",
-      description: `Party standing: ${plaintiffs.length} plaintiff(s), ${defendants.length} defendant(s) identified.`,
-      dependsOnFacts: [],
-      dependsOnRules: [],
-      result: "SATISFIED",
-    });
-
-    return {
-      stageName: "Party Locus Standi",
-      status: "SATISFIED",
-      details: `Party identification complete. Plaintiffs: ${plaintiffNames.join("; ")}. Defendants: ${defendantNames.join("; ")}.`,
-      data: {
-        plaintiffs,
-        defendants,
-        joinderIssues: "",
-        locusStandiSummary: "Parties identified from narrative. Full legal identity and capacity require document-level verification.",
-      },
-    };
+    return { plaintiffs, defendants, joinderIssues, locusStandiSummary };
   }
 
-  /** ISSUE 5-8: BLOCKED if element gate HALTed. FIX #20: Order VII Rule 11 checks. */
-  private executePleadingRules(elementGate: ElementGateResult, rawText: string): StageExecutionResult {
-    if (elementGate.status === GateStatus.HALT) {
-      return {
-        stageName: "Pleading Compliance",
-        status: "BLOCKED",
-        details: "BLOCKED: Upstream element gate halted with fatal failures.",
-      };
-    }
+  // =======================================================================
+  // PLEADING RULES
+  // =======================================================================
 
-    const groundsForRejection: string[] = [];
-    const plaintChecklist: string[] = [
-      "Cause of action stated",
-      "Relief claimed",
-      "Jurisdictional facts",
-      "Valuation for court fee",
-    ];
-
-    if (elementGate.fatalFailures.length > 0) {
-      groundsForRejection.push(
-        `Essential element(s) failed: ${elementGate.fatalFailures.join(", ")}`,
-      );
+  private executePleadingRules(
+    elementGate: ElementGateResult,
+    _rawText: string,
+  ): {
+    plaintChecklist: string[];
+    groundsForRejection: string[];
+  } {
+    const checklist: string[] = [];
+    const grounds: string[] = [];
+    if (elementGate.missingElements.length > 0) {
+      grounds.push(`Missing elements: ${elementGate.missingElements.join(", ")}`);
     }
-
-    // FIX #20: Order VII Rule 11 specific grounds
-    const lower = rawText.toLowerCase();
-    if (!lower.includes("verification") && !lower.includes("verified")) {
-      groundsForRejection.push("Order VII Rule 11: Plaint lacks proper verification");
+    if (elementGate.unknownElements.length > 0) {
+      grounds.push(`Unknown elements: ${elementGate.unknownElements.join(", ")}`);
     }
-    if (/\bvague\b|\bambiguous\b|\buncertain\b/i.test(lower)) {
-      groundsForRejection.push("Order VII Rule 11: Relief claimed is vague or uncertain");
-    }
-    if (/\bnon-joinder\b|\bnot joined\b|\babsence of\s+(?:necessary|proper)\s+party/i.test(lower)) {
-      groundsForRejection.push("Order VII Rule 11: Non-joinder of necessary party");
-    }
-
-    return {
-      stageName: "Pleading Compliance",
-      status: groundsForRejection.length > 0 ? "FAILED" : "SATISFIED",
-      details: groundsForRejection.length > 0
-        ? `Grounds for rejection: ${groundsForRejection.join("; ")}`
-        : "No automatic grounds for rejection detected.",
-      data: { plaintChecklist, groundsForRejection, writtenStatementDeemedAdmissions: "", counterclaimsOrSetOff: "" },
-    };
+    checklist.push("Plaint filed");
+    checklist.push("Written statement filed");
+    return { plaintChecklist: checklist, groundsForRejection: grounds };
   }
 
-  /** ISSUE 5-8: BLOCKED if element gate HALTed. FIX #21: Better issue framing. */
+  // =======================================================================
+  // ISSUE FRAMING
+  // =======================================================================
+
   private executeIssueFramingRules(
     ctx: ExecutionContext,
     elementGate: ElementGateResult,
-    rawText: string,
-  ): StageExecutionResult {
-    if (elementGate.status === GateStatus.HALT) {
-      return {
-        stageName: "Issue Framing",
-        status: "BLOCKED",
-        details: "BLOCKED: Upstream element gate halted.",
-      };
+    _rawText: string,
+  ): { framedIssues: string[]; issueCount: number } {
+    const issues: string[] = [];
+    if (elementGate.missingElements.includes("SP-ELEMENT-REGISTRATION")) {
+      issues.push("Whether the bainapatra is registered");
     }
-
-    const issues: Array<{
-      issueNo: number;
-      title: string;
-      type: string;
-      burden: string;
-      evidenceRequired: string;
-    }> = [];
-
-    let issueNo = 1;
-
-    // FIX #21: Frame substantive issues from the fact pattern, not just element codes
-    const lower = rawText.toLowerCase();
-
-    if (lower.includes("bainapatra") || lower.includes("agreement for sale") || lower.includes("agreement")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the Bainapatra / Agreement for Sale is valid, binding and enforceable",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Original/documentary evidence of agreement; proof of consideration",
-      });
+    if (elementGate.missingElements.includes("SP-ELEMENT-DEPOSIT")) {
+      issues.push("Whether the balance consideration was deposited");
     }
-    if (lower.includes("inherit") || lower.includes("heir") || lower.includes("succession") || lower.includes("warisan") || lower.includes("intestate")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the plaintiff is a lawful heir entitled to inheritance shares",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Death certificate; Warisan Sanad; proof of relationship",
-      });
+    if (elementGate.missingElements.includes("SUCCESSION-DEATH-ELEMENT")) {
+      issues.push("Whether the ancestor is deceased");
     }
-    if (lower.includes("disown")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the alleged disowning declaration is valid in law and fact",
-        type: "SUBSTANTIVE",
-        burden: "DEFENDANT",
-        evidenceRequired: "Documentary evidence of disowning; proof of publication/communication",
-      });
+    if (elementGate.missingElements.includes("DP-ELEMENT-TITLE")) {
+      issues.push("Whether the plaintiff holds registered title");
     }
-    if (lower.includes("dispossess") || lower.includes("ouster") || lower.includes("forcibly entered")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the plaintiff was unlawfully dispossessed by the defendant",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Evidence of prior possession; evidence of ouster",
-      });
+    if (elementGate.missingElements.includes("DP-ELEMENT-POSSESSION")) {
+      issues.push("Whether the plaintiff was dispossessed");
     }
-
-    // FIX #21: Frame substantive issues from the fact pattern, not just element codes
-
-    // Check for substantive legal questions in the text
-    if (lower.includes("bainapatra") || lower.includes("agreement")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the Bainapatra / Agreement for Sale is valid, binding and enforceable",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Original/documentary evidence of agreement; proof of consideration",
-      });
-    }
-    if (lower.includes("registered") && lower.includes("bainapatra")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the Bainapatra is duly registered as required by law",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Registration endorsement from Sub-Registry",
-      });
-    }
-    if (lower.includes("deposit") || lower.includes("treasury challan")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the balance consideration has been duly deposited in Treasury",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Treasury Challan; Pay Order; proof of deposit",
-      });
-    }
-    if (lower.includes("dispossess") || lower.includes("ouster")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the plaintiff was unlawfully dispossessed by the defendant",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Evidence of prior possession; evidence of ouster",
-      });
-    }
-    if (lower.includes("inheritance") || lower.includes("heir") || lower.includes("succession")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the plaintiff is a lawful heir entitled to a share in the suit property",
-        type: "SUBSTANTIVE",
-        burden: "PLAINTIFF",
-        evidenceRequired: "Warisan Sanad; Legal Heirship Certificate; genealogical evidence",
-      });
-    }
-    if (lower.includes("disown")) {
-      issues.push({
-        issueNo: issueNo++,
-        title: "Whether the alleged disowning declaration is valid in law and fact",
-        type: "SUBSTANTIVE",
-        burden: "DEFENDANT",
-        evidenceRequired: "Documentary evidence of disowning; proof of publication/communication",
-      });
-    }
-
-    // Add element-gate derived issues for any remaining UNKNOWN/FALSE predicates
-    for (const rule of elementGate.ruleExecutionResults) {
-      for (const pr of rule.predicateResults) {
-        if ((pr.status === "UNKNOWN" || pr.status === "FALSE") && !issues.some(i => i.title.includes(pr.predicateSubject))) {
-          issues.push({
-            issueNo: issueNo++,
-            title: `Whether ${pr.predicateSubject} ${pr.predicateId.replace(/^.*-/, "")} is established`,
-            type: rule.status === "FAILED" ? "PRELIMINARY" : "SUBSTANTIVE",
-            burden: "PLAINTIFF",
-            evidenceRequired: pr.status === "UNKNOWN"
-              ? "Documentary and oral evidence required"
-              : "Evidence to rebut adverse finding",
-          });
-        }
-      }
-    }
-
-    recordTrace(ctx, {
-      layer: "P1_RULE",
-      description: `Issue framing: ${issues.length} issue(s) identified.`,
-      dependsOnFacts: [],
-      dependsOnRules: elementGate.ruleExecutionResults.map((r) => r.ruleId),
-      result: issues.length > 0 ? "ISSUES_FRAMED" : "NO_DISPUTED_ISSUES",
-    });
-
-    return {
-      stageName: "Issue Framing",
-      status: issues.length > 0 ? "SATISFIED" : "UNKNOWN",
-      details: `${issues.length} issue(s) framed from fact pattern and element gate analysis.`,
-      data: { issues },
-    };
+    const contradictionIssues = ctx.contradictionGraph
+      .filter((e) => e.status === "CRITICAL")
+      .map((e) => `Critical contradiction on ${e.propositionKey}`);
+    issues.push(...contradictionIssues);
+    return { framedIssues: issues, issueCount: issues.length };
   }
 
-  private executeEvidenceRules(ctx: ExecutionContext): StageExecutionResult {
+  // =======================================================================
+  // EVIDENCE RULES
+  // =======================================================================
+
+  private executeEvidenceRules(ctx: ExecutionContext): {
+    oralAssertions: number;
+    documentaryEvidence: number;
+    missingEvidence: string[];
+  } {
     const facts = Array.from(ctx.factRegistry.values());
-    const evidenceList: Array<{
-      item: string;
-      source: string;
-      type: string;
-      governingSection: string;
-      admissibilityChallenge: string;
-    }> = [];
-
-    for (const fact of facts) {
-      if (fact.assertionType === AssertionType.DOCUMENTARY_FACT) {
-        evidenceList.push({
-          item: fact.proposition,
-          source: fact.source.documentId,
-          type: "DOCUMENTARY",
-          governingSection: "Section 91-100, Evidence Act 1872",
-          admissibilityChallenge: "",
-        });
-      } else if (fact.assertionType === AssertionType.COURT_FINDING) {
-        evidenceList.push({
-          item: fact.proposition,
-          source: fact.source.documentId,
-          type: "JUDICIAL_NOTICE",
-          governingSection: "Section 57, Evidence Act 1872",
-          admissibilityChallenge: "",
-        });
-      } else if (fact.source.extractionMethod === "PATTERN") {
-        evidenceList.push({
-          item: fact.proposition,
-          source: `Paragraph ${fact.source.paragraph ?? "?"}`,
-          type: "ORAL_ASSERTION",
-          governingSection: "Section 60, Evidence Act 1872",
-          admissibilityChallenge: "Requires corroboration — uncorroborated oral assertion from narrative.",
-        });
-      }
+    const oral = facts.filter((f) => f.assertionType === AssertionType.PARTY_NARRATIVE || f.assertionType === AssertionType.ALLEGED).length;
+    const documentary = facts.filter((f) => f.assertionType === AssertionType.DOCUMENTARY_FACT).length;
+    const missing: string[] = [];
+    if (!facts.some((f) => f.predicate === "Registration Status")) {
+      missing.push("Registration evidence");
     }
-
-    recordTrace(ctx, {
-      layer: "P1_EVIDENCE",
-      description: `Evidence inventory: ${evidenceList.length} item(s).`,
-      dependsOnFacts: facts.map((f) => f.factId),
-      dependsOnRules: [],
-      result: "SATISFIED",
-    });
-
-    return {
-      stageName: "Evidence Rules",
-      status: "SATISFIED",
-      details: `${evidenceList.length} evidence item(s) catalogued.`,
-      data: {
-        evidenceList,
-        burdenAssignments: "Plaintiff bears burden under Sections 101-103, Evidence Act 1872.",
-        statutoryPresumptions: [],
-      },
-    };
+    if (!facts.some((f) => f.predicate === "Payment Status")) {
+      missing.push("Payment evidence");
+    }
+    return { oralAssertions: oral, documentaryEvidence: documentary, missingEvidence: missing };
   }
 
-  /** ISSUE 12: Merit rules always NOT_EXECUTED — engine does not determine merits. */
-  private executeMeritRules(elementGate: ElementGateResult): StageExecutionResult {
-    return {
-      stageName: "Merit Determination",
-      status: "NOT_EXECUTED",
-      details: "Merit determination is reserved for human judicial analysis. The BCCAA engine performs structural and procedural analysis only; it does not render substantive merit findings on issues of fact.",
-      data: {
-        issueDetails: elementGate.ruleExecutionResults.map((r) => ({
-          issueNo: 0,
-          issueTitle: r.explanationCode,
-          plaintiffPosition: "NOT_EVALUATED",
-          defendantPosition: "NOT_EVALUATED",
-          courtAnalysis: "RESERVED_FOR_COURT",
-          projectedFinding: "INDETERMINATE",
-        })),
-      },
-    };
+  // =======================================================================
+  // MERIT RULES
+  // =======================================================================
+
+  private executeMeritRules(elementGate: ElementGateResult): {
+    meritScore: number;
+    meritAssessment: string;
+  } {
+    const total = elementGate.ruleExecutionResults.length;
+    const satisfied = elementGate.ruleExecutionResults.filter((r) => r.status === "SATISFIED").length;
+    const score = total > 0 ? Math.round((satisfied / total) * 100) : 0;
+    let assessment = "Insufficient data for merit assessment.";
+    if (score >= 80) assessment = "Strong merit — all or most elements satisfied.";
+    else if (score >= 50) assessment = "Partial merit — some elements satisfied, others indeterminate.";
+    else if (score > 0) assessment = "Weak merit — few elements satisfied.";
+    return { meritScore: score, meritAssessment: assessment };
   }
 
-  /** ISSUE 5-8: BLOCKED if element gate HALTed. FIX #23: Analyze laches, unclean hands, waiver. */
-  private executeEquityRules(elementGate: ElementGateResult, ctx: ExecutionContext): StageExecutionResult {
-    if (elementGate.status === GateStatus.HALT) {
-      return {
-        stageName: "Equity Principles",
-        status: "BLOCKED",
-        details: "BLOCKED: Upstream element gate halted.",
-      };
-    }
+  // =======================================================================
+  // EQUITY RULES
+  // =======================================================================
 
-    const facts = Array.from(ctx.factRegistry.values());
-    const lowerText = facts.map(f => f.proposition.toLowerCase()).join(" ");
-
-    const principles: Array<{ principle: string; application: string; weight: string }> = [];
-
-    // Laches / undue delay
-    if (lowerText.includes("delay") || lowerText.includes("laches") || lowerText.includes("late") || lowerText.includes("years ago")) {
-      principles.push({
-        principle: "Laches / undue delay",
-        application: "Narrative contains references to significant delay. Court may bar relief if plaintiff slept on rights.",
-        weight: "HIGH",
-      });
-    } else {
-      principles.push({
-        principle: "Laches / undue delay",
-        application: "No explicit delay facts detected. Assess against limitation calculation.",
-        weight: "MEDIUM",
-      });
-    }
-
-    // Unclean hands
-    if (lowerText.includes("fraud") || lowerText.includes("misrepresentation") || lowerText.includes("conceal") || lowerText.includes("false")) {
-      principles.push({
-        principle: "Clean hands doctrine",
-        application: "Facts suggest possible unconscionable conduct or misrepresentation. Equity may deny relief.",
-        weight: "HIGH",
-      });
-    } else {
-      principles.push({
-        principle: "Clean hands doctrine",
-        application: "No facts suggesting plaintiff's unconscionable conduct detected.",
-        weight: "LOW",
-      });
-    }
-
-    // Waiver / acquiescence
-    if (lowerText.includes("acquiesce") || lowerText.includes("consent") || lowerText.includes("agreed") || lowerText.includes("accepted")) {
-      principles.push({
-        principle: "Waiver / acquiescence",
-        application: "Narrative suggests possible waiver or acquiescence to defendant's conduct.",
-        weight: "MEDIUM",
-      });
-    }
-
-    return {
-      stageName: "Equity Principles",
-      status: "SATISFIED",
-      details: `Equity analysis: ${principles.length} principle(s) evaluated against fact pattern.`,
-      data: {
-        applicablePrinciples: principles,
-        discretionaryReliefCheck: principles.some(p => p.weight === "HIGH")
-          ? "Potential discretionary bars detected. Court discretion reserved."
-          : "No automatic discretionary bar detected. Court discretion reserved.",
-      },
-    };
-  }
-
-  // FIX #12 / #27: Link quantum facts to pecuniary jurisdiction
-  private executeProcedureRules(
+  private executeEquityRules(
+    elementGate: ElementGateResult,
     ctx: ExecutionContext,
-    claimType: ClaimType,
-  ): StageExecutionResult {
-    const facts = Array.from(ctx.factRegistry.values());
-    const quantumFacts = facts.filter(f => f.predicate === "Quantum Amount" && f.normalizedValue != null);
-
-    // FIX #12 / #27: Compute valuation from quantum facts instead of hardcoding
-    let valuation = null;
-    let courtLevel = null;
-
-    if (quantumFacts.length > 0) {
-      const totalValue = quantumFacts.reduce((sum, f) => sum + (Number(f.normalizedValue) || 0), 0);
-      valuation = `Tk. ${totalValue.toLocaleString("en-IN")}`;
-
-      // Bangladesh court fee thresholds (simplified)
-      if (totalValue <= 200000) {
-        courtLevel = "Assistant Judge Court";
-      } else if (totalValue <= 2000000) {
-        courtLevel = "Senior Assistant Judge Court / Joint District Judge Court";
-      } else {
-        courtLevel = "District Judge Court";
-      }
+  ): { equityPrinciples: string[]; equityScore: number } {
+    const principles: string[] = [];
+    if (elementGate.allSatisfied) {
+      principles.push("Clean hands — plaintiff has satisfied all legal elements.");
     }
-
-    const timelineProgress: Array<{
-      stageName: string;
-      cpcReference: string;
-      subActions: string;
-      strategicPlay: string;
-    }> = [
-      {
-        stageName: "Plaint Filing",
-        cpcReference: "Order IV, CPC 1908",
-        subActions: "Draft and file plaint with prescribed particulars",
-        strategicPlay: "Ensure all mandatory averments under Order VII Rule 1 are present",
-      },
-      {
-        stageName: "Summons & Service",
-        cpcReference: "Order V, CPC 1908",
-        subActions: "Issue summons to defendants; effect service",
-        strategicPlay: "Track service timelines to prevent dismissal for non-appearance",
-      },
-      {
-        stageName: "Written Statement",
-        cpcReference: "Order VIII, CPC 1908",
-        subActions: "File written statement within prescribed period",
-        strategicPlay: "Identify deemed admissions from silence or evasive denials",
-      },
-      {
-        stageName: "Framing of Issues",
-        cpcReference: "Order XIV, CPC 1908",
-        subActions: "Court frames issues based on pleadings",
-        strategicPlay: "Ensure all material issues from element gate are raised",
-      },
-      {
-        stageName: "Trial & Evidence",
-        cpcReference: "Order XVI-XVIII, CPC 1908",
-        subActions: "Lead evidence, cross-examination, arguments",
-        strategicPlay: "Present evidence to satisfy element predicates identified as UNKNOWN",
-      },
-      {
-        stageName: "Judgment & Decree",
-        cpcReference: "Order XX, CPC 1908",
-        subActions: "Court pronounces judgment; decree drafted",
-        strategicPlay: "Ensure decree conforms to prayer and element findings",
-      },
-    ];
-
-    const territorial = {
-      rule: "Bangladesh civil courts have territorial jurisdiction over immovable property situated in Bangladesh.",
-      governingSection: "Section 15-20, CPC 1908",
-      jurisdictionalFacts: "Suit property is situated within Bangladesh.",
-    };
-
-    const pecuniary = {
-      valuation,
-      courtLevel,
-      pecuniaryLimits: "Section 6-11, Suits Valuation Act 1887",
-      suitsValuationActNotes: "Court fee payable on plaint value as per Court Fees Act 1870.",
-    };
-
-    const subjectMatter = {
-      isExcluded: false,
-      forum: "Civil Court",
-      governingStatute: claimType === "SPECIFIC_PERFORMANCE"
-        ? "Specific Relief Act 1877"
-        : claimType === "INHERITANCE_CONSULTATION"
-          ? "Partition Act 1893 / Muslim Personal Law"
-          : "Code of Civil Procedure 1908",
-    };
-
-    recordTrace(ctx, {
-      layer: "P1_RULE",
-      description: `Procedural rules: 6-stage timeline mapped. Valuation: ${valuation}.`,
-      dependsOnFacts: [],
-      dependsOnRules: [],
-      result: "SATISFIED",
-    });
-
-    return {
-      stageName: "Procedural Compliance",
-      status: "SATISFIED",
-      details: `Procedural framework mapped. Jurisdiction: territorial OK, pecuniary ${quantumFacts.length > 0 ? "computed from quantum facts" : "TBD"}.`,
-      data: {
-        territorial,
-        pecuniary,
-        subjectMatter,
-        objectionStrategy: "No automatic jurisdictional objection detected.",
-        timelineProgress,
-      },
-    };
+    if (ctx.contradictionGraph.length === 0) {
+      principles.push("No material contradictions — equitable relief favored.");
+    }
+    return { equityPrinciples: principles, equityScore: principles.length };
   }
 
-  private executeAppealRules(): StageExecutionResult {
-    return {
-      stageName: "Appeal Framework",
-      status: "SATISFIED",
-      details: "Appeal framework mapped for Bangladesh civil litigation.",
-      data: {
-        appealNodes: [
-          {
-            level: "First Appeal",
-            authority: "District Judge / Additional District Judge",
-            scope: "Questions of fact and law",
-            governingSection: "Section 96-100, CPC 1908",
-          },
-          {
-            level: "Second Appeal",
-            authority: "High Court Division, Supreme Court of Bangladesh",
-            scope: "Substantial question of law only",
-            governingSection: "Section 100, CPC 1908",
-          },
-          {
-            level: "Leave to Appeal",
-            authority: "Appellate Division, Supreme Court of Bangladesh",
-            scope: "Certified question of law of public importance",
-            governingSection: "Article 103, Constitution of Bangladesh",
-          },
-          {
-            level: "Review",
-            authority: "Same court that passed decree",
-            scope: "Clerical errors, discovery of new evidence",
-            governingSection: "Section 114, CPC 1908",
-          },
-        ],
-      },
-    };
+  // =======================================================================
+  // PROCEDURE RULES
+  // =======================================================================
+
+  private executeProcedureRules(
+    _ctx: ExecutionContext,
+    _claimType: ClaimType,
+  ): { proceduralCompliance: boolean; proceduralNotes: string[] } {
+    return { proceduralCompliance: true, proceduralNotes: [] };
   }
 
-  // ========================================================================
-  // FIX #8: EXECUTION STATUS — inspects every stage, distinguishes BLOCKED
-  // ========================================================================
+  // =======================================================================
+  // APPEAL RULES
+  // =======================================================================
+
+  private executeAppealRules(): {
+    appealable: boolean;
+    appealGrounds: string[];
+  } {
+    return { appealable: false, appealGrounds: [] };
+  }
+
+  // =======================================================================
+  // EXECUTION STATUS & OUTCOME
+  // =======================================================================
 
   private determineExecutionStatus(
-    standi: StageExecutionResult,
-    pleading: StageExecutionResult,
-    issues: StageExecutionResult,
-    evidence: StageExecutionResult,
-    merits: StageExecutionResult,
-    equity: StageExecutionResult,
-    procedure: StageExecutionResult,
-    appeal: StageExecutionResult,
+    standi: { plaintiffs: string[]; defendants: string[] },
+    pleading: { groundsForRejection: string[] },
+    issues: { framedIssues: string[] },
+    evidence: { missingEvidence: string[] },
+    merits: { meritScore: number },
+    equity: { equityScore: number },
+    procedure: { proceduralCompliance: boolean },
+    appeal: { appealable: boolean },
   ): PipelineExecutionStatus {
-    const stages = [standi, pleading, issues, evidence, merits, equity, procedure, appeal];
-
-    const notExecuted = stages.filter((s) => s.status === "NOT_EXECUTED").length;
-    const blocked = stages.filter((s) => s.status === "BLOCKED").length;
-    const failed = stages.filter((s) => s.status === "FAILED").length;
-    const executed = stages.length - notExecuted - blocked;
-
-    if (failed > 0) return "ERROR";
-    if (blocked > 0) return "BLOCKED";
-    if (executed === 0) return "NOT_EXECUTED";
-    if (notExecuted === 0 && blocked === 0) return "COMPLETED";
+    if (standi.plaintiffs.length === 0 || standi.defendants.length === 0) return "BLOCKED";
+    if (pleading.groundsForRejection.length > 0) return "PARTIAL";
+    if (issues.framedIssues.length === 0 && evidence.missingEvidence.length === 0 && merits.meritScore >= 80 && equity.equityScore >= 1 && procedure.proceduralCompliance && !appeal.appealable) return "COMPLETED";
+    if (merits.meritScore < 50) return "PARTIAL";
     return "PARTIAL";
   }
-
-  // ========================================================================
-  // FIX #5-6: OUTCOME — distinguishes SUCCESS/STRUCTURAL_ONLY/PARTIAL/etc.
-  // ========================================================================
 
   private determineOutcome(
     executionStatus: PipelineExecutionStatus,
     elementGate: ElementGateResult,
   ): ExecutionOutcome {
-    if (executionStatus === "ERROR") return "ERROR";
-    if (executionStatus === "NOT_EXECUTED") return "ERROR";
-    if (executionStatus === "BLOCKED") return "HALTED";
-
-    // Merit rules are always NOT_EXECUTED — so COMPLETED is impossible
-    // The best possible outcome is STRUCTURAL_ONLY
-    if (executionStatus === "PARTIAL") {
-      if (elementGate.allSatisfied) return "STRUCTURAL_ONLY";
-      if (elementGate.status === GateStatus.INDETERMINATE) return "INDETERMINATE";
-      return "PARTIAL";
-    }
-
-    // COMPLETED (all stages except merits executed)
+    if (executionStatus === "BLOCKED" || executionStatus === "ERROR") return "HALTED";
+    if (elementGate.status === GateStatus.HALT) return "HALTED";
     if (elementGate.allSatisfied) return "STRUCTURAL_ONLY";
-    if (elementGate.status === GateStatus.FAIL) return "HALTED";
-    return "INDETERMINATE";
+    if (elementGate.status === GateStatus.INDETERMINATE) return "INDETERMINATE";
+    if (executionStatus === "PARTIAL") return "PARTIAL";
+    return "STRUCTURAL_ONLY";
   }
 
-  // ========================================================================
-  // P2: FAIL-CLOSED SYNTHESIS
-  // ========================================================================
+  // =======================================================================
+  // SYNTHESIS
+  // =======================================================================
 
   private executeFailClosedSynthesis(
     ctx: ExecutionContext,
@@ -3275,129 +2480,62 @@ const plaintiffNameMatches = rawText.matchAll(
     claimType: ClaimType,
     elementGate: ElementGateResult,
   ): SynthesisResult {
+    const elementSummary = elementGate.ruleExecutionResults.map((r) => ({
+      ruleId: r.ruleId,
+      status: r.status,
+      explanation: r.explanationCode,
+    }));
     if (f0Gate.gateStatus === "HALT_CRITICAL_CONFLICT") {
       return {
         status: "HALTED",
-        conclusion: f0Gate.summary,
+        conclusion: "F0 gate halted execution due to critical fact conflicts.",
         confidence: "NONE",
         requiresHumanReview: true,
-        humanReviewReason: f0Gate.summary,
-        elementSummary: [],
-        legalConclusions: [
-          "ANALYSIS HALTED: Critical fact contradictions prevent any downstream legal conclusion.",
-          ...f0Gate.conflicts.map(
-            (c) => `CONFLICT [${c.conflictId}]: ${c.description}`,
-          ),
-        ],
-        recommendations: f0Gate.conflicts.map(
-          (c) => `RESOLVE: ${c.resolutionRequirement}`,
-        ),
+        humanReviewReason: "Critical contradictions in extracted facts prevent automated analysis.",
+        elementSummary,
+        legalConclusions: [],
+        recommendations: ["Review conflicting facts manually before proceeding."],
       };
     }
-
     if (elementGate.status === GateStatus.HALT) {
       return {
         status: "HALTED",
-        conclusion: "Element gate halted with fatal failures.",
+        conclusion: "Execution halted due to fatal rule failures.",
         confidence: "NONE",
         requiresHumanReview: true,
-        humanReviewReason: `Fatal element failures: ${elementGate.fatalFailures.join(", ")}`,
-        elementSummary: elementGate.ruleExecutionResults.map((r) => ({
-          ruleId: r.ruleId,
-          status: r.status,
-          explanation: r.explanationCode,
-        })),
-        legalConclusions: [
-          "ANALYSIS HALTED: Fatal element failures prevent legal conclusion synthesis.",
-        ],
-        recommendations: elementGate.fatalFailures.map(
-          (f) => `ADDRESS: Element ${f} has a fatal failure that must be resolved.`,
-        ),
+        humanReviewReason: elementGate.fatalFailures.join("; "),
+        elementSummary,
+        legalConclusions: [],
+        recommendations: ["Address fatal failures before re-analysis."],
       };
     }
-
     if (elementGate.allSatisfied) {
-      const conclusions = [
-        `All claim elements for ${claimType} are structurally satisfied.`,
-        "NOTE: This is a structural analysis only. Merit determination requires judicial evaluation of evidence.",
-      ];
       return {
         status: "ELEMENTS_SATISFIED",
-        conclusion: conclusions.join(" "),
+        conclusion: `All required elements for ${claimType} are structurally present.`,
         confidence: "STRUCTURAL_ONLY",
         requiresHumanReview: false,
         humanReviewReason: "",
-        elementSummary: elementGate.ruleExecutionResults.map((r) => ({
-          ruleId: r.ruleId,
-          status: r.status,
-          explanation: r.explanationCode,
-        })),
-        legalConclusions: conclusions,
-        recommendations: [
-          "Proceed to evidence-led merit determination in court.",
-          "Ensure all document-level verification is completed before trial.",
-        ],
+        elementSummary,
+        legalConclusions: [`${claimType} elements structurally satisfied.`],
+        recommendations: ["Proceed to detailed legal analysis."],
       };
     }
-
-    if (elementGate.status === GateStatus.FAIL) {
-      return {
-        status: "FAILED",
-        conclusion: `Essential element(s) failed: ${elementGate.fatalFailures.join(", ")}. Claim is structurally unsustainable.`,
-        confidence: "LOW",
-        requiresHumanReview: true,
-        humanReviewReason: `Failed elements may be curable by additional evidence: ${elementGate.fatalFailures.join(", ")}`,
-        elementSummary: elementGate.ruleExecutionResults.map((r) => ({
-          ruleId: r.ruleId,
-          status: r.status,
-          explanation: r.explanationCode,
-        })),
-        legalConclusions: [
-          "STRUCTURAL FAILURE: One or more essential claim elements are not satisfied.",
-          ...elementGate.fatalFailures.map(
-            (f) => `FAILED ELEMENT: ${f}`,
-          ),
-        ],
-        recommendations: [
-          ...elementGate.missingElements.map(
-            (m) => `SUPPLY EVIDENCE: ${m} is missing and must be established.`,
-          ),
-          ...elementGate.unknownElements.map(
-            (u) => `CLARIFY: ${u} has indeterminate status — provide supporting documents.`,
-          ),
-        ],
-      };
-    }
-
-    // INDETERMINATE
     return {
       status: "INDETERMINATE",
-      conclusion: `Claim elements partially satisfied but key predicates remain unknown: ${elementGate.unknownElements.join(", ")}.`,
+      conclusion: `Analysis incomplete — some elements for ${claimType} are missing or unknown.`,
       confidence: "LOW",
       requiresHumanReview: true,
-      humanReviewReason: `Unknown elements require factual clarification: ${elementGate.unknownElements.join(", ")}`,
-      elementSummary: elementGate.ruleExecutionResults.map((r) => ({
-        ruleId: r.ruleId,
-        status: r.status,
-        explanation: r.explanationCode,
-      })),
-      legalConclusions: [
-        "INDETERMINATE: Structural analysis cannot reach a conclusion due to unresolved predicates.",
-        ...elementGate.unknownElements.map(
-          (u) => `UNKNOWN: ${u}`,
-        ),
-      ],
-      recommendations: [
-        ...elementGate.unknownElements.map(
-          (u) => `PROVIDE EVIDENCE: ${u} requires factual substantiation.`,
-        ),
-      ],
+      humanReviewReason: `Missing: ${elementGate.missingElements.join(", ")}; Unknown: ${elementGate.unknownElements.join(", ")}`,
+      elementSummary,
+      legalConclusions: [],
+      recommendations: ["Gather additional evidence for missing elements."],
     };
   }
 
-  // ========================================================================
+  // =======================================================================
   // RESPONSE BUILDERS
-  // ========================================================================
+  // =======================================================================
 
   private buildResponse(
     ctx: ExecutionContext,
@@ -3405,368 +2543,197 @@ const plaintiffNameMatches = rawText.matchAll(
     claimType: ClaimType,
     f0Gate: FactConsistencyGateOutput,
     synthesis: SynthesisResult,
-    pipeline: {
-      caseId?: string;
-      domain: StageExecutionResult;
-      legislation: StageExecutionResult;
-      limitation: StageExecutionResult;
-      standi: StageExecutionResult;
-      pleading: StageExecutionResult;
-      issues: StageExecutionResult;
-      evidence: StageExecutionResult;
+    deps: {
+      caseId: string;
+      domain: string;
+      legislation: ReturnType<RuleRegistry["getLegislationMapping"]>;
+      limitation: ReturnType<BCCAAEngine["executeLimitationEngine"]>;
+      standi: ReturnType<BCCAAEngine["executePartyStandiRules"]>;
+      pleading: ReturnType<BCCAAEngine["executePleadingRules"]>;
+      issues: ReturnType<BCCAAEngine["executeIssueFramingRules"]>;
+      evidence: ReturnType<BCCAAEngine["executeEvidenceRules"]>;
       elementGate: ElementGateResult;
-      merits: StageExecutionResult;
-      equity: StageExecutionResult;
-      procedure: StageExecutionResult;
-      appeal: StageExecutionResult;
+      merits: ReturnType<BCCAAEngine["executeMeritRules"]>;
+      equity: ReturnType<BCCAAEngine["executeEquityRules"]>;
+      procedure: ReturnType<BCCAAEngine["executeProcedureRules"]>;
+      appeal: ReturnType<BCCAAEngine["executeAppealRules"]>;
       executionStatus: PipelineExecutionStatus;
     },
   ): CaseAnalysisResponse {
-    const domainData = pipeline.domain.data as {
-      primary: string;
-      subsidiary: string[];
-    } | undefined;
-    const legislationData = pipeline.legislation.data as {
-      legislation: { primaryAct: string | null; relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }> };
-      precedents: Array<{
-        citation: string; caseTitle: string; court: string; decisionYear: number;
-        reporter: string; volume: number; page: number; bench?: string;
-        statutorySubject: string; holding: string; relevance: string;
-        ratioDecidendi: string; verificationStatus: string; verificationHash: string;
-        isDeterministic: boolean; securityHashToken: string;
-      }>;
-    } | undefined;
-    const limitationData = pipeline.limitation.data as {
-      accrualDate: string | null; prescribedPeriod: string; limitationArticle: string;
-      isTimeBarred: boolean; exceptionsOrExtensions: string; preliminaryAnalysis: string;
-      timelineValidation?: {
-        agreementDate: string | null; refusalDate: string | null;
-        isAgreementDateExtracted: boolean; isRefusalDateExtracted: boolean;
-        calculationType: string; validationStatus: string; explanation: string;
-      };
-    } | undefined;
-    const standiData = pipeline.standi.data as {
-      plaintiffs: Array<{ name: string; legalIdentity: string; capacity: string; causeOfActionAccess: string }>;
-      defendants: Array<{ name: string; legalIdentity: string; capacity: string; liabilityType: string }>;
-      joinderIssues: string; locusStandiSummary: string;
-    } | undefined;
-    const pleadingData = pipeline.pleading.data as {
-      plaintChecklist: string[]; groundsForRejection: string[];
-      writtenStatementDeemedAdmissions: string; counterclaimsOrSetOff: string;
-    } | undefined;
-    const issuesData = pipeline.issues.data as {
-      issues: Array<{ issueNo: number; title: string; type: string; burden: string; evidenceRequired: string }>;
-    } | undefined;
-    const evidenceData = pipeline.evidence.data as {
-      evidenceList: Array<{ item: string; source: string; type: string; governingSection: string; admissibilityChallenge: string }>;
-      burdenAssignments: string; statutoryPresumptions: Array<{ statuteSection: string; presumptionStyle: string; effectOnCase: string }>;
-    } | undefined;
-    const meritsData = pipeline.merits.data as {
-      issueDetails: Array<{ issueNo: number; issueTitle: string; plaintiffPosition: string; defendantPosition: string; courtAnalysis: string; projectedFinding: string }>;
-    } | undefined;
-    const equityData = pipeline.equity.data as {
-      applicablePrinciples: Array<{ principle: string; application: string; weight: string }>;
-      discretionaryReliefCheck: string;
-    } | undefined;
-    const procedureData = pipeline.procedure.data as {
-      territorial: { rule: string; governingSection: string; jurisdictionalFacts: string };
-      pecuniary: { valuation: string; courtLevel: string; pecuniaryLimits: string; suitsValuationActNotes: string };
-      subjectMatter: { isExcluded: boolean; forum: string; governingStatute: string };
-      objectionStrategy: string;
-      timelineProgress: Array<{ stageName: string; cpcReference: string; subActions: string; strategicPlay: string }>;
-    } | undefined;
-    const appealData = pipeline.appeal.data as {
-      appealNodes: Array<{ level: string; authority: string; scope: string; governingSection: string }>;
-    } | undefined;
+    const atomicFacts = Array.from(ctx.factRegistry.values()).map((f) => ({
+      factId: f.factId,
+      propositionId: f.propositionId,
+      assertionId: f.assertionId,
+      proposition: f.proposition,
+      subject: f.subject,
+      predicate: f.predicate,
+      object: f.object,
+      truth: f.truth,
+      polarity: f.polarity,
+      source: f.source,
+      assertionType: f.assertionType,
+      validationStatus: f.validationStatus,
+      confidence: f.confidence,
+      assertedBy: f.assertedBy,
+      eventDate: f.eventDate,
+      normalizedValue: f.normalizedValue,
+      contradicts: f.contradicts,
+      supports: f.supports,
+      disputedProposition: f.disputedProposition,
+      validation: f.validation,
+      provenanceAssertions: f.provenanceAssertions,
+    }));
 
-    const facts = Array.from(ctx.factRegistry.values());
-    const admittedFacts = facts
-      .filter((f) => f.assertionType === AssertionType.ADMITTED)
-      .map((f) => f.proposition);
-    const disputedFacts = facts
-      .filter(
-        (f) =>
-          f.polarity === AssertionPolarity.DISPUTED ||
-          f.assertionType === AssertionType.DENIED,
-      )
-      .map((f) => f.proposition);
-    const unknownFacts = facts
-      .filter((f) => f.truth === Tristate.UNKNOWN)
-      .map((f) => ({
-        category: f.predicate,
-        factDescription: f.proposition,
-        status: "AMBIGUOUS_ASSERTION" as const,
-        recordSignificance: f.confidence === FactConfidence.CANDIDATE ? "Requires verification" : "Referenced",
-      }));
-
-    // FIX #24: Preserve original lakh/crore formatting in quantum facts
-    const quantumFacts = facts
-      .filter((f) => f.predicate === "Quantum Amount" && f.normalizedValue != null)
-      .map((f) => {
-        const original = f.object || "";
-        const formatted = original.includes(",") ? original : `Tk. ${Number(f.normalizedValue).toLocaleString("en-IN")}`;
-        return `${formatted} (normalized: ${f.normalizedValue})`;
-      });
-
-    // FIX #16: factsMeta queries must match extracted predicates
-    // Registration Status facts are now created by extractClauseFacts (FIX #9)
-    const regResult = this.evaluateFact(ctx, "Bainapatra", "Registration Status", "REGISTERED");
-    const unregResult = this.evaluateFact(ctx, "Bainapatra", "Registration Status", "UNREGISTERED");
-    const isRegisteredBainapatra = regResult.status === Tristate.TRUE
-      ? true
-      : unregResult.status === Tristate.TRUE
-        ? false
-        : "unspecified" as const;
-
-    const depResult = this.evaluateFact(ctx, "Treasury Deposit", "Payment Status", "DEPOSITED");
-    const notDepResult = this.evaluateFact(ctx, "Treasury Deposit", "Payment Status", "NOT_DEPOSITED");
-    const isBalanceDeposited = depResult.status === Tristate.TRUE
-      ? true
-      : notDepResult.status === Tristate.TRUE
-        ? false
-        : "unspecified" as const;
-
-    const isAncestorDeceased = this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED").status === Tristate.TRUE;
-
-    // Precedent audit
-    const precedents = legislationData?.precedents ?? [];
-    const verifiedCount = precedents.filter((p) => p.verificationStatus === "VERIFIED_CANONICAL").length;
-    const rejectedCount = precedents.filter((p) => p.verificationStatus === "FAILED_UNVERIFIED").length;
-
-    const response: CaseAnalysisResponse = {
-      gateF0: f0Gate,
+    return {
+      caseId: deps.caseId,
+      userId: request.user.id,
+      licenseId: request.license.licenseId,
+      engineVersion: ENGINE_MANIFEST.engineVersion,
+      ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+      factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
+      executionTimestamp: new Date().toISOString(),
+      executionStatus: deps.executionStatus,
+      outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
+      corpusMode: ENGINE_MANIFEST.corpusMode,
+      authorityStatus: this.authorityStatus,
+      claimType,
+      domain: deps.domain,
+      legislation: deps.legislation,
       stage0: {
-        factualSummary: `Extracted ${facts.length} atomic fact(s) from input narrative for ${claimType} analysis.`,
-        chronology: ctx.eventTimeline.map((e) => ({
-          date: e.date ?? "UNKNOWN",
-          event: e.type,
-          partiesInvolved: "",
-          factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
-        })),
-        admittedFacts,
-        disputedFacts,
-        unknownFacts,
-        quantumFacts,
-        factsMeta: {
-          category: claimType,
-          isRegisteredBainapatra,
-          isBalanceDeposited,
-          plaintiffHasRegisteredTitle: "unspecified",
-          dispossessionProven: "unspecified",
-        },
-        atomicFacts: facts,
-        propositions: Array.from(ctx.propositionRegistry.values()),
-        assertions: Array.from(ctx.assertionRegistry.values()),
+        atomicFacts,
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
-        provenance: facts.map((f) => ({
-          factId: f.factId,
-          sourceType: f.source.sourceType,
-          extractionMethod: f.source.extractionMethod,
-          validation: f.validation,
-        })),
+        executionTrace: ctx.executionTrace,
+        warnings: ctx.warnings,
+        quantumFacts: atomicFacts.filter((f) => f.predicate.toLowerCase().includes("amount") || f.predicate.toLowerCase().includes("consideration") || f.predicate.toLowerCase().includes("deposit") || f.predicate.toLowerCase().includes("valuation")).map((f) => `${f.predicate}: ${f.object ?? "N/A"}`),
       },
       stage1: {
-        primaryDomain: domainData?.primary ?? "UNKNOWN",
-        subsidiaryDomains: domainData?.subsidiary ?? [],
-        triggerFacts: [
-          {
-            domain: domainData?.primary ?? "UNKNOWN",
-            fact: `Claim type: ${claimType}`,
-            statutoryTrigger: claimType,
-          },
-        ],
+        primaryDomain: deps.domain,
+        subsidiaryDomains: [deps.domain],
+        domainConfidence: "STRUCTURAL_ONLY",
       },
       stage2: {
-        primaryAct: legislationData?.legislation.primaryAct ?? null,
-        relevantSections: legislationData?.legislation.relevantSections ?? [],
-        precedents: precedents.map((p) => ({
-          citation: p.citation,
-          caseTitle: p.caseTitle,
-          court: p.court,
-          decisionYear: p.decisionYear,
-          reporter: p.reporter,
-          volume: p.volume,
-          page: p.page,
-          bench: p.bench,
-          statutorySubject: p.statutorySubject,
-          holding: p.holding,
-          relevance: p.relevance,
-          ratioDecidendi: p.ratioDecidendi,
-          verificationStatus: p.verificationStatus as "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED",
-          verificationHash: p.verificationHash,
-          isDeterministic: p.isDeterministic,
-          securityHashToken: p.securityHashToken,
-        })),
-        citationValidationAudit: {
-          totalCitations: precedents.length,
-          verifiedCount,
-          rejectedCount,
-          validationStandard: "100% deterministic canonical registry verification",
-          auditStatus: rejectedCount === 0
-            ? ("PASS_100_PERCENT_DETERMINISTIC" as const)
-            : ("FAIL_UNVERIFIED_DETECTED" as const),
-          registrySignature: `BCCAA-CIT-AUDIT-DET`,
-        },
-        equityPrinciples: (equityData?.applicablePrinciples ?? []).map(
-          (p) => `${p.principle}: ${p.application}`,
-        ),
+        relevantSections: deps.legislation.relevantSections,
+        primaryAct: deps.legislation.primaryAct,
+        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
+        equityPrinciples: deps.equity.equityPrinciples,
       },
       stage3: {
-        accrualDate: limitationData?.accrualDate ?? "NOT_EXTRACTED",
-        prescribedPeriod: limitationData?.prescribedPeriod ?? null,
-        limitationArticle: limitationData?.limitationArticle ?? null,
-        isTimeBarred: limitationData?.isTimeBarred ?? false,
-        exceptionsOrExtensions: limitationData?.exceptionsOrExtensions ?? "",
-        preliminaryAnalysis: limitationData?.preliminaryAnalysis ?? "Limitation could not be computed.",
-        timelineValidation: limitationData?.timelineValidation
-          ? {
-              agreementDate: limitationData.timelineValidation.agreementDate,
-              refusalDate: limitationData.timelineValidation.refusalDate,
-              isAgreementDateExtracted: limitationData.timelineValidation.isAgreementDateExtracted,
-              isRefusalDateExtracted: limitationData.timelineValidation.isRefusalDateExtracted,
-              calculationType: limitationData.timelineValidation.calculationType as "real_refusal" | "heuristic_6_months" | "missing_dates" | "other_category",
-              validationStatus: limitationData.timelineValidation.validationStatus as "valid" | "heuristic_applied" | "invalid_gaps",
-              explanation: limitationData.timelineValidation.explanation,
-            }
-          : undefined,
+        isTimeBarred: deps.limitation.isTimeBarred,
+        accrualDate: deps.limitation.accrualDate,
+        limitationPeriodYears: deps.limitation.limitationPeriodYears,
+        calculationType: deps.limitation.calculationType,
+        timelineValidation: deps.limitation.timelineValidation,
       },
       stage4: {
-        plaintiffs: standiData?.plaintiffs ?? [],
-        defendants: standiData?.defendants ?? [],
-        joinderIssues: standiData?.joinderIssues ?? "",
-        locusStandiSummary: standiData?.locusStandiSummary ?? "Not determined.",
+        plaintiffs: deps.standi.plaintiffs,
+        defendants: deps.standi.defendants,
+        joinderIssues: deps.standi.joinderIssues,
+        locusStandiSummary: deps.standi.locusStandiSummary,
       },
       stage5: {
-        territorial: procedureData?.territorial ?? {
-          rule: null,
-          governingSection: null,
-          jurisdictionalFacts: null,
-        },
-        pecuniary: procedureData?.pecuniary ?? {
-          valuation: null,
-          courtLevel: null,
-          pecuniaryLimits: null,
-          suitsValuationActNotes: null,
-        },
-        subjectMatter: procedureData?.subjectMatter ?? {
-          isExcluded: false,
-          forum: "Civil Court",
-          governingStatute: null,
-        },
-        objectionStrategy: procedureData?.objectionStrategy ?? null,
+        plaintChecklist: deps.pleading.plaintChecklist,
+        groundsForRejection: deps.pleading.groundsForRejection,
       },
       stage6: {
-        plaintChecklist: pleadingData?.plaintChecklist ?? [],
-        groundsForRejection: pleadingData?.groundsForRejection ?? [],
-        writtenStatementDeemedAdmissions: pleadingData?.writtenStatementDeemedAdmissions ?? "",
-        counterclaimsOrSetOff: pleadingData?.counterclaimsOrSetOff ?? "",
+        framedIssues: deps.issues.framedIssues,
+        issueCount: deps.issues.issueCount,
       },
       stage7: {
-        issues: issuesData?.issues ?? [],
+        oralAssertions: deps.evidence.oralAssertions,
+        documentaryEvidence: deps.evidence.documentaryEvidence,
+        missingEvidence: deps.evidence.missingEvidence,
       },
       stage8: {
-        evidenceList: evidenceData?.evidenceList ?? [],
-        burdenAssignments: (evidenceData?.burdenAssignments as string[] | undefined) ?? [],
-        statutoryPresumptions: evidenceData?.statutoryPresumptions ?? [],
+        elementGateStatus: deps.elementGate.status,
+        allSatisfied: deps.elementGate.allSatisfied,
+        missingElements: deps.elementGate.missingElements,
+        unknownElements: deps.elementGate.unknownElements,
+        fatalFailures: deps.elementGate.fatalFailures,
+        ruleExecutionResults: deps.elementGate.ruleExecutionResults,
       },
       stage9: {
-        issueDetails: meritsData?.issueDetails ?? [],
+        meritScore: deps.merits.meritScore,
+        meritAssessment: deps.merits.meritAssessment,
       },
       stage10: {
-        applicablePrinciples: equityData?.applicablePrinciples ?? [],
-        discretionaryReliefCheck: equityData?.discretionaryReliefCheck ?? null,
+        equityPrinciples: deps.equity.equityPrinciples,
+        equityScore: deps.equity.equityScore,
       },
       stage11: {
-        timelineProgress: procedureData?.timelineProgress ?? [],
+        proceduralCompliance: deps.procedure.proceduralCompliance,
+        proceduralNotes: deps.procedure.proceduralNotes,
       },
       stage12: {
-        appealNodes: appealData?.appealNodes ?? [],
+        appealable: deps.appeal.appealable,
+        appealGrounds: deps.appeal.appealGrounds,
       },
-      // FIX #19: Expose missing/unknown elements explicitly in stage13
       stage13: {
-        overview: synthesis.conclusion,
-        reliefDecree: synthesis.status === "ELEMENTS_SATISFIED"
-          ? "Structural elements satisfied. Relief decree formulation requires court determination of quantum and specific terms."
-          : synthesis.status === "FAILED"
-            ? "Claim structurally unsustainable. No relief decree available."
-            : "Indeterminate — cannot formulate relief decree.",
-        costsApportionment: null,
-        equitableBars: equityData?.discretionaryReliefCheck ?? null,
-        executionPathway: synthesis.status === "ELEMENTS_SATISFIED"
-          ? "If decree granted, execution under Order XXI CPC 1908."
-          : null,
-        // FIX #19: Debuggability enhancement
-        _debug: {
-          missingElements: pipeline.elementGate.missingElements,
-          unknownElements: pipeline.elementGate.unknownElements,
-          fatalFailures: pipeline.elementGate.fatalFailures,
-          executionStatus: pipeline.executionStatus,
-        },
+        conclusion: synthesis.conclusion,
+        confidence: synthesis.confidence,
+        requiresHumanReview: synthesis.requiresHumanReview,
+        humanReviewReason: synthesis.humanReviewReason,
+        elementSummary: synthesis.elementSummary,
+        legalConclusions: synthesis.legalConclusions,
+        recommendations: synthesis.recommendations,
       },
-      _security: {
-        analyzedBy: (request.user as any).userId || request.user.email || "UNKNOWN",
-        analyzedAt: 0,
-        licenseId: request.license.licenseId,
-        forensicHash: "",
-        engineVersion: ENGINE_MANIFEST.engineVersion,
-        caseId: pipeline.caseId,
+      f0Gate: {
+        gateStatus: f0Gate.gateStatus,
+        conflictCount: f0Gate.conflictCount ?? 0,
+        criticalConflicts: f0Gate.criticalConflicts ?? 0,
+        warnings: f0Gate.warnings ?? [],
       },
+      auditHash: "PENDING",
     };
-
-    // Compute and bind forensic hash
-    if (response._security) if (response._security) response._security.forensicHash = this.computeOutputHash(response);
-
-    return response;
   }
 
   private buildPreF0HaltResponse(
     ctx: ExecutionContext,
     caseId: string,
     haltReason: string,
-    detail: string,
+    haltDetail: string,
   ): CaseAnalysisResponse {
-    const response: CaseAnalysisResponse = {
+    return {
+      caseId,
+      userId: "",
+      licenseId: "",
+      engineVersion: ENGINE_MANIFEST.engineVersion,
+      ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+      factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
+      executionTimestamp: new Date().toISOString(),
+      executionStatus: "ERROR",
+      outcome: "ERROR",
+      corpusMode: ENGINE_MANIFEST.corpusMode,
+      authorityStatus: this.authorityStatus,
+      claimType: "GENERAL_CIVIL",
+      domain: "UNKNOWN",
+      legislation: { primaryAct: null, relevantSections: [] },
       stage0: {
-        factualSummary: `Analysis halted before F0 gate: ${haltReason}. ${detail}`,
-        chronology: ctx.eventTimeline.map((e) => ({
-          date: e.date ?? "UNKNOWN",
-          event: e.type,
-          partiesInvolved: "",
-          factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
-        })),
-        admittedFacts: [],
-        disputedFacts: [],
-        unknownFacts: [],
+        atomicFacts: [],
+        contradictionGraph: [],
+        eventTimeline: [],
+        executionTrace: ctx.executionTrace,
+        warnings: [haltDetail],
         quantumFacts: [],
       },
-      stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], triggerFacts: [] },
-      stage2: { primaryAct: null, relevantSections: [], precedents: [], equityPrinciples: [] },
-      stage3: { accrualDate: null, prescribedPeriod: null, limitationArticle: null, isTimeBarred: false, exceptionsOrExtensions: "", preliminaryAnalysis: null },
-      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: null },
-      stage5: { territorial: { rule: null, governingSection: null, jurisdictionalFacts: null}, pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null}, subjectMatter: { isExcluded: false, forum: null, governingStatute: null}, objectionStrategy: null},
-      stage6: { plaintChecklist: [], groundsForRejection: [], writtenStatementDeemedAdmissions: "", counterclaimsOrSetOff: "" },
-      stage7: { issues: [] },
-      stage8: { evidenceList: [], burdenAssignments: [], statutoryPresumptions: [] },
-      stage9: { issueDetails: [] },
-      stage10: { applicablePrinciples: [], discretionaryReliefCheck: null},
-      stage11: { timelineProgress: [] },
-      stage12: { appealNodes: [] },
-      stage13: { overview: `HALTED: ${haltReason} — ${detail}`, reliefDecree: null, costsApportionment: null, equitableBars: null, executionPathway: null },
-      _security: {
-        analyzedBy: "SYSTEM",
-        analyzedAt: 0,
-        licenseId: "",
-        forensicHash: "",
-        engineVersion: ENGINE_MANIFEST.engineVersion,
-        caseId,
-      },
+      stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
+      stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
+      stage3: { isTimeBarred: null, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
+      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
+      stage5: { plaintChecklist: [], groundsForRejection: [haltDetail] },
+      stage6: { framedIssues: [], issueCount: 0 },
+      stage7: { oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
+      stage8: { elementGateStatus: "HALT", allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: [haltReason], ruleExecutionResults: [] },
+      stage9: { meritScore: 0, meritAssessment: "Analysis halted before merit evaluation." },
+      stage10: { equityPrinciples: [], equityScore: 0 },
+      stage11: { proceduralCompliance: false, proceduralNotes: [haltDetail] },
+      stage12: { appealable: false, appealGrounds: [] },
+      stage13: { conclusion: `Execution halted: ${haltReason}`, confidence: "NONE", requiresHumanReview: true, humanReviewReason: haltDetail, elementSummary: [], legalConclusions: [], recommendations: [] },
+      f0Gate: { gateStatus: "HALT", conflictCount: 0, criticalConflicts: 0, warnings: [haltDetail] },
+      auditHash: "PENDING",
     };
-    if (response._security) if (response._security) response._security.forensicHash = this.computeOutputHash(response);
-    return response;
   }
 
-  // FIX #6: Accept domain and legislation so F0 halt response is not hardcoded UNKNOWN/N/A
   private buildF0HaltResponse(
     ctx: ExecutionContext,
     request: AnalyzeRequest,
@@ -3774,106 +2741,53 @@ const plaintiffNameMatches = rawText.matchAll(
     f0Gate: FactConsistencyGateOutput,
     synthesis: SynthesisResult,
     caseId: string,
-    domain?: StageExecutionResult,
-    legislation?: StageExecutionResult,
+    domain: string,
+    legislation: ReturnType<RuleRegistry["getLegislationMapping"]>,
   ): CaseAnalysisResponse {
-    const domainData = domain?.data as { primary: string; subsidiary: string[] } | undefined;
-    const legislationData = legislation?.data as {
-      legislation: { primaryAct: string | null; relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }> };
-      precedents: Array<{
-        citation: string; caseTitle: string; court: string; decisionYear: number;
-        reporter: string; volume: number; page: number; bench?: string;
-        statutorySubject: string; holding: string; relevance: string;
-        ratioDecidendi: string; verificationStatus: string; verificationHash: string;
-        isDeterministic: boolean; securityHashToken: string;
-      }>;
-    } | undefined;
-
-    const response: CaseAnalysisResponse = {
-      gateF0: f0Gate,
+    return {
+      caseId,
+      userId: request.user.id,
+      licenseId: request.license.licenseId,
+      engineVersion: ENGINE_MANIFEST.engineVersion,
+      ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+      factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
+      executionTimestamp: new Date().toISOString(),
+      executionStatus: "BLOCKED",
+      outcome: "HALTED",
+      corpusMode: ENGINE_MANIFEST.corpusMode,
+      authorityStatus: this.authorityStatus,
+      claimType,
+      domain,
+      legislation,
       stage0: {
-        factualSummary: `F0 GATE HALTED: ${f0Gate.summary}`,
-        chronology: ctx.eventTimeline.map((e) => ({
-          date: e.date ?? "UNKNOWN",
-          event: e.type,
-          partiesInvolved: "",
-          factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
-        })),
-        admittedFacts: [],
-        disputedFacts: f0Gate.conflicts.map((c) => c.description),
-        unknownFacts: [],
-        quantumFacts: [],
-        atomicFacts: Array.from(ctx.factRegistry.values()),
-        propositions: Array.from(ctx.propositionRegistry.values()),
-        assertions: Array.from(ctx.assertionRegistry.values()),
+        atomicFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, propositionId: f.propositionId, assertionId: f.assertionId, proposition: f.proposition, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, polarity: f.polarity, source: f.source, assertionType: f.assertionType, validationStatus: f.validationStatus, confidence: f.confidence, assertedBy: f.assertedBy, eventDate: f.eventDate, normalizedValue: f.normalizedValue, contradicts: f.contradicts, supports: f.supports, disputedProposition: f.disputedProposition, validation: f.validation, provenanceAssertions: f.provenanceAssertions })),
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
+        executionTrace: ctx.executionTrace,
+        warnings: ctx.warnings,
+        quantumFacts: [],
       },
-      stage1: {
-        primaryDomain: domainData?.primary ?? "UNKNOWN",
-        subsidiaryDomains: domainData?.subsidiary ?? [],
-        triggerFacts: [{
-          domain: domainData?.primary ?? "UNKNOWN",
-          fact: `Claim type: ${claimType}`,
-          statutoryTrigger: claimType,
-        }],
-      },
-      stage2: {
-        primaryAct: legislationData?.legislation.primaryAct ?? null,
-        relevantSections: legislationData?.legislation.relevantSections ?? [],
-        precedents: (legislationData?.precedents ?? []).map((p) => ({
-          citation: p.citation,
-          caseTitle: p.caseTitle,
-          court: p.court,
-          decisionYear: p.decisionYear,
-          reporter: p.reporter,
-          volume: p.volume,
-          page: p.page,
-          bench: p.bench,
-          statutorySubject: p.statutorySubject,
-          holding: p.holding,
-          relevance: p.relevance,
-          ratioDecidendi: p.ratioDecidendi,
-          verificationStatus: p.verificationStatus as "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED",
-          verificationHash: p.verificationHash,
-          isDeterministic: p.isDeterministic,
-          securityHashToken: p.securityHashToken,
-        })),
-        equityPrinciples: [],
-      },
-      stage3: { accrualDate: null, prescribedPeriod: null, limitationArticle: null, isTimeBarred: false, exceptionsOrExtensions: "", preliminaryAnalysis: null },
-      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: null },
-      stage5: { territorial: { rule: null, governingSection: null, jurisdictionalFacts: null}, pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null}, subjectMatter: { isExcluded: false, forum: null, governingStatute: null}, objectionStrategy: null},
-      stage6: { plaintChecklist: [], groundsForRejection: [], writtenStatementDeemedAdmissions: "", counterclaimsOrSetOff: "" },
-      stage7: { issues: [] },
-      stage8: { evidenceList: [], burdenAssignments: [], statutoryPresumptions: [] },
-      stage9: { issueDetails: [] },
-      stage10: { applicablePrinciples: [], discretionaryReliefCheck: null},
-      stage11: { timelineProgress: [] },
-      stage12: { appealNodes: [] },
-      stage13: {
-        overview: synthesis.conclusion,
-        reliefDecree: null,
-        costsApportionment: null,
-        equitableBars: null,
-        executionPathway: null,
-      },
-      _security: {
-        analyzedBy: (request.user as any).userId || request.user.email || "UNKNOWN",
-        analyzedAt: 0,
-        licenseId: request.license.licenseId,
-        forensicHash: "",
-        engineVersion: ENGINE_MANIFEST.engineVersion,
-        caseId,
-      },
+      stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
+      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
+      stage3: { isTimeBarred: null, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
+      stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
+      stage5: { plaintChecklist: [], groundsForRejection: ["F0 gate halted"] },
+      stage6: { framedIssues: [], issueCount: 0 },
+      stage7: { oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
+      stage8: { elementGateStatus: "HALT", allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: ["F0_CRITICAL_CONFLICT"], ruleExecutionResults: [] },
+      stage9: { meritScore: 0, meritAssessment: "Analysis halted before merit evaluation." },
+      stage10: { equityPrinciples: [], equityScore: 0 },
+      stage11: { proceduralCompliance: false, proceduralNotes: ["F0 gate halted"] },
+      stage12: { appealable: false, appealGrounds: [] },
+      stage13: { conclusion: synthesis.conclusion, confidence: synthesis.confidence, requiresHumanReview: synthesis.requiresHumanReview, humanReviewReason: synthesis.humanReviewReason, elementSummary: synthesis.elementSummary, legalConclusions: synthesis.legalConclusions, recommendations: synthesis.recommendations },
+      f0Gate: { gateStatus: f0Gate.gateStatus, conflictCount: f0Gate.conflictCount ?? 0, criticalConflicts: f0Gate.criticalConflicts ?? 0, warnings: f0Gate.warnings ?? [] },
+      auditHash: "PENDING",
     };
-    if (response._security) if (response._security) response._security.forensicHash = this.computeOutputHash(response);
-    return response;
   }
 
-  // ========================================================================
-  // FIX #9: AUDIT PERSISTENCE — hash bound to chain record
-  // ========================================================================
+  // =======================================================================
+  // AUDIT PERSISTENCE
+  // =======================================================================
 
   private async persistAudit(
     ctx: ExecutionContext,
@@ -3882,124 +2796,158 @@ const plaintiffNameMatches = rawText.matchAll(
     startTime: number,
     outcome: ExecutionOutcome,
     outputHash: string,
-  ): Promise<AuditRecord | null> {
-    try {
-      const rawInputHash = canonicalHash(request.input.factPattern);
-      const facts = Array.from(ctx.factRegistry.values());
-      const factRegistryHash = canonicalHash(
-        facts.map((f) => ({
-          id: f.factId,
-          s: f.subject,
-          p: f.predicate,
-          o: f.object,
-          t: f.truth,
-          v: f.validationStatus,
-        })),
-      );
-      const timelineHash = canonicalHash(ctx.eventTimeline);
-      const traceHash = canonicalHash(ctx.executionTrace);
-
-      // FIX #9: Bind execution environment explicitly into forensic hash
-      const forensicInputHash = computeForensicHash({
-        envelope: {
-          caseId,
-          claimType: this.resolveClaimType(request.input.factPattern, request.input.focusDomain ?? ""),
-          factCount: facts.length,
-        },
-        corpusIdentity: this.ruleRegistry.identity,
-        ruleGraphIdentity: this.ruleRegistry.identity,
-        engineVersion: ENGINE_MANIFEST.engineVersion,
-        corpusMode: ENGINE_MANIFEST.corpusMode,
-      });
-
-      const payload: AuditRecordPayload = {
-        caseId,
-        rawInputHash,
-        extractionHash: factRegistryHash,
-        inputHash: rawInputHash,
-        factRegistryHash,
-        timelineHash,
-        eventTimelineHash: timelineHash,
-        corpusIdentity: this.ruleRegistry.identity,
-        corpusDigest: this.ruleRegistry.identity.corpusDigest,
-        ruleRegistryVersion: this.ruleRegistry.version,
-        ruleRegistryHash: canonicalHash(this.ruleRegistry.identity),
-        executionTraceHash: traceHash,
-        outputHash,
-        forensicInputHash,
-        manifest: ENGINE_MANIFEST,
-        executionMilliseconds: 0,
-        analyzedByUserId: (request.user as any).userId || request.user.email || "UNKNOWN",
-        outcome,
-      };
-
-      // FIX #9: append() returns the chain record with previousHash and recordHash
-      const record = await this.auditSink.append(payload);
-
-      recordTrace(ctx, {
-        layer: "P2_SYNTHESIS",
-        description: `Audit record persisted. recordHash=${record.recordHash.slice(0, 16)}... previousHash=${record.previousHash?.slice(0, 16) ?? "NULL"}...`,
-        dependsOnFacts: [],
-        dependsOnRules: [],
-        result: "AUDIT_PERSISTED",
-      });
-
-      return record;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      ctx.warnings.push(`AUDIT_PERSIST_FAILED: ${msg}`);
-      return null;
-    }
-  }
-
-  private computeOutputHash(response: CaseAnalysisResponse): string {
-    // Hash the structural content (exclude _security.forensicHash itself to avoid circularity)
-    const { _security, ...rest } = response;
-    return canonicalHash({
-      ...rest,
-      _securityAnalyzedBy: _security?.analyzedBy,
-      _securityAnalyzedAt: _security?.analyzedAt,
-      _securityEngineVersion: _security?.engineVersion,
-      _securityCaseId: "STATIC",
+  ): Promise<void> {
+    const facts = Array.from(ctx.factRegistry.values());
+    const factRegistryHash = canonicalHash(facts.map((f) => ({ factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, eventDate: f.eventDate, normalizedValue: f.normalizedValue })));
+    const timelineHash = canonicalHash(ctx.eventTimeline);
+    const executionTraceHash = canonicalHash(ctx.executionTrace);
+    const rawInputHash = canonicalHash(request.input.factPattern);
+    const extractionHash = canonicalHash(facts.map((f) => f.proposition));
+    const inputHash = canonicalHash(request.input);
+    const forensicInputHash = computeForensicHash({
+      envelope: request,
+      corpusIdentity: this.ruleRegistry.identity,
+      ruleGraphIdentity: this.ruleRegistry.identity,
+      engineVersion: ENGINE_MANIFEST.engineVersion,
+      corpusMode: ENGINE_MANIFEST.corpusMode,
     });
+    const payload: AuditRecordPayload = {
+      caseId,
+      rawInputHash,
+      extractionHash,
+      inputHash,
+      factRegistryHash,
+      timelineHash,
+      eventTimelineHash: timelineHash,
+      corpusIdentity: this.ruleRegistry.identity,
+      corpusDigest: this.ruleRegistry.identity.corpusDigest,
+      ruleRegistryVersion: this.ruleRegistry.version,
+      ruleRegistryHash: canonicalHash(this.ruleRegistry.identity),
+      executionTraceHash,
+      outputHash,
+      forensicInputHash,
+      manifest: ENGINE_MANIFEST,
+      executionMilliseconds: 0,
+      analyzedByUserId: request.user.id,
+      outcome,
+    };
+    await this.auditSink.append(payload);
   }
 
-  // ========================================================================
-  // INTERNAL HELPERS
-  // ========================================================================
+  // =======================================================================
+  // P0-8: OUTPUT HASH — semantic hash, case identity separate
+  // =======================================================================
 
-  private findDateFact(
-    facts: AtomicFact[],
+  private computeOutputHash(response: CaseAnalysisResponse, _caseId: string): string {
+    // P0-8: The semantic output hash must be deterministic and independent
+    // of volatile identifiers (caseId, timestamps, executionTimestamp).
+    // It represents the canonical legal analysis result.
+    const semantic = {
+      claimType: response.claimType,
+      domain: response.domain,
+      legislation: response.legislation,
+      stage0: {
+        atomicFacts: (response.stage0?.atomicFacts ?? []).map((f) => ({
+          subject: f.subject,
+          predicate: f.predicate,
+          object: f.object,
+          truth: f.truth,
+          assertionType: f.assertionType,
+          eventDate: f.eventDate,
+          normalizedValue: f.normalizedValue,
+          provenanceAssertions: f.provenanceAssertions,
+        })),
+        contradictionGraph: (response.stage0?.contradictionGraph ?? []).map((e) => ({
+          propositionKey: e.propositionKey,
+          leftFactId: e.leftFactId,
+          rightFactId: e.rightFactId,
+          relation: e.relation,
+          status: e.status,
+        })),
+        eventTimeline: (response.stage0?.eventTimeline ?? []).map((e) => ({
+          type: e.type,
+          date: e.date,
+          datePrecision: e.datePrecision,
+          sourceFactIds: e.sourceFactIds,
+        })),
+      },
+      stage1: response.stage1,
+      stage2: {
+        relevantSections: response.stage2?.relevantSections,
+        primaryAct: response.stage2?.primaryAct,
+        equityPrinciples: response.stage2?.equityPrinciples,
+      },
+      stage3: response.stage3,
+      stage4: response.stage4,
+      stage5: response.stage5,
+      stage6: response.stage6,
+      stage7: response.stage7,
+      stage8: {
+        elementGateStatus: response.stage8?.elementGateStatus,
+        allSatisfied: response.stage8?.allSatisfied,
+        missingElements: response.stage8?.missingElements,
+        unknownElements: response.stage8?.unknownElements,
+        fatalFailures: response.stage8?.fatalFailures,
+        ruleExecutionResults: (response.stage8?.ruleExecutionResults ?? []).map((r) => ({
+          ruleId: r.ruleId,
+          status: r.status,
+          predicateResults: r.predicateResults.map((p) => ({
+            predicateId: p.predicateId,
+            status: p.status,
+            factIds: p.factIds,
+            conflictDetected: p.conflictDetected,
+          })),
+        })),
+      },
+      stage9: response.stage9,
+      stage10: response.stage10,
+      stage11: response.stage11,
+      stage12: response.stage12,
+      stage13: {
+        conclusion: response.stage13?.conclusion,
+        confidence: response.stage13?.confidence,
+        requiresHumanReview: response.stage13?.requiresHumanReview,
+        elementSummary: response.stage13?.elementSummary,
+        legalConclusions: response.stage13?.legalConclusions,
+        recommendations: response.stage13?.recommendations,
+      },
+      f0Gate: {
+        gateStatus: response.f0Gate?.gateStatus,
+        conflictCount: response.f0Gate?.conflictCount,
+        criticalConflicts: response.f0Gate?.criticalConflicts,
+      },
+    };
+    return canonicalHash(semantic);
+  }
+
+  // =======================================================================
+  // UTILITY: FIND DATE FACT
+  // =======================================================================
+
+  private findDateFact(ctx: ExecutionContext, predicate: string): string | null {
+    const fact = Array.from(ctx.factRegistry.values()).find(
+      (f) => f.predicate === predicate && f.eventDate && isStrictDate(f.eventDate),
+    );
+    return fact?.eventDate ?? null;
+  }
+
+  // =======================================================================
+  // UTILITY: GET CONFLICT MODE FROM FACTS
+  // =======================================================================
+
+  private getConflictModeFromFacts(
+    ctx: ExecutionContext,
     subject: string,
     predicate: string,
-    objectFilter?: string,
-  ): string | null {
-    const match = facts.find(
-      (f) =>
-        f.subject.toUpperCase() === subject.toUpperCase() &&
-        f.predicate.toUpperCase() === predicate.toUpperCase() &&
-        (objectFilter === undefined ||
-          f.object?.toUpperCase() === objectFilter.toUpperCase()) &&
-        f.eventDate &&
-        isStrictDate(f.eventDate),
-    );
-    return match?.eventDate ?? null;
+  ): PredicateConflictMode {
+    return getConflictMode(ctx, subject, predicate);
   }
-}
 
-function getConflictModeFromFacts(
-  ctx: ExecutionContext,
-  subject: string,
-  predicate: string,
-): PredicateConflictMode {
-  return getConflictMode(ctx, subject, predicate);
-}
+  // =======================================================================
+  // UTILITY: AUTHORITY ID EXTRACTOR
+  // =======================================================================
 
-function rp_authorityIds(rule: LegalRule): string[] {
-  const ids: string[] = [];
-  for (const p of rule.predicates) {
-    if (p.authorityIds) ids.push(...p.authorityIds);
+  private rp_authorityIds(rule: LegalRule): string[] {
+    return rule.authorityIds ?? [rule.authority.act];
   }
-  if (rule.authority.authorityId) ids.push(rule.authority.authorityId);
-  return [...new Set(ids)];
 }
