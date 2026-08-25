@@ -1235,7 +1235,16 @@ export class BCCAAEngine {
       partiesInvolved: "",
       factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
       conflictInfo: ctx.contradictionGraph.length > 0
-        ? { total: ctx.contradictionGraph.length, critical: ctx.contradictionGraph.filter((edge) => edge.status === "CRITICAL").length }
+        ? {
+            total: ctx.contradictionGraph.length,
+            critical: ctx.contradictionGraph.filter((edge) => edge.status === "CRITICAL").length,
+            edges: ctx.contradictionGraph.map((edge) => ({
+              propositionKey: edge.propositionKey,
+              leftFactId: edge.leftFactId,
+              rightFactId: edge.rightFactId,
+              status: edge.status,
+            })),
+          }
         : undefined,
     }));
 
@@ -2422,8 +2431,22 @@ export class BCCAAEngine {
   private executeProcedureRules(
     _ctx: ExecutionContext,
     _claimType: ClaimType,
-  ): { proceduralCompliance: boolean; proceduralNotes: string[] } {
-    return { proceduralCompliance: true, proceduralNotes: [] };
+  ): {
+    territorial: { rule: string | null; governingSection: string | null; jurisdictionalFacts: string | null };
+    pecuniary: { valuation: string | null; courtLevel: string | null; pecuniaryLimits: string | null; suitsValuationActNotes: string | null };
+    subjectMatter: { isExcluded: boolean; forum: string | null; governingStatute: string | null };
+    objectionStrategy: string | null;
+    proceduralCompliance: boolean;
+    proceduralNotes: string[];
+  } {
+    return {
+      territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+      pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+      subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+      objectionStrategy: null,
+      proceduralCompliance: true,
+      proceduralNotes: [],
+    };
   }
 
   // =======================================================================
@@ -2615,7 +2638,7 @@ export class BCCAAEngine {
       stage2: {
         relevantSections: deps.legislation.relevantSections,
         primaryAct: deps.legislation.primaryAct,
-        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
+        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
         equityPrinciples: deps.equity.equityPrinciples,
       },
       stage3: {
@@ -2723,7 +2746,7 @@ export class BCCAAEngine {
         contradictionGraph: [],
         eventTimeline: [],
         executionTrace: ctx.executionTrace,
-        warnings: f0Gate.warnings || ["Critical conflict detected"],
+        warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason],
         quantumFacts: [],
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
@@ -2761,8 +2784,8 @@ export class BCCAAEngine {
         proceduralNotes: [haltDetail],
       },
       stage12: { appealNodes: [], appealable: false, appealGrounds: [] },
-      stage13: { conclusion: `Execution halted: ${f0Gate.summary || "F0 gate halted"}`, confidence: "NONE", requiresHumanReview: true, humanReviewReason: (f0Gate.warnings && f0Gate.warnings[0]) || "Critical conflict detected", elementSummary: [], legalConclusions: [], recommendations: [] },
-      f0Gate: { gateStatus: "HALT", conflictCount: 0, criticalConflicts: 0, warnings: f0Gate.warnings || ["Critical conflict detected"] },
+      stage13: { conclusion: `Execution halted: ${haltReason}`, confidence: "NONE", requiresHumanReview: true, humanReviewReason: haltDetail, elementSummary: [], legalConclusions: [], recommendations: [] },
+      f0Gate: { gateStatus: "HALT" as const, conflictCount: 0, criticalConflicts: 0, warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason] },
       auditHash: "PENDING",
     };
   }
