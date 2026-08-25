@@ -2891,7 +2891,7 @@ export class BCCAAEngine {
         ruleExecutionResults: (response.stage8?.ruleExecutionResults ?? []).map((r) => ({
           ruleId: r.ruleId,
           status: r.status,
-          predicateResults: r.predicateResults.map((p) => ({
+          predicateResults: r.predicateResults.map((p: any) => ({
             predicateId: p.predicateId,
             status: p.status,
             factIds: p.factIds,
