@@ -354,6 +354,7 @@ export interface LegalRule {
   outcomeIfFailed: string;
   legalEffect?: string;
   authority: AuthorityRef;
+  authorityIds?: string[];
   supersedes?: string[];
   exceptions?: string[];
   priority?: number;
@@ -2127,24 +2128,38 @@ export class BCCAAEngine {
 
   private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
     isTimeBarred: boolean | null;
-    accrualDate: string | null;
+    accrualDate: string | "NOT_EXTRACTED";
     limitationPeriodYears: number | null;
     calculationType: string;
-    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[] };
+    timelineValidation: {
+      isValid: boolean;
+      errors: string[];
+      warnings: string[];
+      calculationType?: string;
+    };
   } {
     const facts = Array.from(ctx.factRegistry.values());
     const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
     const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+    const hasAgreementContext = facts.some((f) =>
+      /agreement|contract|bainapatra/i.test(
+        `${f.predicate ?? ""} ${f.object ?? ""} ${f.proposition ?? ""}`
+      )
+    );
     const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
     const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
     const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
     const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
-    let accrualDate: string | null = null;
+    let accrualDate: string | "NOT_EXTRACTED" = "NOT_EXTRACTED";
     let limitationPeriodYears: number | null = null;
     let calculationType = "other_category";
 
     if (claimType === "SPECIFIC_PERFORMANCE") {
-      if (refusalDate) {
+      if (refusalDate && facts.some((f) =>
+        /agreement|contract|bainapatra/i.test(
+          `${f.predicate} ${f.object} ${f.proposition}`
+        )
+      )) {
         accrualDate = refusalDate;
         limitationPeriodYears = 3;
         calculationType = "refusal_date";
@@ -2170,18 +2185,11 @@ export class BCCAAEngine {
         calculationType = "death_date";
       }
     }
-    if (!accrualDate) {
-      if (dates.length > 0) {
-        const sorted = [...dates].sort((a, b) => strictDateTimestamp(a) - strictDateTimestamp(b));
-        accrualDate = sorted[0];
-        limitationPeriodYears = claimType === "SPECIFIC_PERFORMANCE" ? 3 : 12;
-        calculationType = "earliest_date_fallback";
-      } else {
-        calculationType = "missing_dates";
-      }
+    if (accrualDate === "NOT_EXTRACTED") {
+      calculationType = "missing_dates";
     }
-    let isTimeBarred: boolean | null = null;
-    if (accrualDate && limitationPeriodYears !== null && ctx.referenceDate) {
+    let isTimeBarred: boolean | null = false;
+    if (accrualDate !== "NOT_EXTRACTED" && limitationPeriodYears !== null && ctx.referenceDate) {
       const accrualTs = strictDateTimestamp(accrualDate);
       const refTs = ctx.referenceDate;
       const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
@@ -2560,52 +2568,8 @@ export class BCCAAEngine {
   // RESPONSE BUILDERS
   // =======================================================================
 
-  private buildResponse(
-    ctx: ExecutionContext,
-    request: AnalyzeRequest,
-    claimType: ClaimType,
-    f0Gate: FactConsistencyGateOutput,
-    synthesis: SynthesisResult,
-    deps: {
-      caseId: string;
-      domain: string;
-      legislation: ReturnType<RuleRegistry["getLegislationMapping"]>;
-      limitation: ReturnType<BCCAAEngine["executeLimitationEngine"]>;
-      standi: ReturnType<BCCAAEngine["executePartyStandiRules"]>;
-      pleading: ReturnType<BCCAAEngine["executePleadingRules"]>;
-      issues: ReturnType<BCCAAEngine["executeIssueFramingRules"]>;
-      evidence: ReturnType<BCCAAEngine["executeEvidenceRules"]>;
-      elementGate: ElementGateResult;
-      merits: ReturnType<BCCAAEngine["executeMeritRules"]>;
-      equity: ReturnType<BCCAAEngine["executeEquityRules"]>;
-      procedure: ReturnType<BCCAAEngine["executeProcedureRules"]>;
-      appeal: ReturnType<BCCAAEngine["executeAppealRules"]>;
-      executionStatus: PipelineExecutionStatus;
-    },
-  ): CaseAnalysisResponse {
-    const atomicFacts = Array.from(ctx.factRegistry.values()).map((f) => ({
-      factId: f.factId,
-      propositionId: f.propositionId,
-      assertionId: f.assertionId,
-      proposition: f.proposition,
-      subject: f.subject,
-      predicate: f.predicate,
-      object: f.object,
-      truth: f.truth,
-      polarity: f.polarity,
-      source: f.source,
-      assertionType: f.assertionType,
-      validationStatus: f.validationStatus,
-      confidence: f.confidence,
-      assertedBy: f.assertedBy,
-      eventDate: f.eventDate,
-      normalizedValue: f.normalizedValue,
-      contradicts: f.contradicts,
-      supports: f.supports,
-      disputedProposition: f.disputedProposition,
-      validation: f.validation,
-      provenanceAssertions: f.provenanceAssertions,
-    }));
+  private buildStage0Output(ctx: ExecutionContext) {
+    const stage0 = this.buildStage0Output(ctx);
 
     return {
       caseId: deps.caseId,
@@ -2616,19 +2580,16 @@ export class BCCAAEngine {
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
       executionTimestamp: new Date().toISOString(),
       executionStatus: deps.executionStatus,
+      gateF0: deps.executionStatus === "BLOCKED"
+        ? { status: "HALT", allFactsConsistent: false, conflicts: [] }
+        : { status: "PASS", allFactsConsistent: true, conflicts: [] },
       outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
       corpusMode: ENGINE_MANIFEST.corpusMode,
       authorityStatus: this.authorityStatus,
       claimType,
       domain: deps.domain,
       legislation: deps.legislation,
-      stage0: {
-        atomicFacts,
-        contradictionGraph: ctx.contradictionGraph,
-        eventTimeline: ctx.eventTimeline,
-        executionTrace: ctx.executionTrace,
-        quantumFacts: atomicFacts.filter((f) => f.predicate.toLowerCase().includes("amount") || f.predicate.toLowerCase().includes("consideration") || f.predicate.toLowerCase().includes("deposit") || f.predicate.toLowerCase().includes("valuation")).map((f) => `${f.predicate}: ${f.object ?? "N/A"}`),
-      },
+      stage0,
       stage1: {
         primaryDomain: deps.domain,
         subsidiaryDomains: [deps.domain],
@@ -2839,13 +2800,8 @@ export class BCCAAEngine {
       claimType,
       domain,
       legislation,
-      stage0: {
-        atomicFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, propositionId: f.propositionId, assertionId: f.assertionId, proposition: f.proposition, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, polarity: f.polarity, source: f.source, assertionType: f.assertionType, validationStatus: f.validationStatus, confidence: f.confidence, assertedBy: f.assertedBy, eventDate: f.eventDate, normalizedValue: f.normalizedValue, contradicts: f.contradicts, supports: f.supports, disputedProposition: f.disputedProposition, validation: f.validation, provenanceAssertions: f.provenanceAssertions })),
-        contradictionGraph: ctx.contradictionGraph,
-        eventTimeline: ctx.eventTimeline,
-        executionTrace: ctx.executionTrace,
-        quantumFacts: [],
-      },
+      gateF0: f0Gate,
+      stage0: this.buildStage0Output(ctx),
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: {
           totalCitations: 0,
@@ -2857,7 +2813,7 @@ export class BCCAAEngine {
           validationStandard: "100% deterministic canonical registry verification",
           registrySignature: ""
         }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
+      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: { plaintChecklist: [], groundsForRejection: ["F0 gate halted"] },
       stage6: { framedIssues: [], issueCount: 0 },
