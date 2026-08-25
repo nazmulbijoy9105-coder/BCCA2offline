@@ -208,6 +208,7 @@ export interface LegalRule {
   outcomeIfFailed: string;
   legalEffect?: string;
   authority: AuthorityRef;
+  authorityIds?: string[];
   supersedes?: string[];
   exceptions?: string[];
   priority?: number;
@@ -354,6 +355,9 @@ export interface FactConsistencyGateOutput {
   atomicFacts: AtomicFact[];
   conflicts: FactConflict[];
   criticalConflictCount: number;
+  conflictCount?: number;
+  criticalConflicts?: number;
+  warnings?: string[];
   materialConflictCount: number;
   missingDocumentsCount: number;
   verifiedRulesCount: number;
@@ -383,6 +387,10 @@ export interface CaseHistoryItem {
 
 export interface CaseAnalysisResponse {
   gateF0?: FactConsistencyGateOutput;
+  f0Gate?: FactConsistencyGateOutput;
+  claimType?: string;
+  domain?: string;
+  legislation?: any;
   stage0: {
     factualSummary: string;
     chronology: Array<{
@@ -390,6 +398,16 @@ export interface CaseAnalysisResponse {
       event: string;
       partiesInvolved: string;
       factualSource: string;
+      conflictInfo?: {
+        total: number;
+        critical: number;
+        edges: Array<{
+          propositionKey: string;
+          leftFactId: string;
+          rightFactId: string;
+          status: string;
+        }>;
+      };
     }>;
     admittedFacts: string[];
     disputedFacts: string[];
@@ -408,6 +426,7 @@ export interface CaseAnalysisResponse {
       dispossessionProven: boolean | "unspecified";
       isUsingDefaultAmounts?: boolean;
     };
+    executionTrace?: string[];
     // 4.4.0 forensic extensions (optional in UI)
     atomicFacts?: any[];
     propositions?: any[];
@@ -419,6 +438,7 @@ export interface CaseAnalysisResponse {
   stage1: {
     primaryDomain: string;
     subsidiaryDomains: string[];
+    domainConfidence?: string;
     triggerFacts: Array<{
       domain: string;
       fact: string;
@@ -454,6 +474,8 @@ export interface CaseAnalysisResponse {
       totalCitations: number;
       verifiedCount: number;
       rejectedCount: number;
+      validatedCitations?: number;
+      unverifiedCitations?: number;
       validationStandard: string;
       auditStatus: CitationState | "PASS_100_PERCENT_DETERMINISTIC" | "FAIL_UNVERIFIED_DETECTED";
       registrySignature: string;
@@ -464,7 +486,7 @@ export interface CaseAnalysisResponse {
     accrualDate: string | null;
     prescribedPeriod: string | null;
     limitationArticle: string | null;
-    isTimeBarred: boolean;
+    isTimeBarred: boolean | null;
     exceptionsOrExtensions: string;
     preliminaryAnalysis: string | null;
     timelineValidation?: {
@@ -475,6 +497,9 @@ export interface CaseAnalysisResponse {
       calculationType: "real_refusal" | "heuristic_6_months" | "missing_dates" | "other_category";
       validationStatus: "valid" | "heuristic_applied" | "invalid_gaps";
       explanation: string;
+      isValid?: boolean;
+      errors?: string[];
+      warnings?: string[];
     };
   };
   stage4: {
@@ -511,12 +536,15 @@ export interface CaseAnalysisResponse {
       governingStatute: string | null;
     };
     objectionStrategy: string | null;
+    plaintChecklist?: string[];
   };
   stage6: {
     plaintChecklist: string[];
     groundsForRejection: string[];
     writtenStatementDeemedAdmissions: string;
     counterclaimsOrSetOff: string;
+    framedIssues?: any[];
+    issueCount?: number;
   };
   stage7: {
     issues: Array<{
@@ -526,6 +554,9 @@ export interface CaseAnalysisResponse {
       burden: string;
       evidenceRequired: string;
     }>;
+    oralAssertions?: number;
+    documentaryEvidence?: number;
+    missingEvidence?: any[];
   };
   stage8: {
     evidenceList: Array<{
@@ -541,6 +572,12 @@ export interface CaseAnalysisResponse {
       presumptionStyle: string;
       effectOnCase: string;
     }>;
+    elementGateStatus?: string;
+    allSatisfied?: boolean;
+    missingElements?: string[];
+    unknownElements?: string[];
+    fatalFailures?: string[];
+    ruleExecutionResults?: any[];
   };
   stage9: {
     issueDetails: Array<{
@@ -551,6 +588,8 @@ export interface CaseAnalysisResponse {
       courtAnalysis: string;
       projectedFinding: string;
     }>;
+    meritScore?: number;
+    meritAssessment?: string;
   };
   stage10: {
     applicablePrinciples: Array<{
@@ -559,6 +598,8 @@ export interface CaseAnalysisResponse {
       weight: string;
     }>;
     discretionaryReliefCheck: string | null;
+    equityPrinciples?: any[];
+    equityScore?: number;
   };
   stage11: {
     timelineProgress: Array<{
@@ -567,6 +608,8 @@ export interface CaseAnalysisResponse {
       subActions: string;
       strategicPlay: string;
     }>;
+    proceduralCompliance?: boolean;
+    proceduralNotes?: string[];
   };
   stage12: {
     appealNodes: Array<{
@@ -575,6 +618,8 @@ export interface CaseAnalysisResponse {
       scope: string;
       governingSection: string | null;
     }>;
+    appealable?: boolean;
+    appealGrounds?: any[];
   };
   stage13: {
     overview: string;
@@ -583,6 +628,13 @@ export interface CaseAnalysisResponse {
     equitableBars: string | null;
     _debug?: any;
     executionPathway: string | null;
+    conclusion?: string;
+    confidence?: string;
+    requiresHumanReview?: boolean;
+    humanReviewReason?: string;
+    elementSummary?: any[];
+    legalConclusions?: any[];
+    recommendations?: any[];
   };
   _security?: {
     analyzedBy: string;
