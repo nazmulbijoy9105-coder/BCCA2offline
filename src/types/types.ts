@@ -604,7 +604,7 @@ export interface CaseAnalysisResponse {
     equityScore?: number;
   };
   stage11: {
-    timelineProgress: Array<{
+    timelineProgress?: Array<{
       stageName: string;
       cpcReference: string;
       subActions: string;
@@ -614,7 +614,7 @@ export interface CaseAnalysisResponse {
     proceduralNotes?: string[];
   };
   stage12: {
-    appealNodes: Array<{
+    appealNodes?: Array<{
       level: string;
       authority: string;
       scope: string;
