@@ -388,12 +388,6 @@ export interface CaseHistoryItem {
 export interface CaseAnalysisResponse {
   gateF0?: FactConsistencyGateOutput;
   f0Gate?: FactConsistencyGateOutput;
-  claimType?: string;
-  domain?: string;
-  legislation?: any;
-  f0Gate?: FactConsistencyGateOutput;
-  claimType?: string;
-  domain?: string;
   
   stage0: {
     factualSummary: string;
