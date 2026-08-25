@@ -2202,7 +2202,7 @@ export class BCCAAEngine {
       const predicateResults: PredicateExecutionResult[] = [];
       let ruleSatisfied = true;
       for (const pred of rule.predicates) {
-        const evalResult = this.evaluateFact(ctx, pred.subject, pred.predicate, pred.object, {
+        const evalResult = this.evaluateFact(ctx, pred.subject, pred.predicate, pred.object ?? null, {
           validationRequirements: pred.validationRequirements,
           requireVerified: pred.requireVerified,
         });
@@ -2626,8 +2626,18 @@ export class BCCAAEngine {
         timelineValidation: deps.limitation.timelineValidation,
       },
       stage4: {
-        plaintiffs: deps.standi.plaintiffs,
-        defendants: deps.standi.defendants,
+        plaintiffs: deps.standi.plaintiffs.map((name: string) => ({
+          name,
+          legalIdentity: "individual",
+          capacity: "plaintiff",
+          causeOfActionAccess: "yes",
+        })),
+        defendants: deps.standi.defendants.map((name: string) => ({
+          name,
+          legalIdentity: "individual",
+          capacity: "defendant",
+          liabilityType: "primary",
+        })),
         joinderIssues: deps.standi.joinderIssues,
         locusStandiSummary: deps.standi.locusStandiSummary,
       },
@@ -2718,7 +2728,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
       stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: null, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
+      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: { plaintChecklist: [], groundsForRejection: [haltDetail] },
       stage6: { framedIssues: [], issueCount: 0 },
@@ -2769,7 +2779,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: null, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
+      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: { plaintChecklist: [], groundsForRejection: ["F0 gate halted"] },
       stage6: { framedIssues: [], issueCount: 0 },
@@ -2891,7 +2901,7 @@ export class BCCAAEngine {
         ruleExecutionResults: (response.stage8?.ruleExecutionResults ?? []).map((r) => ({
           ruleId: r.ruleId,
           status: r.status,
-          predicateResults: r.predicateResults.map((p) => ({
+          predicateResults: r.predicateResults.map((p: any) => ({
             predicateId: p.predicateId,
             status: p.status,
             factIds: p.factIds,
@@ -2948,6 +2958,6 @@ export class BCCAAEngine {
   // =======================================================================
 
   private rp_authorityIds(rule: LegalRule): string[] {
-    return rule.authorityIds ?? [rule.authority.act];
+    return (rule as any).authorityIds ?? [rule.authority.act];
   }
 }
