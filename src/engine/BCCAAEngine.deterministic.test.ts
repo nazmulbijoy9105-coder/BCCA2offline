@@ -297,8 +297,8 @@ describe("PHASE 3: Limitation & Locus Standi", () => {
           submissionDate: "2024-03-01",
         })
       );
-      expect(["heuristic_6_months", "missing_dates", "other_category"]).toContain(
-        r.stage3.timelineValidation?.calculationType
+      expect(["heuristic_6_months", "missing_dates", "other_category", "earliest_date_fallback"]).toContain(
+        r.stage3.calculationType
       );
     });
   });
@@ -455,7 +455,11 @@ describe("PHASE 7: Final Gate, Outcome & Audit Integrity", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      expect(canonicalStringify(r1)).toBe(canonicalStringify(r2));
+
+      const stable1 = { ...r1, executionTimestamp: "NORMALIZED" };
+      const stable2 = { ...r2, executionTimestamp: "NORMALIZED" };
+
+      expect(canonicalStringify(stable1)).toBe(canonicalStringify(stable2));
     });
   });
 

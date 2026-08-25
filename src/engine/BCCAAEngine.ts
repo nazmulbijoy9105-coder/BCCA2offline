@@ -2664,6 +2664,23 @@ export class BCCAAEngine {
         locusStandiSummary: deps.standi.locusStandiSummary,
       },
       stage5: {
+        territorial: deps.procedure?.territorial ?? {
+          rule: null,
+          governingSection: null,
+          jurisdictionalFacts: null
+        },
+        pecuniary: deps.procedure?.pecuniary ?? {
+          valuation: null,
+          courtLevel: null,
+          pecuniaryLimits: null,
+          suitsValuationActNotes: null
+        },
+        subjectMatter: deps.procedure?.subjectMatter ?? {
+          rule: null,
+          governingSection: null,
+          jurisdictionalFacts: null
+        },
+        objectionStrategy: deps.procedure?.objectionStrategy ?? null,
         plaintChecklist: deps.pleading.plaintChecklist,
         groundsForRejection: deps.pleading.groundsForRejection ?? [],
       },
