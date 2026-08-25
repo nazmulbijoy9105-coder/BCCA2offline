@@ -394,7 +394,7 @@ export interface CaseAnalysisResponse {
   f0Gate?: FactConsistencyGateOutput;
   claimType?: string;
   domain?: string;
-  legislation?: any;
+  
   stage0: {
     factualSummary: string;
     chronology: Array<{

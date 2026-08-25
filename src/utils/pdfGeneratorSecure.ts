@@ -432,7 +432,7 @@ export async function downloadSecurePDF(
           </tr>
         </thead>
         <tbody>
-          ${analysis.stage9.issueDetails ?? [].map(iss => `
+          ${(analysis.stage9.issueDetails ?? []).map((iss: any) => `
             <tr>
               <td><strong>Issue ${iss.issueNo}</strong></td>
               <td>${iss.issueTitle}</td>
