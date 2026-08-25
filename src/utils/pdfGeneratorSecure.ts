@@ -458,7 +458,7 @@ export async function downloadSecurePDF(
           </tr>
         </thead>
         <tbody>
-          ${analysis.stage8.evidenceList ?? [].map(ev => `
+          ${(analysis.stage8.evidenceList ?? []).map((ev: any) => `
             <tr>
               <td><strong>${ev.item}</strong></td>
               <td>${ev.source} (${ev.type})</td>
@@ -494,7 +494,7 @@ export async function downloadSecurePDF(
           </tr>
         </thead>
         <tbody>
-          ${analysis.stage12.appealNodes ?? [].map(node => `
+          ${(analysis.stage12.appealNodes ?? []).map((node: any) => `
             <tr>
               <td><strong>${node.level}</strong></td>
               <td>${node.authority}</td>
