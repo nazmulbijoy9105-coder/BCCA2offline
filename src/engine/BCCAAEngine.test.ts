@@ -2221,7 +2221,7 @@ export class BCCAAEngine {
         ruleId: rule.ruleId,
         status: ruleSatisfied ? "SATISFIED" : "UNKNOWN",
         predicateResults,
-        authorityIds: rule.authorityIds ?? [rule.authority.act],
+        authorityIds: [rule.authority.act],
         burden: rule.burden,
         legalEffect: rule.legalEffect,
         explanationCode: ruleSatisfied ? "ALL_PREDICATES_TRUE" : "PREDICATE_NOT_TRUE",
@@ -2604,7 +2604,6 @@ export class BCCAAEngine {
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
         executionTrace: ctx.executionTrace,
-        warnings: ctx.warnings,
         quantumFacts: atomicFacts.filter((f) => f.predicate.toLowerCase().includes("amount") || f.predicate.toLowerCase().includes("consideration") || f.predicate.toLowerCase().includes("deposit") || f.predicate.toLowerCase().includes("valuation")).map((f) => `${f.predicate}: ${f.object ?? "N/A"}`),
       },
       stage1: {
@@ -2615,7 +2614,16 @@ export class BCCAAEngine {
       stage2: {
         relevantSections: deps.legislation.relevantSections,
         primaryAct: deps.legislation.primaryAct,
-        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
+        citationValidationAudit: {
+        totalCitations: 0,
+        verifiedCount: 0,
+        rejectedCount: 0,
+        validatedCitations: 0,
+        unverifiedCitations: 0,
+        auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
+        validationStandard: "100% deterministic canonical registry verification",
+        registrySignature: ""
+      },
         equityPrinciples: deps.equity.equityPrinciples,
       },
       stage3: {
@@ -2723,23 +2731,84 @@ export class BCCAAEngine {
         contradictionGraph: [],
         eventTimeline: [],
         executionTrace: ctx.executionTrace,
-        warnings: [haltDetail],
         quantumFacts: [],
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
-      stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
+      stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: {
+        totalCitations: 0,
+        verifiedCount: 0,
+        rejectedCount: 0,
+        validatedCitations: 0,
+        unverifiedCitations: 0,
+        auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
+        validationStandard: "100% deterministic canonical registry verification",
+        registrySignature: ""
+      }, equityPrinciples: [] },
+      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: {
+        agreementDate: null,
+        refusalDate: null,
+        isAgreementDateExtracted: false,
+        isRefusalDateExtracted: false,
+        calculationType: "other_category",
+        isValid: false,
+        errors: [haltDetail],
+        warnings: []
+      } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
-      stage5: { plaintChecklist: [], groundsForRejection: [haltDetail] },
-      stage6: { framedIssues: [], issueCount: 0 },
-      stage7: { oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
-      stage8: { elementGateStatus: "HALT", allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: [haltReason], ruleExecutionResults: [] },
-      stage9: { meritScore: 0, meritAssessment: "Analysis halted before merit evaluation." },
-      stage10: { equityPrinciples: [], equityScore: 0 },
+      stage5: {
+        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+        subjectMatter: { rule: null, governingSection: null, jurisdictionalFacts: null },
+        objectionStrategy: null,
+        plaintChecklist: [],
+        groundsForRejection: [haltDetail],
+        writtenStatementDeemedAdmissions: "",
+        counterclaimsOrSetOff: ""
+      },
+      stage6: {
+        plaintChecklist: [],
+        groundsForRejection: [],
+        writtenStatementDeemedAdmissions: "",
+        counterclaimsOrSetOff: "",
+        framedIssues: [],
+        issueCount: 0
+      },
+      stage7: { issues: [], oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
+      stage8: {
+        evidenceList: [],
+        burdenAssignments: [],
+        statutoryPresumptions: [],
+        elementGateStatus: "HALT",
+        allSatisfied: false,
+        missingElements: [],
+        unknownElements: [],
+        fatalFailures: [haltReason],
+        ruleExecutionResults: []
+      },
+      stage9: {
+        issueDetails: [],
+        meritScore: 0,
+        meritAssessment: "Analysis halted before merit evaluation."
+      },
+      stage10: {
+        applicablePrinciples: [],
+        discretionaryReliefCheck: null,
+        equityPrinciples: [],
+        equityScore: 0
+      },
       stage11: { proceduralCompliance: false, proceduralNotes: [haltDetail] },
       stage12: { appealable: false, appealGrounds: [] },
       stage13: { conclusion: `Execution halted: ${haltReason}`, confidence: "NONE", requiresHumanReview: true, humanReviewReason: haltDetail, elementSummary: [], legalConclusions: [], recommendations: [] },
-      f0Gate: { gateStatus: "HALT", conflictCount: 0, criticalConflicts: 0, warnings: [haltDetail] },
+      f0Gate: {
+        gateStatus: "HALT_CRITICAL_CONFLICT",
+        certification: "FAIL",
+        summary: haltDetail,
+        atomicFacts: [],
+        conflicts: [],
+        conflictCount: 0,
+        criticalConflicts: 0,
+        edges: []
+      },
       auditHash: "PENDING",
     };
   }
@@ -2774,23 +2843,69 @@ export class BCCAAEngine {
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
         executionTrace: ctx.executionTrace,
-        warnings: ctx.warnings,
         quantumFacts: [],
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
-      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
+      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: {
+        totalCitations: 0,
+        verifiedCount: 0,
+        rejectedCount: 0,
+        validatedCitations: 0,
+        unverifiedCitations: 0,
+        auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
+        validationStandard: "100% deterministic canonical registry verification",
+        registrySignature: ""
+      }, equityPrinciples: [] },
+      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: {
+        agreementDate: null,
+        refusalDate: null,
+        isAgreementDateExtracted: false,
+        isRefusalDateExtracted: false,
+        calculationType: "other_category",
+        isValid: false,
+        errors: ["F0 gate halted"],
+        warnings: []
+      } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: { plaintChecklist: [], groundsForRejection: ["F0 gate halted"] },
-      stage6: { framedIssues: [], issueCount: 0 },
-      stage7: { oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
-      stage8: { elementGateStatus: "HALT", allSatisfied: false, missingElements: [], unknownElements: [], fatalFailures: ["F0_CRITICAL_CONFLICT"], ruleExecutionResults: [] },
-      stage9: { meritScore: 0, meritAssessment: "Analysis halted before merit evaluation." },
-      stage10: { equityPrinciples: [], equityScore: 0 },
+      stage6: {
+        plaintChecklist: [],
+        groundsForRejection: [],
+        writtenStatementDeemedAdmissions: "",
+        counterclaimsOrSetOff: "",
+        framedIssues: [],
+        issueCount: 0
+      },
+      stage7: { issues: [], oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
+      stage8: {
+        evidenceList: [],
+        burdenAssignments: [],
+        statutoryPresumptions: [],
+        elementGateStatus: "HALT",
+        allSatisfied: false,
+        missingElements: [],
+        unknownElements: [],
+        fatalFailures: ["F0_CRITICAL_CONFLICT"],
+        ruleExecutionResults: []
+      },
+      stage9: {
+        issueDetails: [],
+        meritScore: 0,
+        meritAssessment: "Analysis halted before merit evaluation."
+      },
+      stage10: {
+        applicablePrinciples: [],
+        discretionaryReliefCheck: null,
+        equityPrinciples: [],
+        equityScore: 0
+      },
       stage11: { proceduralCompliance: false, proceduralNotes: ["F0 gate halted"] },
       stage12: { appealable: false, appealGrounds: [] },
       stage13: { conclusion: synthesis.conclusion, confidence: synthesis.confidence, requiresHumanReview: synthesis.requiresHumanReview, humanReviewReason: synthesis.humanReviewReason, elementSummary: synthesis.elementSummary, legalConclusions: synthesis.legalConclusions, recommendations: synthesis.recommendations },
-      f0Gate: { gateStatus: f0Gate.gateStatus, conflictCount: f0Gate.conflictCount ?? 0, criticalConflicts: f0Gate.criticalConflicts ?? 0, warnings: f0Gate.warnings ?? [] },
+      f0Gate: {
+        ...f0Gate,
+        gateStatus: f0Gate.gateStatus
+      },
       auditHash: "PENDING",
     };
   }

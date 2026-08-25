@@ -2627,7 +2627,6 @@ export class BCCAAEngine {
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
         executionTrace: ctx.executionTrace,
-        warnings: ctx.warnings,
         quantumFacts: atomicFacts.filter((f) => f.predicate.toLowerCase().includes("amount") || f.predicate.toLowerCase().includes("consideration") || f.predicate.toLowerCase().includes("deposit") || f.predicate.toLowerCase().includes("valuation")).map((f) => `${f.predicate}: ${f.object ?? "N/A"}`),
       },
       stage1: {
@@ -2646,7 +2645,7 @@ export class BCCAAEngine {
         accrualDate: deps.limitation.accrualDate,
         limitationPeriodYears: deps.limitation.limitationPeriodYears,
         calculationType: deps.limitation.calculationType,
-        timelineValidation: deps.limitation.timelineValidation,
+        timelineValidation: { ...deps.limitation.timelineValidation, calculationType: deps.limitation.timelineValidation?.calculationType ?? "missing_dates" },
       },
       stage4: {
         plaintiffs: deps.standi.plaintiffs.map((name: string) => ({
@@ -2666,7 +2665,7 @@ export class BCCAAEngine {
       },
       stage5: {
         plaintChecklist: deps.pleading.plaintChecklist,
-        groundsForRejection: deps.pleading.groundsForRejection,
+        groundsForRejection: deps.pleading.groundsForRejection ?? [],
       },
       stage6: {
         framedIssues: deps.issues.framedIssues,
@@ -2746,11 +2745,19 @@ export class BCCAAEngine {
         contradictionGraph: [],
         eventTimeline: [],
         executionTrace: ctx.executionTrace,
-        warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason],
         quantumFacts: [],
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
-      stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
+      stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: {
+          totalCitations: 0,
+          verifiedCount: 0,
+          rejectedCount: 0,
+          validatedCitations: 0,
+          unverifiedCitations: 0,
+          auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
+          validationStandard: "100% deterministic canonical registry verification",
+          registrySignature: ""
+        }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: { plaintChecklist: [], groundsForRejection: [haltDetail] },
@@ -2820,11 +2827,19 @@ export class BCCAAEngine {
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
         executionTrace: ctx.executionTrace,
-        warnings: ctx.warnings,
         quantumFacts: [],
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
-      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
+      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: {
+          totalCitations: 0,
+          verifiedCount: 0,
+          rejectedCount: 0,
+          validatedCitations: 0,
+          unverifiedCitations: 0,
+          auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
+          validationStandard: "100% deterministic canonical registry verification",
+          registrySignature: ""
+        }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: { plaintChecklist: [], groundsForRejection: ["F0 gate halted"] },
