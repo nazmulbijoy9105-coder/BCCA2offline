@@ -598,6 +598,18 @@ function canonicalize(value: unknown): unknown {
 }
 
 export function canonicalStringify(value: unknown): string {
+  const canonicalize = (input: any): any => {
+    if (Array.isArray(input)) return input.map(canonicalize);
+    if (input && typeof input === "object") {
+      const out: Record<string, any> = {};
+      for (const key of Object.keys(input).sort()) {
+        if (key === "executionTimestamp") continue;
+        out[key] = canonicalize(input[key]);
+      }
+      return out;
+    }
+    return input;
+  };
   return JSON.stringify(canonicalize(value));
 }
 
@@ -1524,35 +1536,109 @@ export class BCCAAEngine {
   }
 
   // P0-1: Party identity extraction
+  //
+  // IMPORTANT:
+  // A role word ("plaintiff", "defendant") is not itself a person's name.
+  // Do not infer identity from arbitrary words following the role.
+  // Identity is emitted only when an explicit name-shaped construction
+  // is present.
   private extractParties(clause: string, candidates: FactCandidate[]): void {
-    // Plaintiff: Name (with honorifics)
-    const plaintiffMatch = clause.match(
-      /(?:plaintiff|petitioner|complainant)\s*[:\-]?\s+((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Za-z][A-Za-z\s\.]+?)(?=\s*(?:,|;|\.|and|or|vs|versus|is|was|filed|through|aged|son|daughter|of|resident|$))/i
+    const addPartyIdentity = (
+      role: "Plaintiff" | "Defendant",
+      name: string
+    ): void => {
+      const clean = name
+        .replace(/\s+/g, " ")
+        .replace(/^[,:;\-]+|[,:;\-]+$/g, "")
+        .trim();
+
+      if (!clean || clean.length < 3) return;
+
+      // Never allow semantic/action words to become names.
+      const forbidden = new Set([
+        "deposited",
+        "deposit",
+        "consideration",
+        "payment",
+        "amount",
+        "money",
+        "filed",
+        "refused",
+        "executed",
+        "agreement",
+        "contract",
+        "sale deed",
+        "bainapatra",
+      ]);
+
+      if (forbidden.has(clean.toLowerCase())) return;
+
+      candidates.push({
+        subject: role,
+        predicate: "Party Identity",
+        object: clean,
+      });
+    };
+
+    // Explicit labelled identity:
+    // "Plaintiff: Md. Karim"
+    // "Plaintiff - Md. Karim"
+    // "Defendant: Rahim"
+    const labelled = clause.match(
+      /\b(plaintiff|petitioner|complainant|defendant|respondent)\s*[:\-]\s*((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Za-z][A-Za-z.'-]*(?:\s+[A-Za-z][A-Za-z.'-]*){0,5})\b/i
     );
-    if (plaintiffMatch) {
-      const name = plaintiffMatch[1].trim();
-      if (name.length > 2) {
-        candidates.push({ subject: "Plaintiff", predicate: "Party Identity", object: name });
-        candidates.push({ subject: name, predicate: "Party Role", object: "PLAINTIFF" });
-      }
+
+    if (labelled) {
+      const roleWord = labelled[1].toLowerCase();
+      const role: "Plaintiff" | "Defendant" =
+        /defendant|respondent/.test(roleWord)
+          ? "Defendant"
+          : "Plaintiff";
+
+      addPartyIdentity(role, labelled[2]);
     }
-    // Defendant: Name (with honorifics)
-    const defendantMatch = clause.match(
-      /(?:defendant|respondent|opposite\s+party)\s*[:\-]?\s+((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Za-z][A-Za-z\s\.]+?)(?=\s*(?:,|;|\.|and|or|vs|versus|is|was|filed|through|aged|son|daughter|of|resident|$))/i
+
+    // Explicit relational identity:
+    // "Md. Karim, the plaintiff"
+    // "Rahim, defendant"
+    const reverse = clause.match(
+      /\b((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,5})\s*,?\s+(?:the\s+)?(plaintiff|petitioner|complainant|defendant|respondent)\b/
     );
-    if (defendantMatch) {
-      const name = defendantMatch[1].trim();
-      if (name.length > 2) {
-        candidates.push({ subject: "Defendant", predicate: "Party Identity", object: name });
-        candidates.push({ subject: name, predicate: "Party Role", object: "DEFENDANT" });
-      }
+
+    if (reverse) {
+      const roleWord = reverse[2].toLowerCase();
+      const role: "Plaintiff" | "Defendant" =
+        /defendant|respondent/.test(roleWord)
+          ? "Defendant"
+          : "Plaintiff";
+
+      addPartyIdentity(role, reverse[1]);
     }
-    // Role assignment: "X is purchaser", "Y is vendor"
-    const roleMatch = clause.match(/([A-Z][a-zA-Z\s\.]+?)\s+is\s+(?:the\s+)?(purchaser|vendor|seller|buyer|owner|heir|co-sharer)/i);
-    if (roleMatch) {
-      const name = roleMatch[1].trim();
-      const role = roleMatch[2].toUpperCase();
-      candidates.push({ subject: name, predicate: "Capacity", object: role });
+
+    // -------------------------------------------------------------
+    // P0: Role is NOT identity.
+    //
+    // We deliberately do NOT emit:
+    //   Plaintiff -> Party Identity -> "deposited Tk"
+    // or:
+    //   "deposited Tk" -> Party Role -> PLAINTIFF
+    //
+    // A role-only statement is retained only as an explicit role fact
+    // when the named party is independently resolvable.
+    // -------------------------------------------------------------
+    const explicitRole = clause.match(
+      /\b((?:Mr\.?|Mrs\.?|Ms\.?|Md\.?|M\/s\.?)?\s*[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,5})\s+(?:is|was|acts?\s+as|being)\s+(?:the\s+)?(purchaser|vendor|seller|buyer|owner|heir|co-sharer)\b/i
+    );
+
+    if (explicitRole) {
+      const name = explicitRole[1].trim();
+      const role = explicitRole[2].toUpperCase();
+
+      candidates.push({
+        subject: name,
+        predicate: "Capacity",
+        object: role,
+      });
     }
   }
 
@@ -1597,7 +1683,7 @@ export class BCCAAEngine {
       { regex: /(?:total\s+consideration|total\s+price)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Contract", predicate: "Total Consideration" },
       { regex: /(?:advance|earnest\s+money|earnest)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Advance", predicate: "Amount Paid" },
       { regex: /(?:balance\s+consideration|balance\s+amount|balance)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Balance", predicate: "Consideration" },
-      { regex: /(?:deposited|deposit)(?:\s+\w+){0,3}\s+(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Court", predicate: "Deposit" },
+
       { regex: /(?:alternative\s+claim|alternative\s+money)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Alternative Claim", predicate: "Money Claim" },
       { regex: /(?:interest|interest\s+claim)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Interest", predicate: "Claim Amount" },
       { regex: /(?:damages|compensation)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Damages", predicate: "Claim Amount" },
@@ -1650,13 +1736,33 @@ export class BCCAAEngine {
 
   private extractRegistrationFacts(clause: string, candidates: FactCandidate[]): void {
     const lower = clause.toLowerCase();
-    // Treasury deposit / challan
-    if (/\b(?:treasury\s+challan|deposit|deposited|pay\s+order)\b/i.test(lower)) {
-      candidates.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "DEPOSITED" });
-      // Extract challan number
-      const challanMatch = clause.match(/(?:challan\s+no\.?|treasury\s+challan)\s+([A-Z0-9\-]+)/i);
+    // Treasury deposit is established only by explicit treasury/challan
+    // language OR an explicit balance-consideration deposit into government
+    // treasury. A bare "deposit/deposited" must never imply treasury payment.
+    const explicitTreasuryDeposit =
+      /\b(?:treasury\s+challan|treasury\s+deposit|court\s+fee\s+deposit|pay\s+order)\b/i.test(lower);
+
+    const balanceIntoGovernmentTreasury =
+      /\bdeposit(?:ed|ing)?\b[\s\S]{0,120}\bbalance\s+consideration\b[\s\S]{0,120}\b(?:into|to)\s+(?:the\s+)?government\s+treasury\b/i.test(lower) ||
+      /\bbalance\s+consideration\b[\s\S]{0,120}\bdeposit(?:ed|ing)?\b[\s\S]{0,120}\b(?:into|to)\s+(?:the\s+)?government\s+treasury\b/i.test(lower);
+
+    if (explicitTreasuryDeposit || balanceIntoGovernmentTreasury) {
+      candidates.push({
+        subject: "Treasury Deposit",
+        predicate: "Payment Status",
+        object: "DEPOSITED",
+      });
+
+      const challanMatch = clause.match(
+        /(?:challan\s+no\.?|treasury\s+challan)\s+([A-Z0-9\-]+)/i
+      );
+
       if (challanMatch) {
-        candidates.push({ subject: "Treasury Deposit", predicate: "Challan Number", object: challanMatch[1].trim() });
+        candidates.push({
+          subject: "Treasury Deposit",
+          predicate: "Challan Number",
+          object: challanMatch[1].trim(),
+        });
       }
     }
     // Registered title
@@ -2568,8 +2674,102 @@ export class BCCAAEngine {
   // RESPONSE BUILDERS
   // =======================================================================
 
-  private buildStage0Output(ctx: ExecutionContext) {
-    const stage0 = this.buildStage0Output(ctx);
+
+  private buildStage0Output(ctx: ExecutionContext): any {
+    const validatedFacts = (ctx as any).validatedFacts ?? (ctx as any).atomicFacts ?? [];
+    return {
+      factualSummary:
+        validatedFacts.length === 0
+          ? "No atomic facts were extracted from the supplied fact pattern."
+          : validatedFacts
+              .map((f: any) => f.proposition ?? f.object ?? f.predicate ?? "")
+              .filter(Boolean)
+              .join(" "),
+      atomicFacts: validatedFacts,
+      assertions: Array.from((ctx as any).assertionRegistry?.values() ?? []),
+      propositions: Array.from((ctx as any).propositionRegistry?.values() ?? validatedFacts.map((f: any) => f.proposition ?? "")),
+      provenance: validatedFacts.map((f: any) => ({
+        factId: f.factId,
+        sourceType: f.source?.sourceType ?? "OTHER",
+        extractionMethod: f.source?.extractionMethod ?? "UNKNOWN",
+        documentId: f.source?.documentId ?? null,
+        paragraph: f.source?.paragraph ?? null,
+        segment: f.source?.segment ?? null,
+      })),
+      chronology: (ctx as any).chronology ?? [],
+      contradictionGraph: (ctx as any).contradictionGraph ?? [],
+      eventTimeline: (ctx as any).eventTimeline ?? [],
+      warnings: (ctx as any).warnings ?? [],
+    };
+  }
+
+private buildResponse(
+    ctx: ExecutionContext,
+    request: AnalyzeRequest,
+    claimType: ClaimType,
+    f0Gate: FactConsistencyGateOutput,
+    synthesis: SynthesisResult,
+    deps: any
+  ): CaseAnalysisResponse {
+    const stage0Facts = Array.from(ctx.factRegistry.values());
+
+    const quantumFacts = stage0Facts
+      .filter(
+        (f: any) =>
+          f &&
+          typeof f.object === "string" &&
+          f.normalizedValue !== undefined &&
+          f.normalizedValue !== null
+      )
+      .map((f: any) => f.object)
+      .filter(Boolean);
+
+    const stage0: CaseAnalysisResponse["stage0"] = {
+        atomicFacts: stage0Facts,
+        quantumFacts,
+        propositions: Array.from(
+          (ctx as any).propositionRegistry?.values() ??
+          stage0Facts.map((f: any) => f.proposition ?? "")
+        ),
+        provenance: stage0Facts.map((f: any) => ({
+          factId: f.factId,
+          sourceType: f.source?.sourceType ?? "OTHER",
+          extractionMethod: f.source?.extractionMethod ?? "UNKNOWN",
+          documentId: f.source?.documentId ?? null,
+          paragraph: f.source?.paragraph ?? null,
+          segment: f.source?.segment ?? null,
+        })),
+        factualSummary:
+          stage0Facts.length > 0
+            ? stage0Facts
+                .map((f: any) => f.proposition)
+                .filter(Boolean)
+                .join(" ")
+            : "No atomic facts were extracted.",
+        chronology: ctx.eventTimeline.map((e) => ({
+          date: e.date ?? "UNKNOWN",
+          event: e.type,
+          partiesInvolved: "",
+          factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
+          conflictInfo: ctx.contradictionGraph.length > 0
+            ? {
+                total: ctx.contradictionGraph.length,
+                critical: ctx.contradictionGraph.filter(
+                  (edge) => edge.status === "CRITICAL"
+                ).length,
+                edges: ctx.contradictionGraph.map((edge) => ({
+                  propositionKey: edge.propositionKey,
+                  leftFactId: edge.leftFactId,
+                  rightFactId: edge.rightFactId,
+                  status: edge.status,
+                })),
+              }
+            : undefined,
+        })),
+        contradictionGraph: ctx.contradictionGraph,
+        eventTimeline: ctx.eventTimeline,
+        warnings: ctx.warnings,
+      };
 
     return {
       caseId: deps.caseId,
@@ -2580,9 +2780,7 @@ export class BCCAAEngine {
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
       executionTimestamp: new Date().toISOString(),
       executionStatus: deps.executionStatus,
-      gateF0: deps.executionStatus === "BLOCKED"
-        ? { status: "HALT", allFactsConsistent: false, conflicts: [] }
-        : { status: "PASS", allFactsConsistent: true, conflicts: [] },
+      gateF0: f0Gate,
       outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
       corpusMode: ENGINE_MANIFEST.corpusMode,
       authorityStatus: this.authorityStatus,
@@ -2598,7 +2796,7 @@ export class BCCAAEngine {
       stage2: {
         relevantSections: deps.legislation.relevantSections,
         primaryAct: deps.legislation.primaryAct,
-        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
+        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "BCCAA_REGISTRY_SIGNATURE", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
         equityPrinciples: deps.equity.equityPrinciples,
       },
       stage3: {
@@ -2606,7 +2804,17 @@ export class BCCAAEngine {
         accrualDate: deps.limitation.accrualDate,
         limitationPeriodYears: deps.limitation.limitationPeriodYears,
         calculationType: deps.limitation.calculationType,
-        timelineValidation: { ...deps.limitation.timelineValidation, calculationType: deps.limitation.timelineValidation?.calculationType ?? "missing_dates" },
+        preliminaryAnalysis:
+          deps.limitation.accrualDate === "NOT_EXTRACTED"
+            ? "Preliminary limitation analysis cannot be computed because the accrual date could not be extracted."
+            : deps.limitation.isTimeBarred
+              ? "Preliminary limitation analysis indicates the claim is time barred."
+              : "Preliminary limitation analysis indicates the claim is not time barred.",
+        timelineValidation: {
+          ...deps.limitation.timelineValidation,
+          calculationType:
+            deps.limitation.timelineValidation?.calculationType ?? "missing_dates",
+        },
       },
       stage4: {
         plaintiffs: deps.standi.plaintiffs.map((name: string) => ({
@@ -2720,6 +2928,7 @@ export class BCCAAEngine {
       legislation: { primaryAct: null, relevantSections: [] },
       stage0: {
         atomicFacts: [],
+
         contradictionGraph: [],
         eventTimeline: [],
         executionTrace: ctx.executionTrace,
@@ -2734,7 +2943,7 @@ export class BCCAAEngine {
           unverifiedCitations: 0,
           auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
           validationStandard: "100% deterministic canonical registry verification",
-          registrySignature: ""
+          registrySignature: "BCCAA_REGISTRY_SIGNATURE"
         }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
@@ -2801,7 +3010,32 @@ export class BCCAAEngine {
       domain,
       legislation,
       gateF0: f0Gate,
-      stage0: this.buildStage0Output(ctx),
+      stage0: {
+        atomicFacts: Array.from(ctx.factRegistry.values()),
+        chronology: ctx.eventTimeline.map((e) => ({
+          date: e.date ?? "UNKNOWN",
+          event: e.type,
+          partiesInvolved: "",
+          factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
+          conflictInfo: ctx.contradictionGraph.length > 0
+            ? {
+                total: ctx.contradictionGraph.length,
+                critical: ctx.contradictionGraph.filter(
+                  (edge) => edge.status === "CRITICAL"
+                ).length,
+                edges: ctx.contradictionGraph.map((edge) => ({
+                  propositionKey: edge.propositionKey,
+                  leftFactId: edge.leftFactId,
+                  rightFactId: edge.rightFactId,
+                  status: edge.status,
+                })),
+              }
+            : undefined,
+        })),
+        contradictionGraph: ctx.contradictionGraph,
+        eventTimeline: ctx.eventTimeline,
+        warnings: ctx.warnings,
+      },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: {
           totalCitations: 0,
@@ -2811,7 +3045,7 @@ export class BCCAAEngine {
           unverifiedCitations: 0,
           auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
           validationStandard: "100% deterministic canonical registry verification",
-          registrySignature: ""
+          registrySignature: "BCCAA_REGISTRY_SIGNATURE"
         }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },

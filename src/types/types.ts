@@ -386,6 +386,7 @@ export interface CaseHistoryItem {
 }
 
 export interface CaseAnalysisResponse {
+  auditHash?: string;
   caseId?: string;
   userId?: string;
   licenseId?: string;
@@ -495,7 +496,7 @@ export interface CaseAnalysisResponse {
     equityPrinciples: string[];
   };
   stage3: {
-    accrualDate?: string | null;
+    accrualDate?: string | null | "NOT_EXTRACTED";
     prescribedPeriod?: string | null;
     limitationArticle?: string | null;
     limitationPeriodYears?: number | null;
