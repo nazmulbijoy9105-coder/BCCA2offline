@@ -77,7 +77,7 @@ export class FactConsistencyGate {
       conflictInfo?: {
         total: number;
         critical: number;
-        edges: Array<{
+        edges?: Array<{
           propositionKey: string;
           leftFactId: string;
           rightFactId: string;
@@ -104,8 +104,11 @@ export class FactConsistencyGate {
     // ─────────────────────────────────────────────────────────────
     // 1. ATOMIC FACT INGESTION & NORMALIZATION
     // ─────────────────────────────────────────────────────────────
+    // F0-local fallback identity. Authoritative engine facts retain their
+    // engine-issued factId; this namespace is only for facts synthesized
+    // locally by F0 when no authoritative engine fact exists.
     let factCounter = 1;
-    const nextId = () => `FACT-${String(factCounter++).padStart(5, "0")}`;
+    const nextId = () => `F0-${String(factCounter++).padStart(5, "0")}`;
 
     // FIX #8: Prefer engine facts over re-parsing raw text.
     // If engine facts are supplied, derive death / living assertions from them.
