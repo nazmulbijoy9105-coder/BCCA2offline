@@ -2796,7 +2796,7 @@ private buildResponse(
       stage2: {
         relevantSections: deps.legislation.relevantSections,
         primaryAct: deps.legislation.primaryAct,
-        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "BCCAA_REGISTRY_SIGNATURE", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
+        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "NOT_EXECUTED", auditStatus: "NOT_EXECUTED", validationStandard: "Canonical citation verification not executed" },
         equityPrinciples: deps.equity.equityPrinciples,
       },
       stage3: {
@@ -2941,9 +2941,9 @@ private buildResponse(
           rejectedCount: 0,
           validatedCitations: 0,
           unverifiedCitations: 0,
-          auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
-          validationStandard: "100% deterministic canonical registry verification",
-          registrySignature: "BCCAA_REGISTRY_SIGNATURE"
+          auditStatus: "NOT_EXECUTED",
+          validationStandard: "Canonical citation verification not executed",
+          registrySignature: "NOT_EXECUTED"
         }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
@@ -3043,9 +3043,9 @@ private buildResponse(
           rejectedCount: 0,
           validatedCitations: 0,
           unverifiedCitations: 0,
-          auditStatus: "PASS_100_PERCENT_DETERMINISTIC",
-          validationStandard: "100% deterministic canonical registry verification",
-          registrySignature: "BCCAA_REGISTRY_SIGNATURE"
+          auditStatus: "NOT_EXECUTED",
+          validationStandard: "Canonical citation verification not executed",
+          registrySignature: "NOT_EXECUTED"
         }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
