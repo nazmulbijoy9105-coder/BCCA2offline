@@ -994,7 +994,7 @@ export class NoOpFactValidationProvider implements FactValidationProvider {
       truth: Tristate.UNKNOWN,
       validationStatus: ValidationStatus.UNVERIFIED,
       validation: {
-        ...f.validation,
+        ...(f.validation ?? {}),
         humanValidationStatus: HumanValidationStatus.NOT_VALIDATED,
       },
     }));
@@ -1213,7 +1213,7 @@ export class BCCAAEngine {
     if (!request.input) {
       (request as any).input = { factPattern: "" };
     }
-    request.input.factPattern = String(request.input.factPattern ?? "").trim();
+    request.input.factPattern = String(request.input?.factPattern ?? "").trim();
     // Fail-closed: missing submissionDate defaults to engine runtime date,
     // never silently assumes a historical date that could affect limitation
     request.input.submissionDate = request.input.submissionDate || new Date().toISOString().slice(0, 10);
@@ -1233,7 +1233,7 @@ export class BCCAAEngine {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
         return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
       }
-      if ((request.input.factPattern ?? "").length > MAX_INPUT_LENGTH) {
+      if ((request.input?.factPattern ?? "" ?? "").length > MAX_INPUT_LENGTH) {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
         return this.buildPreF0HaltResponse(ctx, caseId, "INPUT_TOO_LARGE", `maximum ${MAX_INPUT_LENGTH} characters.`);
       }
@@ -1407,7 +1407,8 @@ export class BCCAAEngine {
                 ...(existingFact.provenanceAssertions ?? []),
                 assertionId,
               ]);
-              existingFact.provenanceAssertions = Array.from(merged).sort();
+              const updatedFact = { ...existingFact, provenanceAssertions: Array.from(merged).sort() };
+            ctx.factRegistry.set(existingFact.factId, updatedFact);
               continue;
             }
             // Otherwise fall through: register as a distinct fact below so
@@ -1992,8 +1993,10 @@ export class BCCAAEngine {
             ctx.contradictionGraph.push(edge);
             if (!left.contradicts) left.contradicts = [];
             if (!right.contradicts) right.contradicts = [];
-            left.contradicts.push(right.factId);
-            right.contradicts.push(left.factId);
+            const updatedLeft = { ...left, contradicts: [...(left.contradicts ?? []), right.factId] };
+            const updatedRight = { ...right, contradicts: [...(right.contradicts ?? []), left.factId] };
+            ctx.factRegistry.set(left.factId, updatedLeft);
+            ctx.factRegistry.set(right.factId, updatedRight);
           }
         }
       }
@@ -2082,7 +2085,7 @@ export class BCCAAEngine {
     const predicateUpper = predicate.toUpperCase();
     const objectFilter = options.objectFilter ?? object;
     const familyFacts = Array.from(ctx.factRegistry.values()).filter(
-      (f) => f.subject.toUpperCase() === subjectUpper && f.predicate.toUpperCase() === predicateUpper,
+      (f) => f.subject?.toUpperCase() === subjectUpper && f.predicate?.toUpperCase() === predicateUpper,
     );
     const sameFamilyConflictingFacts = familyFacts
       .filter((f) => f.truth === Tristate.TRUE)
@@ -2677,8 +2680,8 @@ export class BCCAAEngine {
 
     return {
       caseId: deps.caseId,
-      userId: request.user.id,
-      licenseId: request.license.licenseId,
+      userId: request.user?.id ?? "anonymous",
+      licenseId: request.license?.licenseId ?? "UNLICENSED",
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
@@ -2891,8 +2894,8 @@ export class BCCAAEngine {
   ): CaseAnalysisResponse {
     return {
       caseId,
-      userId: request.user.id,
-      licenseId: request.license.licenseId,
+      userId: request.user?.id ?? "anonymous",
+      licenseId: request.license?.licenseId ?? "UNLICENSED",
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
@@ -3005,7 +3008,7 @@ export class BCCAAEngine {
     const factRegistryHash = canonicalHash(facts.map((f) => ({ factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, eventDate: f.eventDate, normalizedValue: f.normalizedValue })));
     const timelineHash = canonicalHash(ctx.eventTimeline);
     const executionTraceHash = canonicalHash(ctx.executionTrace);
-    const rawInputHash = canonicalHash(request.input.factPattern);
+    const rawInputHash = canonicalHash(request.input?.factPattern ?? "");
     const extractionHash = canonicalHash(facts.map((f) => f.proposition));
     const inputHash = canonicalHash(request.input);
     const forensicInputHash = computeForensicHash({
@@ -3032,7 +3035,7 @@ export class BCCAAEngine {
       forensicInputHash,
       manifest: ENGINE_MANIFEST,
       executionMilliseconds: 0,
-      analyzedByUserId: request.user.id,
+      analyzedByUserId: request.user?.id ?? "anonymous",
       outcome,
     };
     await this.auditSink.append(payload);
