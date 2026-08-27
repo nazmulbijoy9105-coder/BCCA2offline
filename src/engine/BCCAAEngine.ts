@@ -2142,7 +2142,7 @@ export class BCCAAEngine {
       if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
     }
     if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
-    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian)\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
     if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
     return "GENERAL_CIVIL";
   }

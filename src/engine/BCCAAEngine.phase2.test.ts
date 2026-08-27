@@ -38,14 +38,63 @@ describe("P1-18: Claim type detection — Declaration", () => {
   });
 });
 
-describe("P1-19: Claim type detection — Partition", () => {
-  it("detects partition suit or returns structured string", async () => {
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  P1-19  Partition suit — co-sharer and joint property detection            */
+/* ────────────────────────────────────────────────────────────────────────── */
+describe("P1-19: Partition suit — co-sharer and joint property detection", () => {
+  it("partition narrative resolves to DECLARATION_AND_POSSESSION domain", async () => {
     const r = await engine.analyze(makeRequest({
-      caseId: "P1-19",
+      caseId: "P1-19-A",
       factPattern: "Plaintiff seeks partition of joint family property. Defendant denies joint possession.",
     }));
-    const domain = r.stage1.primaryDomain;
-    expect(typeof domain).toBe("string");
+    expect(r.claimType).toBe("DECLARATION_AND_POSSESSION");
+    expect(r.domain).toBe("DECLARATION_AND_POSSESSION");
+  });
+
+  it("co-sharer facts are extracted from partition narrative", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-19-B",
+      factPattern: "The property is jointly owned by co-sharers. Plaintiff seeks partition.",
+    }));
+    const facts = r.stage0?.atomicFacts ?? [];
+    expect(facts.some((f: any) => f.predicate === "Ownership Structure" && f.object === "JOINT")).toBe(true);
+  });
+
+  it("partition with dispossession triggers possession element extraction", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-19-C",
+      factPattern: "Plaintiff was dispossessed from joint family property. Seeks partition and recovery of possession.",
+    }));
+    expect(r.stage1?.primaryDomain).toBe("DECLARATION_AND_POSSESSION");
+    const facts = r.stage0?.atomicFacts ?? [];
+    expect(facts.some((f: any) => f.predicate === "Possession Status")).toBe(true);
+  });
+
+  it("mutation status is extracted when mentioned in partition context", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-19-D",
+      factPattern: "Property mutated in plaintiff's name. Co-sharers deny mutation. Plaintiff seeks partition.",
+    }));
+    const facts = r.stage0?.atomicFacts ?? [];
+    expect(facts.some((f: any) => f.predicate === "Mutation Status")).toBe(true);
+  });
+
+  it("area facts are extracted in partition suits", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-19-E",
+      factPattern: "Property consists of 5.5 decimals. Co-sharers seek partition by metes and bounds.",
+    }));
+    const facts = r.stage0?.atomicFacts ?? [];
+    expect(facts.some((f: any) => f.predicate === "Area")).toBe(true);
+  });
+
+  it("missing title facts in partition suit appear in element gate unknowns", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-19-F",
+      factPattern: "Plaintiff seeks partition.",
+    }));
+    expect(r.stage8).toBeDefined();
+    expect(r.stage8?.elementGateStatus).toBeDefined();
   });
 });
 
