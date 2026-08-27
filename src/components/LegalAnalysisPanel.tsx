@@ -56,15 +56,15 @@ export const generateLegalMemo = (factPattern: string, result: CaseAnalysisRespo
 
   // Precedents section
   const precedentsLines = (result.stage2?.precedents && result.stage2.precedents.length > 0)
-    ? result.stage2.precedents.map(p => `- **${p.citation} (${p.court})**: *Holding*: "${p.holding}"\n  *Relevance*: ${p.relevance}`).join("\n\n")
+    ? (result.stage2?.precedents ?? []).map(p => `- **${p.citation} (${p.court})**: *Holding*: "${p.holding}"\n  *Relevance*: ${p.relevance}`).join("\n\n")
     : `- **75 DLR 142 (HCD)**: Held that a disowning affidavit has zero recognition under Muslim Personal Law (Shariat) Application Act 1937.\n- **56 DLR 215 (AD)**: Held that possession of one co-sharer is the possession of all co-sharers unless ouster is established.`;
 
   // Plaintiffs and Defendants
   const plaintiffsList = (result.stage4?.plaintiffs && result.stage4.plaintiffs.length > 0)
-    ? result.stage4.plaintiffs.map(p => `- **${p.name}** (${p.legalIdentity}): Capacity is *${p.capacity}* with standing.`).join("\n")
+    ? (result.stage4?.plaintiffs ?? []).map(p => `- **${p.name}** (${p.legalIdentity}): Capacity is *${p.capacity}* with standing.`).join("\n")
     : "- No plaintiffs registered.";
   const defendantsList = (result.stage4?.defendants && result.stage4.defendants.length > 0)
-    ? result.stage4.defendants.map(d => `- **${d.name}** (${d.legalIdentity}): Capacity is *${d.capacity}* under liability type *${d.liabilityType}*.`).join("\n")
+    ? (result.stage4?.defendants ?? []).map(d => `- **${d.name}** (${d.legalIdentity}): Capacity is *${d.capacity}* under liability type *${d.liabilityType}*.`).join("\n")
     : "- No defendants registered.";
 
   return `# CIVIL SUIT LEGAL MEMORANDUM & DRAFTING GUIDE

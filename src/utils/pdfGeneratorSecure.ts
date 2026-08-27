@@ -247,7 +247,7 @@ export async function downloadSecurePDF(
           </tr>
         </thead>
         <tbody>
-          ${analysis.stage0.chronology.map(c => `
+          ${(analysis.stage0?.chronology ?? []).map(c => `
             <tr>
               <td><strong>${c.date}</strong></td>
               <td>${c.event}</td>
@@ -272,7 +272,7 @@ export async function downloadSecurePDF(
           </tr>
         </thead>
         <tbody>
-          ${analysis.stage2.relevantSections.map(s => `
+          ${(analysis.stage2?.relevantSections ?? []).map(s => `
             <tr>
               <td><strong>${s.actName}</strong></td>
               <td><code>${s.sectionOrRule}</code></td>
@@ -301,7 +301,7 @@ export async function downloadSecurePDF(
             </tr>
           </thead>
           <tbody>
-            ${analysis.stage2.precedents.map(p => `
+            ${(analysis.stage2?.precedents ?? []).map(p => `
               <tr>
                 <td>
                   <strong>${p.citation}</strong>
@@ -345,7 +345,7 @@ export async function downloadSecurePDF(
       <div class="grid-2">
         <div class="card">
           <div class="card-title">Plaintiffs (${analysis.stage4.plaintiffs.length})</div>
-          ${analysis.stage4.plaintiffs.map(p => `
+          ${(analysis.stage4?.plaintiffs ?? []).map(p => `
             <div style="margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #E5E1D8;">
               <div><strong>Name:</strong> ${p.name} (${p.legalIdentity})</div>
               <div><strong>Capacity:</strong> ${p.capacity}</div>
@@ -355,7 +355,7 @@ export async function downloadSecurePDF(
         </div>
         <div class="card">
           <div class="card-title">Defendants (${analysis.stage4.defendants.length})</div>
-          ${analysis.stage4.defendants.map(d => `
+          ${(analysis.stage4?.defendants ?? []).map(d => `
             <div style="margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #E5E1D8;">
               <div><strong>Name:</strong> ${d.name} (${d.legalIdentity})</div>
               <div><strong>Capacity:</strong> ${d.capacity}</div>
@@ -471,7 +471,7 @@ export async function downloadSecurePDF(
       ${analysis.stage8.statutoryPresumptions && analysis.stage8.statutoryPresumptions.length > 0 ? `
         <div class="card" style="margin-top: 8px;">
           <div class="card-title">Statutory Presumptions Triggered</div>
-          ${analysis.stage8.statutoryPresumptions.map(sp => `
+          ${(analysis.stage8?.statutoryPresumptions ?? []).map(sp => `
             <div style="margin-bottom: 4px; font-size: 10px;">
               <strong>${sp.statuteSection}:</strong> ${sp.presumptionStyle} &mdash; <em>Effect: ${sp.effectOnCase}</em>
             </div>

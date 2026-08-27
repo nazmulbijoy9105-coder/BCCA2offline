@@ -110,7 +110,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
           {showAuditDetails && (
             <div className="mt-4 pt-4 border-t border-current/20 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {gateF0.auditTrail.map((item, idx) => (
+                {(gateF0?.auditTrail ?? []).map((item, idx) => (
                   <div key={idx} className="p-2.5 bg-white/90 border border-[#E5E1D8] text-xs space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-[10px] text-[#1E252B]">{item.checkId} &bull; {item.checkName}</span>
@@ -133,7 +133,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     Detected Contradictions & Conflict Resolution Requirements
                   </span>
                   <div className="space-y-2">
-                    {gateF0.conflicts.map((conf, ci) => (
+                    {(gateF0?.conflicts ?? []).map((conf, ci) => (
                       <div key={ci} className="p-2 bg-white border border-rose-200 text-xs">
                         <div className="font-mono font-bold text-rose-700 text-[10px] uppercase">
                           [{conf.conflictType}] &bull; Severity: {conf.severity}
@@ -257,7 +257,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                             </tr>
                           </thead>
                           <tbody>
-                            {gateF0.atomicFacts.map((af, i) => (
+                            {(gateF0?.atomicFacts ?? []).map((af, i) => (
                               <tr key={i} className="border-b border-[#E5E1D8] bg-white/70">
                                 <td className="p-1.5 font-mono font-bold text-[#1E252B] whitespace-nowrap">{af.factId}</td>
                                 <td className="p-1.5">{af.proposition}</td>
@@ -285,7 +285,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                           </tr>
                         </thead>
                         <tbody>
-                          {analysis.stage0.chronology.map((c, i) => (
+                          {(analysis.stage0?.chronology ?? []).map((c, i) => (
                             <tr key={i} className="border-b border-[#E5E1D8]">
                               <td className="p-2 font-mono font-bold text-[#1E252B] text-xs whitespace-nowrap">{c.date}</td>
                               <td className="p-2 text-xs">{c.event}</td>
@@ -305,7 +305,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                         <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Admitted / Conceded Facts</h4>
                       </div>
                       <ul className="list-disc pl-4 space-y-1.5 text-xs text-neutral-700">
-                        {analysis.stage0.admittedFacts.map((f, i) => (
+                        {(analysis.stage0?.admittedFacts ?? []).map((f, i) => (
                           <li key={i}>{f}</li>
                         ))}
                       </ul>
@@ -316,7 +316,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                         <h4 className="font-bold text-amber-900 font-mono uppercase text-[10px] tracking-wider">Disputed Contested Facts</h4>
                       </div>
                       <ul className="list-disc pl-4 space-y-1.5 text-xs text-neutral-700">
-                        {analysis.stage0.disputedFacts.map((f, i) => (
+                        {(analysis.stage0?.disputedFacts ?? []).map((f, i) => (
                           <li key={i}>{f}</li>
                         ))}
                       </ul>
@@ -330,7 +330,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                         <h4 className="font-bold text-slate-800 font-mono uppercase text-[10px] tracking-wider">Unknown & Missing Evidentiary Facts</h4>
                       </div>
                       <div className="space-y-2 mt-2">
-                        {analysis.stage0.unknownFacts.map((uf, i) => (
+                        {(analysis.stage0?.unknownFacts ?? []).map((uf, i) => (
                           <div key={i} className="p-2.5 bg-white border border-slate-200 rounded text-xs flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                             <div className="space-y-1 flex-1">
                               <div className="font-semibold text-slate-900 flex items-center gap-2">
@@ -356,7 +356,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded-md">
                       <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Quantum & Physical Dimensions</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {analysis.stage0.quantumFacts.map((q, i) => (
+                        {(analysis.stage0?.quantumFacts ?? []).map((q, i) => (
                           <div key={i} className="p-2 bg-white border border-[#E5E1D8] rounded text-xs text-neutral-700 font-mono">
                             {q}
                           </div>
@@ -383,7 +383,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div className="space-y-2">
                     <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Statutory Trigger Fact Matrix</h4>
                     <div className="space-y-2">
-                      {analysis.stage1.triggerFacts.map((t, i) => (
+                      {(analysis.stage1?.triggerFacts ?? []).map((t, i) => (
                         <div key={i} className="p-3 border border-[#E5E1D8] bg-white rounded flex flex-col sm:flex-row justify-between gap-2">
                           <div>
                             <span className="font-mono text-[10px] bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded mr-1.5 font-bold">
@@ -412,7 +412,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div className="space-y-2.5">
                     <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Relevant Statutory Provisions</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {analysis.stage2.relevantSections.map((s, i) => (
+                      {(analysis.stage2?.relevantSections ?? []).map((s, i) => (
                         <div key={i} className="p-3 border border-[#E5E1D8] rounded bg-[#FDFBF7]">
                           <div className="font-bold text-[#1E252B] flex items-center justify-between">
                             <span>{s.actName}</span>
@@ -460,7 +460,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                       </div>
                       
                       <div className="space-y-3">
-                        {analysis.stage2.precedents.map((p, i) => (
+                        {(analysis.stage2?.precedents ?? []).map((p, i) => (
                           <div key={i} className="p-3.5 border border-[#E5E1D8] bg-white rounded shadow-sm hover:border-[#C5A059] transition-colors">
                             <div className="flex flex-wrap justify-between items-center gap-1.5 text-[11px] font-bold text-[#1E252B] border-b border-[#F0ECE1] pb-2 mb-2">
                               <div className="flex items-center gap-2">
@@ -580,7 +580,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider border-b border-[#E5E1D8] pb-1">Plaintiffs</h4>
-                      {analysis.stage4.plaintiffs.map((p, i) => (
+                      {(analysis.stage4?.plaintiffs ?? []).map((p, i) => (
                         <div key={i} className="p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] rounded text-[11px]">
                           <strong>{p.name}</strong> ({p.legalIdentity})
                           <div className="text-neutral-500 mt-0.5">Capacity: {p.capacity}</div>
@@ -590,7 +590,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     </div>
                     <div className="space-y-2">
                       <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider border-b border-[#E5E1D8] pb-1">Defendants</h4>
-                      {analysis.stage4.defendants.map((d, i) => (
+                      {(analysis.stage4?.defendants ?? []).map((d, i) => (
                         <div key={i} className="p-2.5 bg-neutral-50 border border-neutral-200 rounded text-[11px]">
                           <strong>{d.name}</strong> ({d.legalIdentity})
                           <div className="text-neutral-500 mt-0.5">Capacity: {d.capacity}</div>
@@ -646,7 +646,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div>
                     <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Pleadings Plaint Checklist (CPC Order VII)</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {analysis.stage6.plaintChecklist.map((c, i) => (
+                      {(analysis.stage6?.plaintChecklist ?? []).map((c, i) => (
                         <div key={i} className="flex items-start gap-2 text-[11px]">
                           <span className="text-emerald-500 font-bold">✓</span>
                           <span>{c}</span>
@@ -662,7 +662,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                         <p className="text-[11px] italic text-neutral-500">No grounds detected for rejection of plaint.</p>
                       ) : (
                         <ul className="list-disc pl-4 text-[11px] text-amber-900 space-y-0.5">
-                          {analysis.stage6.groundsForRejection.map((g, i) => <li key={i}>{g}</li>)}
+                          {(analysis.stage6?.groundsForRejection ?? []).map((g, i) => <li key={i}>{g}</li>)}
                         </ul>
                       )}
                     </div>
@@ -679,7 +679,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                 <div className="space-y-4">
                   <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Framed Issues of Fact and Law (CPC Order XIV)</h4>
                   <div className="space-y-3">
-                    {analysis.stage7.issues.map((iss) => (
+                    {(analysis.stage7?.issues ?? []).map((iss) => (
                       <div key={iss.issueNo} className="p-3 bg-white border border-[#E5E1D8] rounded">
                         <div className="flex justify-between items-start gap-2 font-bold text-[#1E252B]">
                           <span>Issue {iss.issueNo}: Is {iss.title}?</span>
@@ -707,7 +707,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div>
                     <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Classified Evidentiary Matrix</h4>
                     <div className="space-y-2">
-                      {analysis.stage8.evidenceList.map((ev, i) => (
+                      {(analysis.stage8?.evidenceList ?? []).map((ev, i) => (
                         <div key={i} className="p-3 border border-[#E5E1D8] bg-[#FDFBF7] rounded">
                           <div className="flex justify-between font-bold text-[#1E252B]">
                             <span>{ev.item}</span>
@@ -727,12 +727,12 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     <div className="bg-white p-3 border border-[#E5E1D8] rounded">
                       <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Burden Allocation</h5>
                       <ul className="list-disc pl-4 text-[11px] space-y-0.5">
-                        {analysis.stage8.burdenAssignments.map((ba, i) => <li key={i}>{ba}</li>)}
+                        {(analysis.stage8?.burdenAssignments ?? []).map((ba, i) => <li key={i}>{ba}</li>)}
                       </ul>
                     </div>
                     <div className="bg-white p-3 border border-[#E5E1D8] rounded">
                       <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Statutory Presumptions</h5>
-                      {analysis.stage8.statutoryPresumptions.map((p, i) => (
+                      {(analysis.stage8?.statutoryPresumptions ?? []).map((p, i) => (
                         <div key={i} className="text-[11px] border-b border-neutral-100 pb-1.5 last:border-0 last:pb-0 mb-1.5 last:mb-0">
                           <strong>{p.statuteSection}</strong>: {p.presumptionStyle}
                         </div>
@@ -747,7 +747,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                 <div className="space-y-4">
                   <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Anticipated Two-Sided Trial Contest</h4>
                   <div className="space-y-3">
-                    {analysis.stage9.issueDetails.map((det) => (
+                    {(analysis.stage9?.issueDetails ?? []).map((det) => (
                       <div key={det.issueNo} className="p-4 bg-white border border-[#E5E1D8] rounded space-y-2.5">
                         <h5 className="font-bold text-sm text-[#1E252B]">
                           Issue {det.issueNo}: {det.issueTitle}
@@ -779,7 +779,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div>
                     <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Equitable Principles Checked</h4>
                     <div className="space-y-2">
-                      {analysis.stage10.applicablePrinciples.map((ap, i) => (
+                      {(analysis.stage10?.applicablePrinciples ?? []).map((ap, i) => (
                         <div key={i} className="p-3 border border-[#E5E1D8] rounded bg-[#FDFBF7] text-[11px]">
                           <strong className="text-[#1E252B]">{ap.principle}</strong>
                           <div className="text-neutral-500 mt-0.5">Application: {ap.application}</div>
@@ -801,7 +801,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div>
                     <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-3">Civil Procedure Lifecycle Milestones</h4>
                     <div className="relative border-l-2 border-[#C5A059] ml-2 pl-4 space-y-4">
-                      {analysis.stage11.timelineProgress.map((tp, i) => (
+                      {(analysis.stage11?.timelineProgress ?? []).map((tp, i) => (
                         <div key={i} className="relative">
                           <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-[#C5A059] border-4 border-white" />
                           <div className="text-[11px]">
@@ -902,7 +902,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                 <div className="space-y-4">
                   <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Appellate Hierarchy Cascade</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {analysis.stage12.appealNodes.map((n, i) => (
+                    {(analysis.stage12?.appealNodes ?? []).map((n, i) => (
                       <div key={i} className="p-3 bg-white border border-[#E5E1D8] rounded text-xs">
                         <div className="flex justify-between items-center border-b border-neutral-100 pb-1 mb-2">
                           <strong className="text-[#1E252B]">{n.level}</strong>
