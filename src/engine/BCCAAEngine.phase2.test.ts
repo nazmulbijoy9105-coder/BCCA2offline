@@ -203,3 +203,68 @@ describe("P2-15: Missing factPattern handling", () => {
     expect(r.stage0?.atomicFacts?.length ?? 0).toBe(0);
   });
 });
+
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  P1-18  Boundary input resilience                                          */
+/* ────────────────────────────────────────────────────────────────────────── */
+describe("P1-18: Boundary input resilience", () => {
+  it("empty fact pattern does not crash and returns structured response", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-18-A",
+      factPattern: "",
+    }));
+    expect(r).toBeDefined();
+    expect(r.caseId).toBe("P1-18-A");
+    expect(r.executionStatus).toBeDefined();
+  });
+
+  it("whitespace-only fact pattern is treated as empty and handled gracefully", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-18-B",
+      factPattern: "   \n\t  ",
+    }));
+    expect(r).toBeDefined();
+    expect(r.caseId).toBe("P1-18-B");
+    expect(r.stage0?.atomicFacts?.length ?? 0).toBe(0);
+  });
+
+  it("missing optional submissionDate does not break limitation engine", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-18-D",
+      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+      submissionDate: undefined as any,
+    }));
+    expect(r.stage3).toBeDefined();
+    expect(r.stage3.isTimeBarred).not.toBeUndefined();
+  });
+
+  it("very long fact pattern (10k characters) processes without error", async () => {
+    const longPattern = "The defendant refused. ".repeat(450);
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-18-E",
+      factPattern: longPattern,
+    }));
+    expect(r).toBeDefined();
+    expect(r.caseId).toBe("P1-18-E");
+    expect(r.executionStatus).toBeDefined();
+  });
+
+  it("special characters and pseudo-markup in fact pattern do not cause crashes", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: "P1-18-F",
+      factPattern: "Claim <script>alert(1)</script> & \"quotes\" 'apostrophes' \\x00\\x01",
+    }));
+    expect(r).toBeDefined();
+    expect(r.caseId).toBe("P1-18-F");
+  });
+
+  it("null caseId is rejected or generates a fallback identifier", async () => {
+    const r = await engine.analyze(makeRequest({
+      caseId: null as any,
+      factPattern: "Facts.",
+    }));
+    expect(r.caseId).toBeTruthy();
+    expect(typeof r.caseId).toBe("string");
+  });
+});

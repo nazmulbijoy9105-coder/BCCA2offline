@@ -1201,8 +1201,21 @@ export class BCCAAEngine {
   // =======================================================================
 
   async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
-    const startTime = 0;
-    const caseId = request.caseId ?? "BCCAA-STATIC-ID";
+    const startTime = Date.now();
+
+    // ── P1-18: Defensive input sanitization ─────────────────────────────
+    // Deep clone to preserve caller immutability (P2-12)
+    request = JSON.parse(JSON.stringify(request));
+
+    const caseId = request?.caseId?.toString()?.trim()
+      || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
+
+    if (!request.input) {
+      (request as any).input = { factPattern: "" };
+    }
+    request.input.factPattern = String(request.input.factPattern ?? "").trim();
+    request.input.submissionDate = request.input.submissionDate || "2024-01-01";
+    // ────────────────────────────────────────────────────────────────────
     const ctx = newContext();
 
     try {
