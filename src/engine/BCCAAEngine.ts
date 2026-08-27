@@ -1211,7 +1211,7 @@ export class BCCAAEngine {
       || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
 
     if (!request.input) {
-      (request as any).input = { factPattern: "" };
+      (request as unknown as { input: { factPattern: string } }).input = { factPattern: "" };
     }
     request.input.factPattern = String(request.input?.factPattern ?? "").trim();
     // Fail-closed: missing submissionDate defaults to engine runtime date,
@@ -3098,7 +3098,7 @@ export class BCCAAEngine {
         ruleExecutionResults: (response.stage8?.ruleExecutionResults ?? []).map((r) => ({
           ruleId: r.ruleId,
           status: r.status,
-          predicateResults: r.predicateResults.map((p: any) => ({
+          predicateResults: r.predicateResults.map((p: { predicateId: string; predicate: string; status: string; supportingFactIds: string[]; factIds: string[]; conflictDetected: boolean }) => ({
             predicateId: p.predicateId,
             status: p.status,
             factIds: p.factIds,
@@ -3155,6 +3155,6 @@ export class BCCAAEngine {
   // =======================================================================
 
   private rp_authorityIds(rule: LegalRule): string[] {
-    return (rule as any).authorityIds ?? [rule.authority.act];
+    return (rule as unknown as { authorityIds?: string[] }).authorityIds ?? [rule.authority.act];
   }
 }
