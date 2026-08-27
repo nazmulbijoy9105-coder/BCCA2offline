@@ -386,6 +386,7 @@ export interface CaseHistoryItem {
 }
 
 export interface CaseAnalysisResponse {
+  auditHash?: string;
   caseId?: string;
   userId?: string;
   licenseId?: string;

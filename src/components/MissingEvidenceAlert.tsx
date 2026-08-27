@@ -144,7 +144,7 @@ export default function MissingEvidenceAlert({ analysis }: MissingEvidenceAlertP
       }
 
       // Check 2: Contested Mutation Details (Namjari)
-      const hasMutationContest = analysis.stage0.chronology.some(c => 
+      const hasMutationContest = (analysis.stage0?.chronology ?? []).some(c => 
         c.event.toLowerCase().includes("mutation") || 
         c.event.toLowerCase().includes("namjari") || 
         c.event.toLowerCase().includes("khatian")
@@ -159,7 +159,7 @@ export default function MissingEvidenceAlert({ analysis }: MissingEvidenceAlertP
       }
 
       // Check 3: Urgent Third-Party Sale Threat (Temporary Injunction under Order 39)
-      const hasInjunctionUrgency = analysis.stage0.chronology.some(c => 
+      const hasInjunctionUrgency = (analysis.stage0?.chronology ?? []).some(c => 
         c.event.toLowerCase().includes("injunction") || 
         c.event.toLowerCase().includes("third party") || 
         c.event.toLowerCase().includes("sell")

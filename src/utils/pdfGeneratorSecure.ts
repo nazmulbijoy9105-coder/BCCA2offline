@@ -201,8 +201,8 @@ export async function downloadSecurePDF(
         <div class="card-title">Jurisdictional Overview</div>
         <div><strong>Primary Domain:</strong> ${analysis.stage1.primaryDomain}</div>
         <div><strong>Primary Act:</strong> ${analysis.stage2.primaryAct}</div>
-        <div><strong>Competent Forum:</strong> ${analysis.stage5.pecuniary.courtLevel}</div>
-        <div><strong>Pecuniary Valuation:</strong> ${analysis.stage5.pecuniary.valuation}</div>
+        <div><strong>Competent Forum:</strong> ${analysis.stage5?.pecuniary?.courtLevel ?? ""}</div>
+        <div><strong>Pecuniary Valuation:</strong> ${analysis.stage5?.pecuniary?.valuation ?? ""}</div>
       </div>
       <div class="card">
         <div class="card-title">Limitation & Maintainability</div>
@@ -377,15 +377,15 @@ export async function downloadSecurePDF(
         <tbody>
           <tr>
             <td style="width: 25%;"><strong>Pecuniary Jurisdiction</strong></td>
-            <td>Valuation: <strong>${analysis.stage5.pecuniary.valuation}</strong> &bull; Competent Court: <strong>${analysis.stage5.pecuniary.courtLevel}</strong><br><em>Notes:</em> ${analysis.stage5.pecuniary.suitsValuationActNotes}</td>
+            <td>Valuation: <strong>${analysis.stage5?.pecuniary?.valuation ?? ""}</strong> &bull; Competent Court: <strong>${analysis.stage5?.pecuniary?.courtLevel ?? ""}</strong><br><em>Notes:</em> ${analysis.stage5?.pecuniary?.suitsValuationActNotes ?? ""}</td>
           </tr>
           <tr>
             <td><strong>Territorial Jurisdiction</strong></td>
-            <td>Rule: ${analysis.stage5.territorial.rule} (${analysis.stage5.territorial.governingSection})<br><em>Facts:</em> ${analysis.stage5.territorial.jurisdictionalFacts}</td>
+            <td>Rule: ${analysis.stage5?.territorial?.rule ?? ""} (${analysis.stage5?.territorial?.governingSection ?? ""})<br><em>Facts:</em> ${analysis.stage5?.territorial?.jurisdictionalFacts ?? ""}</td>
           </tr>
           <tr>
             <td><strong>Subject Matter Jurisdiction</strong></td>
-            <td>Forum: ${analysis.stage5.subjectMatter.forum} (${analysis.stage5.subjectMatter.governingStatute}) &bull; Excluded: ${analysis.stage5.subjectMatter.isExcluded ? 'YES' : 'NO'}</td>
+            <td>Forum: ${analysis.stage5?.subjectMatter?.forum ?? ""} (${analysis.stage5?.subjectMatter?.governingStatute ?? ""}) &bull; Excluded: ${analysis.stage5?.subjectMatter?.isExcluded ? 'YES' : 'NO'}</td>
           </tr>
           <tr>
             <td><strong>Jurisdictional Defense</strong></td>
@@ -494,7 +494,7 @@ export async function downloadSecurePDF(
           </tr>
         </thead>
         <tbody>
-          ${(analysis.stage12.appealNodes ?? []).map((node: any) => `
+          ${(analysis.stage12?.appealNodes ?? []).map((node: any) => `
             <tr>
               <td><strong>${node.level}</strong></td>
               <td>${node.authority}</td>

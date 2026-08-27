@@ -222,13 +222,13 @@ export async function downloadCaseBriefDOCX(
       new TableRow({
         children: [
           createCell("Competent Court Forum"),
-          createCell(analysis.stage5.pecuniary.courtLevel ?? "", { bold: true }),
+          createCell(analysis.stage5?.pecuniary?.courtLevel ?? "", { bold: true }),
         ],
       }),
       new TableRow({
         children: [
           createCell("Court Fees & Valuation Strategy"),
-          createCell(analysis.stage5.pecuniary.suitsValuationActNotes || "As per Court Fees Act 1870"),
+          createCell(analysis.stage5?.pecuniary?.suitsValuationActNotes || "As per Court Fees Act 1870"),
         ],
       }),
     ],
@@ -324,7 +324,7 @@ export async function downloadCaseBriefDOCX(
             spacing: { before: 100, after: 200 },
             children: [
               new TextRun({
-                text: `  SUIT STATUS: ${isMaintainable ? "MAINTAINABLE WITHIN LIMITATION" : "TIME-BARRED UNDER SECTION 3 LIMITATION ACT"}  |  FORUM: ${analysis.stage5.pecuniary.courtLevel}  `,
+                text: `  SUIT STATUS: ${isMaintainable ? "MAINTAINABLE WITHIN LIMITATION" : "TIME-BARRED UNDER SECTION 3 LIMITATION ACT"}  |  FORUM: ${analysis.stage5?.pecuniary?.courtLevel ?? ""}  `,
                 bold: true,
                 size: 20,
                 color: isMaintainable ? "065F46" : "991B1B",

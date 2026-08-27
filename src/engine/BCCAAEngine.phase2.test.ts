@@ -82,7 +82,7 @@ describe("P1-22: Domain classification determinism", () => {
 describe("P2-05: Precedent security hash token", () => {
   it("every precedent carries a non-empty security hash token", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P2-05" }));
-    for (const p of r.stage2.precedents) {
+    for (const p of r.stage2!.precedents!) {
       expect(p.securityHashToken).toBeTruthy();
       expect(typeof p.securityHashToken).toBe("string");
     }
@@ -92,7 +92,7 @@ describe("P2-05: Precedent security hash token", () => {
 describe("P2-06: Precedent verification hash", () => {
   it("every precedent carries a non-empty verification hash", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P2-06" }));
-    for (const p of r.stage2.precedents) {
+    for (const p of r.stage2!.precedents!) {
       expect(p.verificationHash).toBeTruthy();
       expect(typeof p.verificationHash).toBe("string");
     }
@@ -102,7 +102,7 @@ describe("P2-06: Precedent verification hash", () => {
 describe("P2-07: Deterministic citation flag", () => {
   it("isDeterministic flag is boolean on all precedents", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P2-07" }));
-    for (const p of r.stage2.precedents) {
+    for (const p of r.stage2!.precedents!) {
       expect(typeof p.isDeterministic).toBe("boolean");
     }
   });
@@ -111,7 +111,7 @@ describe("P2-07: Deterministic citation flag", () => {
 describe("P2-08: Citation audit count accuracy", () => {
   it("audit totals match actual precedent array length", async () => {
     const r = await engine.analyze(makeRequest({ caseId: "P2-08" }));
-    expect(r.stage2!.citationValidationAudit!.totalCitations).toBe(r.stage2.precedents.length);
+    expect(r.stage2!.citationValidationAudit!.totalCitations).toBe((r.stage2!.precedents!).length);
   });
 });
 

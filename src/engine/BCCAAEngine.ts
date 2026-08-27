@@ -2177,10 +2177,11 @@ export class BCCAAEngine {
         limitationPeriodYears = claimType === "SPECIFIC_PERFORMANCE" ? 3 : 12;
         calculationType = "earliest_date_fallback";
       } else {
+        accrualDate = "NOT_EXTRACTED";
         calculationType = "missing_dates";
       }
     }
-    let isTimeBarred: boolean | null = null;
+    let isTimeBarred = false;
     if (accrualDate && limitationPeriodYears !== null && ctx.referenceDate) {
       const accrualTs = strictDateTimestamp(accrualDate);
       const refTs = ctx.referenceDate;
@@ -2230,7 +2231,7 @@ export class BCCAAEngine {
         ruleId: rule.ruleId,
         status: ruleSatisfied ? "SATISFIED" : "UNKNOWN",
         predicateResults,
-        authorityIds: rule.authorityIds ?? [rule.authority.act],
+        authorityIds: [rule.authority.act],
         burden: rule.burden,
         legalEffect: rule.legalEffect,
         explanationCode: ruleSatisfied ? "ALL_PREDICATES_TRUE" : "PREDICATE_NOT_TRUE",
@@ -2600,7 +2601,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
       executionStatus: deps.executionStatus,
       outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2610,6 +2611,9 @@ export class BCCAAEngine {
       legislation: deps.legislation,
       stage0: {
         atomicFacts,
+        propositions: atomicFacts.map((f) => f.proposition),
+        provenance: atomicFacts.map((f) => ({ factId: f.factId, source: f.source, extractionMethod: f.source.extractionMethod })),
+        factualSummary: atomicFacts.length > 0 ? `Extracted ${atomicFacts.length} facts from input narrative.` : "No facts extracted.",
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
         executionTrace: ctx.executionTrace,
@@ -2626,6 +2630,7 @@ export class BCCAAEngine {
         primaryAct: deps.legislation.primaryAct,
         citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
         equityPrinciples: deps.equity.equityPrinciples,
+        precedents: [],
       },
       stage3: {
         isTimeBarred: deps.limitation.isTimeBarred,
@@ -2723,7 +2728,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
       executionStatus: "ERROR",
       outcome: "ERROR",
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2733,6 +2738,10 @@ export class BCCAAEngine {
       legislation: { primaryAct: null, relevantSections: [] },
       stage0: {
         atomicFacts: [],
+        propositions: [],
+        provenance: [],
+        factualSummary: "No facts extracted.",
+        chronology: [],
         contradictionGraph: [],
         eventTimeline: [],
         executionTrace: ctx.executionTrace,
@@ -2740,8 +2749,8 @@ export class BCCAAEngine {
         quantumFacts: [],
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
-      stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
+      stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
+      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
@@ -2782,7 +2791,7 @@ export class BCCAAEngine {
       },
       stage12: { appealNodes: [], appealable: false, appealGrounds: [] },
       stage13: { conclusion: `Execution halted: ${haltReason}`, confidence: "NONE", requiresHumanReview: true, humanReviewReason: haltDetail, elementSummary: [], legalConclusions: [], recommendations: [] },
-      f0Gate: { gateStatus: "HALT" as const, conflictCount: 0, criticalConflicts: 0, warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason] },
+      gateF0: { gateStatus: "HALT" as const, conflicts: [], atomicFacts: [], conflictCount: 0, criticalConflicts: 0, warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason] },
       auditHash: "PENDING",
     };
   }
@@ -2804,7 +2813,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: new Date().toISOString(),
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
       executionStatus: "BLOCKED",
       outcome: "HALTED",
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2814,6 +2823,9 @@ export class BCCAAEngine {
       legislation,
       stage0: {
         atomicFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, propositionId: f.propositionId, assertionId: f.assertionId, proposition: f.proposition, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, polarity: f.polarity, source: f.source, assertionType: f.assertionType, validationStatus: f.validationStatus, confidence: f.confidence, assertedBy: f.assertedBy, eventDate: f.eventDate, normalizedValue: f.normalizedValue, contradicts: f.contradicts, supports: f.supports, disputedProposition: f.disputedProposition, validation: f.validation, provenanceAssertions: f.provenanceAssertions })),
+        propositions: Array.from(ctx.factRegistry.values()).map((f) => f.proposition),
+        provenance: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, source: f.source, extractionMethod: f.source.extractionMethod })),
+        factualSummary: ctx.factRegistry.size > 0 ? `Extracted ${ctx.factRegistry.size} facts from input narrative.` : "No facts extracted.",
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
         executionTrace: ctx.executionTrace,
@@ -2821,8 +2833,8 @@ export class BCCAAEngine {
         quantumFacts: [],
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
-      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
+      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
+      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },

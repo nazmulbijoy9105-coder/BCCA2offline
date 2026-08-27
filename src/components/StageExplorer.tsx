@@ -90,7 +90,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
             <div className="flex items-center gap-3 flex-shrink-0">
               <div className="text-right hidden sm:block">
                 <div className="text-[10px] font-mono text-neutral-600">
-                  Critical Conflicts: <strong className={gateF0.criticalConflictCount > 0 ? "text-rose-600" : "text-emerald-700"}>{gateF0.criticalConflictCount}</strong>
+                  Critical Conflicts: <strong className={(gateF0?.criticalConflictCount ?? 0) > 0 ? "text-rose-600" : "text-emerald-700"}>{gateF0?.criticalConflictCount ?? 0}</strong>
                 </div>
                 <div className="text-[10px] font-mono text-neutral-600">
                   Missing Docs: <strong>{gateF0.missingDocumentsCount}</strong> &bull; Verified Rules: <strong>{gateF0.verifiedRulesCount}</strong>
@@ -127,7 +127,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                 ))}
               </div>
 
-              {gateF0.conflicts.length > 0 && (
+              {(gateF0?.conflicts ?? []).length > 0 && (
                 <div className="p-3 bg-rose-100/70 border border-rose-300 rounded-none space-y-2">
                   <span className="font-mono font-bold text-[10px] text-rose-900 uppercase tracking-wider block">
                     Detected Contradictions & Conflict Resolution Requirements
@@ -235,14 +235,14 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   )}
 
                   {/* Gateway F0: Atomic Facts Table */}
-                  {gateF0 && gateF0.atomicFacts.length > 0 && (
+                  {gateF0 && (gateF0?.atomicFacts ?? []).length > 0 && (
                     <div className="border border-[#E5E1D8] p-3.5 bg-[#FDFBF7]">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider text-xs">
                           Immutable Atomic Facts (F0 Normalized Units)
                         </h4>
                         <span className="text-[10px] font-mono font-bold text-[#C5A059]">
-                          {gateF0.atomicFacts.length} Atomic Propositions
+                          {(gateF0?.atomicFacts ?? []).length} Atomic Propositions
                         </span>
                       </div>
                       <div className="overflow-x-auto max-h-48 overflow-y-auto">
@@ -443,12 +443,12 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                         </p>
                       </div>
                       <code className="text-[9px] font-mono text-emerald-900 bg-emerald-100/80 px-2 py-1 rounded border border-emerald-300">
-                        {analysis.stage2.citationValidationAudit.registrySignature.substring(0, 32)}
+                        {analysis.stage2?.citationValidationAudit?.registrySignature?.substring(0, 32) ?? ""}
                       </code>
                     </div>
                   )}
 
-                  {analysis.stage2.precedents.length > 0 && (
+                  {(analysis.stage2?.precedents ?? []).length > 0 && (
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between">
                         <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">
@@ -619,18 +619,18 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded">
                       <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Territorial</h5>
-                      <p className="text-[11px]">{analysis.stage5.territorial.rule}</p>
-                      <span className="text-[9px] font-mono text-[#C5A059] block mt-1">Section: {analysis.stage5.territorial.governingSection}</span>
+                      <p className="text-[11px]">{analysis.stage5?.territorial?.rule ?? ""}</p>
+                      <span className="text-[9px] font-mono text-[#C5A059] block mt-1">Section: {analysis.stage5?.territorial?.governingSection ?? ""}</span>
                     </div>
                     <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded">
                       <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Pecuniary</h5>
-                      <p className="text-[11px]">Valuation: {analysis.stage5.pecuniary.valuation}</p>
+                      <p className="text-[11px]">Valuation: {analysis.stage5?.pecuniary?.valuation ?? ""}</p>
                       <p className="text-[11px] font-bold text-[#C5A059]">{analysis.stage5?.pecuniary?.courtLevel ?? "Not determined"}</p>
                     </div>
                     <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded">
                       <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Subject Matter</h5>
-                      <p className="text-[11px]">Forum: {analysis.stage5.subjectMatter.forum}</p>
-                      <span className="text-[9px] font-mono text-neutral-500 block mt-1">Statute: {analysis.stage5.subjectMatter.governingStatute}</span>
+                      <p className="text-[11px]">Forum: {analysis.stage5?.subjectMatter?.forum ?? ""}</p>
+                      <span className="text-[9px] font-mono text-neutral-500 block mt-1">Statute: {analysis.stage5?.subjectMatter?.governingStatute ?? ""}</span>
                     </div>
                   </div>
 
@@ -658,7 +658,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                     <div className="bg-amber-50/20 p-3 border border-amber-200/50 rounded">
                       <h5 className="font-bold text-amber-800 font-mono uppercase text-[10px] tracking-wider mb-1">Grounds for Plaint Rejection (O7 R11)</h5>
-                      {analysis.stage6.groundsForRejection.length === 0 ? (
+                      {(analysis.stage6?.groundsForRejection ?? []).length === 0 ? (
                         <p className="text-[11px] italic text-neutral-500">No grounds detected for rejection of plaint.</p>
                       ) : (
                         <ul className="list-disc pl-4 text-[11px] text-amber-900 space-y-0.5">
