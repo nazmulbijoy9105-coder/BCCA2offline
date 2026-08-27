@@ -1,0 +1,998 @@
+import React, { useState } from "react";
+import { CaseAnalysisResponse } from "../types/types";
+import TimelineValidation from "./TimelineValidation";
+import { 
+  Briefcase, Scale, Calendar, AlertTriangle, Users, MapPin, 
+  FileCheck, List, Shield, Eye, HelpCircle, GitCommit, CornerRightDown, Layers,
+  CheckCircle2, AlertOctagon, ChevronDown, ChevronUp
+} from "lucide-react";
+
+interface StageExplorerProps {
+  analysis: CaseAnalysisResponse;
+}
+
+export default function StageExplorer({ analysis }: StageExplorerProps) {
+  const [activeStage, setActiveStage] = useState<number>(0);
+  const [showAuditDetails, setShowAuditDetails] = useState<boolean>(false);
+
+  const gateF0 = analysis.gateF0;
+
+  const stagesList = [
+    { num: 0, title: "Fact Matrix & Chronology", icon: Briefcase },
+    { num: 1, title: "Domain Classification", icon: Layers },
+    { num: 2, title: "Legislation Map & Precedents", icon: Scale },
+    { num: 3, title: "Limitation Calculations", icon: Calendar },
+    { num: 4, title: "Party Capacity & Joinders", icon: Users },
+    { num: 5, title: "Jurisdiction (Territorial/Pecuniary)", icon: MapPin },
+    { num: 6, title: "Pleadings & Plaint Checklist", icon: FileCheck },
+    { num: 7, title: "Framer of Issues", icon: List },
+    { num: 8, title: "Evidence Map & Presumptions", icon: Shield },
+    { num: 9, title: "Two-Sided Trial Contest", icon: Eye },
+    { num: 10, title: "Equitable Defences Check", icon: HelpCircle },
+    { num: 11, title: "CPC Suit Lifecycle", icon: GitCommit },
+    { num: 12, title: "Appeals & Revisions", icon: CornerRightDown },
+    { num: 13, title: "Synthesis & Final Execution", icon: Scale },
+  ];
+
+  const getCertColorClasses = (cert?: string) => {
+    switch (cert) {
+      case "GREEN":
+        return "bg-emerald-50 text-emerald-800 border-emerald-600";
+      case "AMBER":
+        return "bg-amber-50 text-amber-800 border-amber-500";
+      case "RED":
+        return "bg-rose-50 text-rose-800 border-rose-600";
+      case "BLACK":
+        return "bg-neutral-900 text-neutral-100 border-neutral-700";
+      default:
+        return "bg-blue-50 text-blue-800 border-blue-600";
+    }
+  };
+
+  return (
+    <div className="space-y-6 font-sans">
+      {/* Enterprise Case Readiness & Consistency Banner */}
+      {gateF0 && (
+        <div className={`p-4 border-2 rounded-none transition-all ${
+          gateF0.gateStatus === "HALT_CRITICAL_CONFLICT"
+            ? "bg-rose-50/80 border-rose-700 text-rose-950"
+            : gateF0.gateStatus === "CONDITIONALLY_CONSISTENT"
+            ? "bg-amber-50/70 border-amber-600 text-amber-950"
+            : "bg-[#FDFBF7] border-[#1E252B] text-[#1E252B]"
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              {gateF0.gateStatus === "HALT_CRITICAL_CONFLICT" ? (
+                <AlertOctagon className="w-6 h-6 text-rose-600 flex-shrink-0 mt-0.5" />
+              ) : gateF0.gateStatus === "CONDITIONALLY_CONSISTENT" ? (
+                <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 bg-[#1E252B] text-white">
+                    GATEWAY F0 &bull; FACT CONSISTENCY GATE
+                  </span>
+                  <span className={`text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 border ${getCertColorClasses(gateF0.certification)}`}>
+                    CERTIFICATION: {gateF0.certification}
+                  </span>
+                  <span className="text-xs font-mono font-bold">
+                    Readiness Score: {gateF0.readinessScore}%
+                  </span>
+                </div>
+                <p className="text-xs font-medium mt-1 font-sans">
+                  {gateF0.summary}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="text-right hidden sm:block">
+                <div className="text-[10px] font-mono text-neutral-600">
+                  Critical Conflicts: <strong className={gateF0.criticalConflictCount > 0 ? "text-rose-600" : "text-emerald-700"}>{gateF0.criticalConflictCount}</strong>
+                </div>
+                <div className="text-[10px] font-mono text-neutral-600">
+                  Missing Docs: <strong>{gateF0.missingDocumentsCount}</strong> &bull; Verified Rules: <strong>{gateF0.verifiedRulesCount}</strong>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAuditDetails(!showAuditDetails)}
+                className="px-3 py-1.5 text-xs font-mono font-bold bg-[#1E252B] text-white hover:bg-neutral-800 flex items-center gap-1.5 transition-colors"
+              >
+                <span>{showAuditDetails ? "Hide Audit" : "Forensic Audit"}</span>
+                {showAuditDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Expandable Forensic Audit Trail */}
+          {showAuditDetails && (
+            <div className="mt-4 pt-4 border-t border-current/20 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {gateF0.auditTrail.map((item, idx) => (
+                  <div key={idx} className="p-2.5 bg-white/90 border border-[#E5E1D8] text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-[10px] text-[#1E252B]">{item.checkId} &bull; {item.checkName}</span>
+                      <span className={`px-1.5 py-0.5 font-mono text-[9px] font-bold ${
+                        item.status === "PASS" ? "bg-emerald-100 text-emerald-800" :
+                        item.status === "WARN" ? "bg-amber-100 text-amber-800" :
+                        "bg-rose-100 text-rose-800"
+                      }`}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-700">{item.details}</p>
+                  </div>
+                ))}
+              </div>
+
+              {gateF0.conflicts.length > 0 && (
+                <div className="p-3 bg-rose-100/70 border border-rose-300 rounded-none space-y-2">
+                  <span className="font-mono font-bold text-[10px] text-rose-900 uppercase tracking-wider block">
+                    Detected Contradictions & Conflict Resolution Requirements
+                  </span>
+                  <div className="space-y-2">
+                    {gateF0.conflicts.map((conf, ci) => (
+                      <div key={ci} className="p-2 bg-white border border-rose-200 text-xs">
+                        <div className="font-mono font-bold text-rose-700 text-[10px] uppercase">
+                          [{conf.conflictType}] &bull; Severity: {conf.severity}
+                        </div>
+                        <p className="text-neutral-800 mt-0.5">{conf.description}</p>
+                        <div className="mt-1 pt-1 border-t border-rose-100 text-neutral-600 text-[11px]">
+                          <strong>Remedial Resolution:</strong> {conf.resolutionRequirement}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 font-sans">
+      {/* Sidebar Navigation */}
+      <div className="lg:col-span-1 space-y-3">
+        <div className="border-b-2 border-[#1E252B] pb-2 mb-4">
+          <h3 className="text-[10px] font-mono font-bold text-[#C5A059] uppercase tracking-widest px-1">
+            BCCAA Cascade Gateways
+          </h3>
+        </div>
+        <div className="space-y-1.5">
+          {stagesList.map((stage) => {
+            const Icon = stage.icon;
+            const isActive = activeStage === stage.num;
+            const isHaltedSynthesis = stage.num === 13 && gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT";
+
+            return (
+              <button
+                key={stage.num}
+                onClick={() => setActiveStage(stage.num)}
+                className={`w-full text-left px-3 py-2.5 rounded-none text-xs font-bold font-mono flex items-center gap-3 transition-all duration-300 border-2 ${
+                  isActive
+                    ? "bg-[#1E252B] text-white border-[#1E252B]"
+                    : isHaltedSynthesis
+                    ? "bg-rose-50 text-rose-900 border-rose-300 hover:border-rose-600"
+                    : "bg-white text-[#1E252B] border-[#E5E1D8] hover:bg-[#F9F7F2] hover:border-[#1E252B]"
+                }`}
+              >
+                <span className={`flex-shrink-0 w-5 h-5 flex items-center justify-center font-mono text-[10px] font-bold border ${
+                  isActive 
+                    ? "bg-[#C5A059] text-[#1E252B] border-[#C5A059]" 
+                    : isHaltedSynthesis
+                    ? "bg-rose-600 text-white border-rose-600"
+                    : "bg-[#FDFBF7] text-[#1E252B] border-[#E5E1D8]"
+                }`}>
+                  {stage.num}
+                </span>
+                <span className="truncate tracking-wider uppercase text-[11px] flex-1">
+                  {stage.title}
+                </span>
+                {isHaltedSynthesis && (
+                  <span className="text-[9px] px-1 py-0.5 bg-rose-600 text-white font-mono uppercase font-bold">
+                    HALT
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Output Screen */}
+      <div className="lg:col-span-3 space-y-6">
+        <div className="bg-white border-2 border-[#1E252B] p-6 sm:p-8 min-h-[500px] flex flex-col justify-between relative rounded-none">
+          {/* Subtle geometric corners */}
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#C5A059]" />
+          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#C5A059]" />
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#C5A059]" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#C5A059]" />
+
+          <div>
+            {/* Header */}
+            <div className="border-b-2 border-[#1E252B] pb-4 mb-6">
+              <span className="text-[10px] font-mono font-bold text-[#C5A059] uppercase tracking-widest">
+                Gateway Module {activeStage} of 13
+              </span>
+              <h2 className="text-xl font-bold font-serif text-[#1E252B] mt-1.5 uppercase tracking-wide">
+                {stagesList[activeStage].title}
+              </h2>
+            </div>
+
+            {/* Contents dynamically rendered */}
+            <div className="text-xs leading-relaxed text-[#4A5560] space-y-6">
+              
+              {/* STAGE 0 */}
+              {activeStage === 0 && (
+                <div className="space-y-5">
+                  {analysis.stage0.factualSummary && (
+                    <div className="p-3.5 bg-[#FDFBF7] border border-[#E5E1D8] rounded-md">
+                      <div className="font-mono text-[10px] font-bold text-[#C5A059] uppercase tracking-wider mb-1">Gateway 0 Factual Narrative Summary</div>
+                      <p className="text-xs text-[#1E252B] leading-relaxed font-sans">{analysis.stage0.factualSummary}</p>
+                    </div>
+                  )}
+
+                  {/* Gateway F0: Atomic Facts Table */}
+                  {gateF0 && gateF0.atomicFacts.length > 0 && (
+                    <div className="border border-[#E5E1D8] p-3.5 bg-[#FDFBF7]">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider text-xs">
+                          Immutable Atomic Facts (F0 Normalized Units)
+                        </h4>
+                        <span className="text-[10px] font-mono font-bold text-[#C5A059]">
+                          {gateF0.atomicFacts.length} Atomic Propositions
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto max-h-48 overflow-y-auto">
+                        <table className="w-full text-left border-collapse border border-[#E5E1D8] text-[11px]">
+                          <thead>
+                            <tr className="bg-white font-mono text-[10px] font-bold text-[#1E252B] border-b border-[#E5E1D8]">
+                              <th className="p-1.5 border border-[#E5E1D8]">Fact ID</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Proposition</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Status</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Temporal</th>
+                              <th className="p-1.5 border border-[#E5E1D8]">Materiality</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {gateF0.atomicFacts.map((af, i) => (
+                              <tr key={i} className="border-b border-[#E5E1D8] bg-white/70">
+                                <td className="p-1.5 font-mono font-bold text-[#1E252B] whitespace-nowrap">{af.factId}</td>
+                                <td className="p-1.5">{af.proposition}</td>
+                                <td className="p-1.5 font-mono font-bold text-[10px]">{af.factStatus}</td>
+                                <td className="p-1.5 font-mono text-[10px]">{af.temporalStatus}</td>
+                                <td className="p-1.5 font-mono text-[10px]">{af.materiality}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider mb-2 text-xs">Factual Chronology of Events</h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse border border-[#E5E1D8]">
+                        <thead>
+                          <tr className="bg-[#FDFBF7] font-mono text-[10px] font-bold text-[#1E252B] border-b border-[#E5E1D8]">
+                            <th className="p-2 border border-[#E5E1D8]">Date / Timing</th>
+                            <th className="p-2 border border-[#E5E1D8]">Factual Event</th>
+                            <th className="p-2 border border-[#E5E1D8]">Parties Involved</th>
+                            <th className="p-2 border border-[#E5E1D8]">Factual / Evidentiary Source</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {analysis.stage0.chronology.map((c, i) => (
+                            <tr key={i} className="border-b border-[#E5E1D8]">
+                              <td className="p-2 font-mono font-bold text-[#1E252B] text-xs whitespace-nowrap">{c.date}</td>
+                              <td className="p-2 text-xs">{c.event}</td>
+                              <td className="p-2 text-xs font-medium text-neutral-700">{c.partiesInvolved}</td>
+                              <td className="p-2 text-xs text-neutral-500 italic">{c.factualSource}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-[#FDFBF7] p-3 border border-[#E5E1D8] rounded-md">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Admitted / Conceded Facts</h4>
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1.5 text-xs text-neutral-700">
+                        {analysis.stage0.admittedFacts.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="bg-amber-50/40 p-3 border border-amber-200/50 rounded-md">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                        <h4 className="font-bold text-amber-900 font-mono uppercase text-[10px] tracking-wider">Disputed Contested Facts</h4>
+                      </div>
+                      <ul className="list-disc pl-4 space-y-1.5 text-xs text-neutral-700">
+                        {analysis.stage0.disputedFacts.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {analysis.stage0.unknownFacts && analysis.stage0.unknownFacts.length > 0 && (
+                    <div className="bg-slate-50 p-3.5 border border-slate-200 rounded-md">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                        <h4 className="font-bold text-slate-800 font-mono uppercase text-[10px] tracking-wider">Unknown & Missing Evidentiary Facts</h4>
+                      </div>
+                      <div className="space-y-2 mt-2">
+                        {analysis.stage0.unknownFacts.map((uf, i) => (
+                          <div key={i} className="p-2.5 bg-white border border-slate-200 rounded text-xs flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                            <div className="space-y-1 flex-1">
+                              <div className="font-semibold text-slate-900 flex items-center gap-2">
+                                <span>{uf.category}</span>
+                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase ${
+                                  uf.status === "MISSING_FROM_RECORD" ? "bg-red-50 text-red-700 border-red-200" :
+                                  uf.status === "AMBIGUOUS_ASSERTION" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                  "bg-blue-50 text-blue-700 border-blue-200"
+                                }`}>
+                                  {uf.status.replace(/_/g, " ")}
+                                </span>
+                              </div>
+                              <p className="text-neutral-700">{uf.factDescription}</p>
+                              <p className="text-[11px] text-neutral-500 italic">{uf.recordSignificance}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysis.stage0.quantumFacts && analysis.stage0.quantumFacts.length > 0 && (
+                    <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded-md">
+                      <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Quantum & Physical Dimensions</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {analysis.stage0.quantumFacts.map((q, i) => (
+                          <div key={i} className="p-2 bg-white border border-[#E5E1D8] rounded text-xs text-neutral-700 font-mono">
+                            {q}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STAGE 1 */}
+              {activeStage === 1 && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-[#F9F7F2] border border-[#E5E1D8] rounded">
+                    <div className="text-[10px] font-mono text-[#C5A059] font-bold uppercase tracking-wider">Classification Output</div>
+                    <h4 className="text-sm font-bold text-[#1E252B] mt-1">Primary Domain: {analysis.stage1.primaryDomain}</h4>
+                    {analysis.stage1.subsidiaryDomains.length > 0 && (
+                      <p className="text-xs text-[#4A5560] mt-1">
+                        Subsidiaries: {analysis.stage1.subsidiaryDomains.join(", ")}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Statutory Trigger Fact Matrix</h4>
+                    <div className="space-y-2">
+                      {analysis.stage1.triggerFacts.map((t, i) => (
+                        <div key={i} className="p-3 border border-[#E5E1D8] bg-white rounded flex flex-col sm:flex-row justify-between gap-2">
+                          <div>
+                            <span className="font-mono text-[10px] bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded mr-1.5 font-bold">
+                              {t.domain}
+                            </span>
+                            <span className="font-medium text-[#1E252B]">{t.fact}</span>
+                          </div>
+                          <span className="font-mono text-[10px] text-[#C5A059] font-bold self-start sm:self-center">
+                            Trigger: {t.statutoryTrigger}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 2 */}
+              {activeStage === 2 && (
+                <div className="space-y-4">
+                  <div className="bg-[#1E252B] text-white p-4 rounded border-l-4 border-[#C5A059]">
+                    <span className="text-[9px] font-mono text-[#C5A059] font-bold tracking-wider uppercase">Governing Enactment</span>
+                    <h4 className="text-sm font-bold mt-0.5">{analysis.stage2.primaryAct}</h4>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Relevant Statutory Provisions</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {analysis.stage2.relevantSections.map((s, i) => (
+                        <div key={i} className="p-3 border border-[#E5E1D8] rounded bg-[#FDFBF7]">
+                          <div className="font-bold text-[#1E252B] flex items-center justify-between">
+                            <span>{s.actName}</span>
+                            <code className="bg-[#1E252B] text-[#C5A059] text-[10px] px-2 py-0.5 rounded font-mono font-bold">
+                              {s.sectionOrRule}
+                            </code>
+                          </div>
+                          <p className="text-[11px] text-[#4A5560] mt-1.5">{s.purpose}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Deterministic Citation Validation Audit Box */}
+                  {analysis.stage2.citationValidationAudit && (
+                    <div className="p-3.5 bg-[#F4F9F4] border border-emerald-300/80 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] bg-emerald-800 text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                            ✓ Citation Validation Layer
+                          </span>
+                          <span className="font-bold text-emerald-950 text-[11px]">
+                            {analysis.stage2.citationValidationAudit.verifiedCount}/{analysis.stage2.citationValidationAudit.totalCitations} Precedents Authoritatively Verified
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-emerald-800 mt-1">
+                          {analysis.stage2.citationValidationAudit.validationStandard}
+                        </p>
+                      </div>
+                      <code className="text-[9px] font-mono text-emerald-900 bg-emerald-100/80 px-2 py-1 rounded border border-emerald-300">
+                        {analysis.stage2.citationValidationAudit.registrySignature.substring(0, 32)}
+                      </code>
+                    </div>
+                  )}
+
+                  {analysis.stage2.precedents.length > 0 && (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">
+                          High Court / Appellate Division Precedents (Authoritatively Verified)
+                        </h4>
+                        <span className="text-[9px] font-mono text-[#C5A059] font-bold">
+                          Fully Deterministic Registry
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {analysis.stage2.precedents.map((p, i) => (
+                          <div key={i} className="p-3.5 border border-[#E5E1D8] bg-white rounded shadow-sm hover:border-[#C5A059] transition-colors">
+                            <div className="flex flex-wrap justify-between items-center gap-1.5 text-[11px] font-bold text-[#1E252B] border-b border-[#F0ECE1] pb-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[#C5A059] font-bold text-xs uppercase tracking-wider">
+                                  {p.citation}
+                                </span>
+                                {p.decisionYear && (
+                                  <span className="text-[10px] text-neutral-500 font-mono">({p.decisionYear})</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="bg-[#1E252B]/10 px-2 py-0.5 rounded text-[10px] text-[#1E252B] font-medium">
+                                  {p.court}
+                                </span>
+                                {p.verificationStatus === "VERIFIED_CANONICAL" && (
+                                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-300">
+                                    ✓ VERIFIED
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {p.caseTitle && (
+                              <p className="text-[11px] font-bold text-[#1E252B] italic mb-1">
+                                {p.caseTitle}
+                              </p>
+                            )}
+
+                            {p.statutorySubject && (
+                              <div className="text-[10px] text-neutral-600 mb-1.5">
+                                <span className="font-mono font-bold text-neutral-700 uppercase">Interpreted Provision: </span>
+                                <code>{p.statutorySubject}</code>
+                              </div>
+                            )}
+
+                            <div className="bg-[#FDFBF7] p-2.5 rounded border border-[#EBE7DF] text-[11px] space-y-1 mb-2">
+                              <div>
+                                <span className="font-bold text-[#1E252B] font-mono text-[10px] uppercase">Ratio Decidendi: </span>
+                                <span className="text-[#333E48] font-medium">"{p.holding}"</span>
+                              </div>
+                            </div>
+
+                            <p className="text-[10px] text-neutral-600">
+                              <span className="font-bold font-mono uppercase text-[9px] text-[#C5A059]">Application to this Suit: </span>
+                              {p.relevance}
+                            </p>
+
+                            {p.verificationHash && (
+                              <div className="mt-2 pt-1.5 border-t border-[#F5F2EA] flex items-center justify-between text-[9px] font-mono text-neutral-400">
+                                <span>Registry Token: {p.securityHashToken || p.citation}</span>
+                                <span>Forensic Seal: {p.verificationHash}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STAGE 3 */}
+              {activeStage === 3 && (
+                <div className="space-y-4">
+                  <div className={`p-4 border rounded ${
+                    analysis.stage3.isTimeBarred 
+                      ? "bg-red-50 text-red-900 border-red-200" 
+                      : "bg-emerald-50 text-emerald-900 border-emerald-200"
+                  }`}>
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider">Limitation Decision</div>
+                    <h4 className="text-sm font-bold mt-1">
+                      {analysis.stage3.isTimeBarred ? "⚠️ SUIT APPARENTLY TIME BARRED" : "✓ SUIT IS WITHIN LIMITATION WINDOW"}
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-2">
+                      <div>
+                        <strong>Date of Accrual of Cause of Action:</strong>
+                        <p className="font-mono text-[#1E252B]">{analysis.stage3.accrualDate}</p>
+                      </div>
+                      <div>
+                        <strong>Schedule Article Applied:</strong>
+                        <p className="font-mono text-[#1E252B]">{analysis.stage3.limitationArticle}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <strong>Prescribed Limitation Period:</strong>
+                        <p className="font-mono text-[#1E252B]">{analysis.stage3.prescribedPeriod}</p>
+                      </div>
+                      <div>
+                        <strong>Exceptions, Condonations & Laches:</strong>
+                        <p className="text-neutral-500">{analysis.stage3.exceptionsOrExtensions}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {analysis.stage3.timelineValidation && (
+                    <TimelineValidation 
+                      timeline={analysis.stage3.timelineValidation}
+                      isTimeBarred={analysis.stage3.isTimeBarred ?? false}
+                      accrualDate={analysis.stage3.accrualDate ?? ""}
+                      category={analysis.stage0.factsMeta?.category}
+                    />
+                  )}
+
+                  <div className="bg-[#FDFBF7] p-3 border border-[#E5E1D8] rounded text-[11px] italic">
+                    <strong>Limitation Assessment:</strong> {analysis.stage3.preliminaryAnalysis}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 4 */}
+              {activeStage === 4 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider border-b border-[#E5E1D8] pb-1">Plaintiffs</h4>
+                      {analysis.stage4.plaintiffs.map((p, i) => (
+                        <div key={i} className="p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] rounded text-[11px]">
+                          <strong>{p.name}</strong> ({p.legalIdentity})
+                          <div className="text-neutral-500 mt-0.5">Capacity: {p.capacity}</div>
+                          <div className="text-neutral-500">Locus: {p.causeOfActionAccess}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider border-b border-[#E5E1D8] pb-1">Defendants</h4>
+                      {analysis.stage4.defendants.map((d, i) => (
+                        <div key={i} className="p-2.5 bg-neutral-50 border border-neutral-200 rounded text-[11px]">
+                          <strong>{d.name}</strong> ({d.legalIdentity})
+                          <div className="text-neutral-500 mt-0.5">Capacity: {d.capacity}</div>
+                          <div className="text-neutral-500">Liability: {d.liabilityType}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="bg-white p-3 border border-[#E5E1D8] rounded">
+                      <span className="text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">Locus Standi Summary</span>
+                      <p className="mt-0.5 text-[#4A5560]">{analysis.stage4.locusStandiSummary}</p>
+                    </div>
+                    <div className="bg-white p-3 border border-[#E5E1D8] rounded">
+                      <span className="text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">Joinder & Misjoinder Issues</span>
+                      <p className="mt-0.5 text-[#4A5560]">{analysis.stage4.joinderIssues}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 5 */}
+              {activeStage === 5 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded">
+                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Territorial</h5>
+                      <p className="text-[11px]">{analysis.stage5.territorial.rule}</p>
+                      <span className="text-[9px] font-mono text-[#C5A059] block mt-1">Section: {analysis.stage5.territorial.governingSection}</span>
+                    </div>
+                    <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded">
+                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Pecuniary</h5>
+                      <p className="text-[11px]">Valuation: {analysis.stage5.pecuniary.valuation}</p>
+                      <p className="text-[11px] font-bold text-[#C5A059]">{analysis.stage5?.pecuniary?.courtLevel ?? "Not determined"}</p>
+                    </div>
+                    <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded">
+                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Subject Matter</h5>
+                      <p className="text-[11px]">Forum: {analysis.stage5.subjectMatter.forum}</p>
+                      <span className="text-[9px] font-mono text-neutral-500 block mt-1">Statute: {analysis.stage5.subjectMatter.governingStatute}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 border border-red-200 bg-red-50/25 rounded text-[11px]">
+                    <strong>Objection Counter-Strategy:</strong> {analysis.stage5.objectionStrategy}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 6 */}
+              {activeStage === 6 && (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Pleadings Plaint Checklist (CPC Order VII)</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {analysis.stage6.plaintChecklist.map((c, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[11px]">
+                          <span className="text-emerald-500 font-bold">✓</span>
+                          <span>{c}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="bg-amber-50/20 p-3 border border-amber-200/50 rounded">
+                      <h5 className="font-bold text-amber-800 font-mono uppercase text-[10px] tracking-wider mb-1">Grounds for Plaint Rejection (O7 R11)</h5>
+                      {analysis.stage6.groundsForRejection.length === 0 ? (
+                        <p className="text-[11px] italic text-neutral-500">No grounds detected for rejection of plaint.</p>
+                      ) : (
+                        <ul className="list-disc pl-4 text-[11px] text-amber-900 space-y-0.5">
+                          {analysis.stage6.groundsForRejection.map((g, i) => <li key={i}>{g}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="bg-white p-3 border border-[#E5E1D8] rounded text-[11px]">
+                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Written Statement Deemed Admissions</h5>
+                      <p>{analysis.stage6.writtenStatementDeemedAdmissions}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 7 */}
+              {activeStage === 7 && (
+                <div className="space-y-4">
+                  <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Framed Issues of Fact and Law (CPC Order XIV)</h4>
+                  <div className="space-y-3">
+                    {analysis.stage7.issues.map((iss) => (
+                      <div key={iss.issueNo} className="p-3 bg-white border border-[#E5E1D8] rounded">
+                        <div className="flex justify-between items-start gap-2 font-bold text-[#1E252B]">
+                          <span>Issue {iss.issueNo}: Is {iss.title}?</span>
+                          <span className="flex-shrink-0 text-[9px] font-mono bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                            {iss.type}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-[11px] text-[#4A5560]">
+                          <div>
+                            <strong>Burden of Proof:</strong> {iss.burden}
+                          </div>
+                          <div>
+                            <strong>Evidentiary Requirements:</strong> {iss.evidenceRequired}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 8 */}
+              {activeStage === 8 && (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Classified Evidentiary Matrix</h4>
+                    <div className="space-y-2">
+                      {analysis.stage8.evidenceList.map((ev, i) => (
+                        <div key={i} className="p-3 border border-[#E5E1D8] bg-[#FDFBF7] rounded">
+                          <div className="flex justify-between font-bold text-[#1E252B]">
+                            <span>{ev.item}</span>
+                            <span className="font-mono text-[9px] text-neutral-500">{ev.type}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5 text-[11px] text-neutral-600">
+                            <div>Source: <strong>{ev.source}</strong></div>
+                            <div>Section: <code>{ev.governingSection}</code></div>
+                            <div>Challenge: <span className="text-amber-700 italic">{ev.admissibilityChallenge}</span></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white p-3 border border-[#E5E1D8] rounded">
+                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Burden Allocation</h5>
+                      <ul className="list-disc pl-4 text-[11px] space-y-0.5">
+                        {analysis.stage8.burdenAssignments.map((ba, i) => <li key={i}>{ba}</li>)}
+                      </ul>
+                    </div>
+                    <div className="bg-white p-3 border border-[#E5E1D8] rounded">
+                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Statutory Presumptions</h5>
+                      {analysis.stage8.statutoryPresumptions.map((p, i) => (
+                        <div key={i} className="text-[11px] border-b border-neutral-100 pb-1.5 last:border-0 last:pb-0 mb-1.5 last:mb-0">
+                          <strong>{p.statuteSection}</strong>: {p.presumptionStyle}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 9 */}
+              {activeStage === 9 && (
+                <div className="space-y-4">
+                  <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Anticipated Two-Sided Trial Contest</h4>
+                  <div className="space-y-3">
+                    {analysis.stage9.issueDetails.map((det) => (
+                      <div key={det.issueNo} className="p-4 bg-white border border-[#E5E1D8] rounded space-y-2.5">
+                        <h5 className="font-bold text-sm text-[#1E252B]">
+                          Issue {det.issueNo}: {det.issueTitle}
+                        </h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                          <div className="p-2 bg-blue-50/20 border border-blue-200/50 rounded">
+                            <strong className="text-blue-900 font-mono text-[9px] uppercase">Plaintiff Position</strong>
+                            <p className="mt-0.5">{det.plaintiffPosition}</p>
+                          </div>
+                          <div className="p-2 bg-red-50/20 border border-red-200/50 rounded">
+                            <strong className="text-red-900 font-mono text-[9px] uppercase">Defendant Position</strong>
+                            <p className="mt-0.5">{det.defendantPosition}</p>
+                          </div>
+                        </div>
+                        <div className="p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] rounded text-[11px]">
+                          <div className="font-bold text-[#C5A059] font-mono text-[9px] uppercase">Judicial Assessment & Projected Holding</div>
+                          <p className="font-semibold text-[#1E252B] mt-0.5">{det.projectedFinding}</p>
+                          <p className="text-neutral-500 italic mt-0.5">{det.courtAnalysis}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 10 */}
+              {activeStage === 10 && (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Equitable Principles Checked</h4>
+                    <div className="space-y-2">
+                      {analysis.stage10.applicablePrinciples.map((ap, i) => (
+                        <div key={i} className="p-3 border border-[#E5E1D8] rounded bg-[#FDFBF7] text-[11px]">
+                          <strong className="text-[#1E252B]">{ap.principle}</strong>
+                          <div className="text-neutral-500 mt-0.5">Application: {ap.application}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-white border border-[#E5E1D8] rounded text-[11px]">
+                    <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Discretionary Relief Audits</h5>
+                    <p>{analysis.stage10.discretionaryReliefCheck}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 11 */}
+              {activeStage === 11 && (
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-3">Civil Procedure Lifecycle Milestones</h4>
+                    <div className="relative border-l-2 border-[#C5A059] ml-2 pl-4 space-y-4">
+                      {analysis.stage11.timelineProgress.map((tp, i) => (
+                        <div key={i} className="relative">
+                          <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-[#C5A059] border-4 border-white" />
+                          <div className="text-[11px]">
+                            <div className="font-bold text-[#1E252B]">{tp.stageName} <span className="font-mono text-[9px] font-bold text-neutral-400">({tp.cpcReference})</span></div>
+                            <p className="text-[#4A5560] mt-0.5">Actions: {tp.subActions}</p>
+                            <p className="text-[#C5A059] font-medium font-mono text-[10px] uppercase mt-0.5">Strategy: {tp.strategicPlay}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {analysis.stage1.primaryDomain === "Partition & Succession Suit" && (
+                    <div className="border border-[#1E252B] bg-[#FAF9F5] p-5 relative space-y-4 mt-6">
+                      <div className="absolute top-0 right-0 bg-[#C5A059] text-[#1E252B] font-mono text-[9px] font-bold px-3 py-1 uppercase tracking-wider">
+                        O39 R1&2 CPC Draft
+                      </div>
+                      <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-[#1E252B] border-b border-[#E5E1D8] pb-2 flex items-center gap-2">
+                        <span>⚖️ Framed Temporary Injunction Application (Order XXXIX Rules 1 & 2)</span>
+                      </h4>
+                      <p className="text-[11px] text-[#4A5560] leading-relaxed">
+                        To restrain Defendant Fatema from alienating, selling, or transferring undivided parts of the suit property to third parties during the pendency of the partition suit.
+                      </p>
+
+                      <div className="bg-white border border-[#E5E1D8] p-5 font-mono text-[11.5px] text-[#1E252B] space-y-4 overflow-x-auto max-h-[400px] overflow-y-auto leading-relaxed shadow-inner">
+                        <div className="text-center font-bold space-y-1">
+                          <p className="uppercase">IN THE COURT OF THE JOINT DISTRICT JUDGE, DHAKA</p>
+                          <p>OTHER CLASS SUIT NO. ________ OF 2026</p>
+                        </div>
+
+                        <div className="flex justify-between font-bold text-[10.5px]">
+                          <div>
+                            <p>1. Tariq Karim</p>
+                            <p>2. Sajid Karim</p>
+                            <p className="normal-case italic font-normal pl-4">... Plaintiffs-Petitioners</p>
+                          </div>
+                          <div className="text-center self-center">-Versus-</div>
+                          <div className="text-right">
+                            <p>Fatema Karim</p>
+                            <p className="normal-case italic font-normal pr-4">... Defendant-Opposite Party</p>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-[#E5E1D8] pt-2">
+                          <p className="font-bold uppercase text-center underline leading-normal">
+                            APPLICATION FOR TEMPORARY INJUNCTION UNDER ORDER XXXIX RULES 1 AND 2 READ WITH SECTION 151 OF THE CODE OF CIVIL PROCEDURE, 1908
+                          </p>
+                        </div>
+
+                        <p className="font-bold">The humble petition of the Plaintiffs-Petitioners above-named most respectfully sheweth:</p>
+
+                        <ol className="list-decimal pl-5 space-y-3">
+                          <li>
+                            That the Plaintiffs-Petitioners have filed the accompanying Partition Suit for declaration of heirship, specific fractional shares (2/5th each to Plaintiffs and 1/5th to Defendant) under Muslim Shariat law, and partition of the suit property left by the intestate demise of their father, Abdul Karim, on 15 January 2026.
+                          </li>
+                          <li>
+                            That after the demise of the ancestor, the Defendant Fatema obtained an exclusive wrongful namjari mutation (No. 4502/2026) in her name at the Upazila Land Office by suppression of facts, thereby clouding the title of the Plaintiffs.
+                          </li>
+                          <li>
+                            That the Defendant has recently engaged in advanced negotiations with local third-party real estate developers to alienate the undivided joint family property, specifically the valuable commercial portion, without the consent of the Plaintiffs.
+                          </li>
+                          <li>
+                            That the Plaintiffs have a clear <strong>prima facie case</strong> and high probability of success in the partition suit as succession opens automatically upon death under Shariat law, vesting immediate legal ownership in the co-heirs.
+                          </li>
+                          <li>
+                            That the <strong>balance of convenience and inconvenience</strong> lies heavily in favor of granting the injunction. If the Defendant is permitted to sell or alter the physical state of the undivided suit land, it will introduce third-party interests, create multiple litigation nodes, and frustrate the partition decree.
+                          </li>
+                          <li>
+                            That the Plaintiffs will suffer <strong>irreparable loss and injury</strong> which cannot be compensated in monetary terms if the status quo is disrupted during the trial.
+                          </li>
+                        </ol>
+
+                        <p className="font-bold">Wherefore, it is most humbly prayed that your Honour would graciously be pleased to:</p>
+
+                        <div className="pl-5 space-y-2">
+                          <p>
+                            a) Grant an order of <strong>Temporary Injunction</strong> restraining the Defendant, her agents, servants, or assigns from alienating, selling, or transferring the undivided suit land or creating any third-party encumbrances until the disposal of the suit; and/or
+                          </p>
+                          <p>
+                            b) Pass an ad-interim order of <strong>Status Quo</strong> in respect of the possession and title records of the suit property;
+                          </p>
+                          <p>
+                            c) Pass such other or further order(s) as your Honour may deem fit and proper.
+                          </p>
+                        </div>
+
+                        <div className="text-right pt-4 font-bold">
+                          <p>And for this act of kindness, the petitioners as in duty bound shall ever pray.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STAGE 12 */}
+              {activeStage === 12 && (
+                <div className="space-y-4">
+                  <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Appellate Hierarchy Cascade</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {analysis.stage12.appealNodes.map((n, i) => (
+                      <div key={i} className="p-3 bg-white border border-[#E5E1D8] rounded text-xs">
+                        <div className="flex justify-between items-center border-b border-neutral-100 pb-1 mb-2">
+                          <strong className="text-[#1E252B]">{n.level}</strong>
+                          <code className="bg-[#1E252B] text-[#C5A059] text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
+                            {n.governingSection}
+                          </code>
+                        </div>
+                        <div className="text-[#4A5560]">
+                          <div>Authority: <strong>{n.authority}</strong></div>
+                          <div className="mt-1">Scope: {n.scope}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* STAGE 13 */}
+              {activeStage === 13 && (
+                <div className="space-y-4">
+                  {gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" && (
+                    <div className="p-4 bg-rose-50 border-2 border-rose-600 rounded-none text-rose-950 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertOctagon className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                        <span className="font-mono font-bold text-xs uppercase tracking-widest text-rose-700">
+                          BCCAA FAIL-CLOSED PROTOCOL: LEGAL SYNTHESIS HALTED
+                        </span>
+                      </div>
+                      <p className="text-xs leading-relaxed font-medium">
+                        Gateway F0 has locked final synthesis because the input narrative contains irreconcilable factual contradictions. Synthesizing a cause of action or legal relief from mutually contradictory facts would create an invalid pleading liable to threshold dismissal under Order VII Rule 11 CPC.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className={`p-4 rounded border-l-8 text-xs ${
+                    gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" 
+                      ? "bg-rose-50/60 border-rose-600 border" 
+                      : "bg-[#FDFBF7] border-[#C5A059] border"
+                  }`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-wider block ${
+                      gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" ? "text-rose-700" : "text-[#C5A059]"
+                    }`}>
+                      {gateF0?.gateStatus === "HALT_CRITICAL_CONFLICT" ? "Conflict Audit & Synthesis Halt Report" : "Overview Analysis Synthesized"}
+                    </span>
+                    <p className="mt-1 font-sans text-[#1E252B] font-medium leading-relaxed whitespace-pre-line">
+                      {analysis.stage13.overview}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
+                    <div className="p-3 bg-white border border-[#E5E1D8] rounded">
+                      <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-1">Proposed Decree & reliefs</strong>
+                      <p className="whitespace-pre-line">{analysis.stage13.reliefDecree}</p>
+                    </div>
+                    <div className="p-3 bg-white border border-[#E5E1D8] rounded">
+                      <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-1">Execution pathway (Order XXI)</strong>
+                      <p className="whitespace-pre-line">{analysis.stage13.executionPathway}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] pt-1">
+                    <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded">
+                      <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-0.5">Costs Apportionment (s.35)</strong>
+                      <p className="text-neutral-500 whitespace-pre-line">{analysis.stage13.costsApportionment}</p>
+                    </div>
+                    <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded">
+                      <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-0.5">Equitable Bars & Laches</strong>
+                      <p className="text-neutral-500 whitespace-pre-line">{analysis.stage13.equitableBars}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+
+          {/* Forensic Hash Footer */}
+          <div className="border-t border-[#E5E1D8]/60 pt-4 mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center text-[10px] font-mono text-[#C5A059] gap-2">
+            <div>
+              FORENSIC SECURE NODE &bull; BCCAA v2.0
+            </div>
+            {analysis._security?.forensicHash && (
+              <div className="bg-neutral-100 text-[#1E252B] px-2 py-0.5 rounded border border-[#E5E1D8]">
+                HASH: {analysis._security.forensicHash}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
