@@ -141,7 +141,7 @@ describe("PHASE 1: Core Determinism & Fact Extraction", () => {
         })
       );
       expect(r.stage3.isTimeBarred).toBe(true);
-      expect(r.stage3.accrualDate).toBe("20 August 2020");
+      expect(r.stage3.accrualDate).toBe("2020-08-20");
     });
 
     it("1-year limitation (heuristic) from July 2023 refusal is NOT time-barred in 2024", async () => {
@@ -286,7 +286,7 @@ describe("PHASE 3: Limitation & Locus Standi", () => {
       );
       expect(r.stage3.timelineValidation).toBeDefined();
       expect(r.stage3.isTimeBarred).toBe(true);
-      expect(r.stage3.accrualDate).toBe("20 August 2020");
+      expect(r.stage3.accrualDate).toBe("2020-08-20");
     });
 
     it("Missing refusal date → falls back to heuristic or missing_dates category", async () => {

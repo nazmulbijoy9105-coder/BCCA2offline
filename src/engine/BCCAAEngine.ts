@@ -1083,6 +1083,30 @@ function isStrictDate(raw: string): boolean {
   return parseNaturalDate(raw) !== null;
 }
 
+/**
+ * P1-04 canonical date projection.
+ *
+ * Converts supported human-readable dates to YYYY-MM-DD while
+ * preserving fail-closed behavior for unparseable values.
+ */
+function toISODate(value: unknown): string {
+  if (typeof value !== "string") {
+    return "NOT_EXTRACTED";
+  }
+
+  const timestamp = strictDateTimestamp(value);
+  if (timestamp === null) {
+    return "NOT_EXTRACTED";
+  }
+
+  const d = new Date(timestamp);
+  if (Number.isNaN(d.getTime())) {
+    return "NOT_EXTRACTED";
+  }
+
+  return d.toISOString().slice(0, 10);
+}
+
 function strictDateTimestamp(raw: string | null): number {
   return raw ? (parseNaturalDate(raw)?.ts ?? Infinity) : Infinity;
 }
@@ -2130,7 +2154,8 @@ export class BCCAAEngine {
     accrualDate: string | null;
     limitationPeriodYears: number | null;
     calculationType: string;
-    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[] };
+    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[]; calculationType?: string }
+    preliminaryAnalysis?: string;
   } {
     const facts = Array.from(ctx.factRegistry.values());
     const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
@@ -2144,45 +2169,79 @@ export class BCCAAEngine {
     let calculationType = "other_category";
 
     if (claimType === "SPECIFIC_PERFORMANCE") {
-      if (refusalDate) {
-        accrualDate = refusalDate;
-        limitationPeriodYears = 3;
-        calculationType = "refusal_date";
-      } else if (demandDate) {
-        accrualDate = demandDate;
-        limitationPeriodYears = 3;
-        calculationType = "demand_date";
-      } else if (executionDate) {
-        accrualDate = executionDate;
-        limitationPeriodYears = 3;
-        calculationType = "execution_date_fallback";
+      // P1-04 FAIL-CLOSED:
+      // A refusal date alone cannot establish the legally operative
+      // accrual trigger. Execution/agreement context must independently
+      // exist and the dates must be temporally distinct.
+      //
+      // IMPORTANT:
+      // refusalDate may be a human-readable extracted value
+      // ("20 August 2025"). Never expose that representation as the
+      // authoritative accrualDate. Normalize it through the existing
+      // strict date parser before assigning it to stage3.
+      if (refusalDate && executionDate) {
+        const refusalTs = strictDateTimestamp(refusalDate);
+        const executionTs = strictDateTimestamp(executionDate);
+
+        if (
+          refusalTs !== null &&
+          executionTs !== null &&
+          refusalTs !== executionTs
+        ) {
+          accrualDate = toISODate(refusalDate);
+          limitationPeriodYears = 3;
+          calculationType = "refusal_date";
+        } else {
+          accrualDate = "NOT_EXTRACTED";
+          limitationPeriodYears = null;
+          calculationType = "missing_dates";
+        }
+      } else {
+        accrualDate = "NOT_EXTRACTED";
+        limitationPeriodYears = null;
+        calculationType = "missing_dates";
       }
-    } else if (claimType === "DECLARATION_AND_POSSESSION") {
+    }
+    else if (claimType === "DECLARATION_AND_POSSESSION") {
       if (dispossessionDate) {
         accrualDate = dispossessionDate;
         limitationPeriodYears = 12;
         calculationType = "dispossession_date";
+      } else {
+        accrualDate = "NOT_EXTRACTED";
+        limitationPeriodYears = null;
+        calculationType = "missing_dates";
       }
     } else if (claimType === "INHERITANCE_CONSULTATION") {
       if (deathDate) {
         accrualDate = deathDate;
         limitationPeriodYears = 12;
         calculationType = "death_date";
-      }
-    }
-    if (!accrualDate) {
-      if (dates.length > 0) {
-        const sorted = [...dates].sort((a, b) => strictDateTimestamp(a) - strictDateTimestamp(b));
-        accrualDate = sorted[0];
-        limitationPeriodYears = claimType === "SPECIFIC_PERFORMANCE" ? 3 : 12;
-        calculationType = "earliest_date_fallback";
       } else {
         accrualDate = "NOT_EXTRACTED";
+        limitationPeriodYears = null;
         calculationType = "missing_dates";
       }
+    } else {
+      // P1-04 FAIL-CLOSED:
+      // Unknown/general claim categories have no legally established
+      // accrual trigger in this engine. Never promote an arbitrary
+      // chronological event into an authoritative accrual date.
+      accrualDate = "NOT_EXTRACTED";
+      limitationPeriodYears = null;
+      calculationType = "missing_dates";
     }
-    let isTimeBarred = false;
-    if (accrualDate && limitationPeriodYears !== null && ctx.referenceDate) {
+    // FAIL-CLOSED: limitation must never silently become "not barred"
+    // when the accrual trigger, limitation period, or reference date is
+    // unavailable. "false" is reserved for a computable non-barred result.
+    let isTimeBarred: boolean | null = null;
+
+    if (
+      accrualDate &&
+      accrualDate !== "NOT_EXTRACTED" &&
+      limitationPeriodYears !== null &&
+      ctx.referenceDate
+    ) {
       const accrualTs = strictDateTimestamp(accrualDate);
       const refTs = ctx.referenceDate;
       const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
@@ -2193,7 +2252,11 @@ export class BCCAAEngine {
       accrualDate,
       limitationPeriodYears,
       calculationType,
-      timelineValidation: { isValid: true, errors: [], warnings: [] },
+      timelineValidation: { isValid: true, errors: [], warnings: [], calculationType },
+      preliminaryAnalysis:
+        isTimeBarred === null
+          ? "Limitation cannot be computed — legally sufficient accrual trigger, limitation period, or reference date is unavailable"
+          : `Limitation analysis based on ${calculationType}`,
     };
   }
 
@@ -2612,7 +2675,8 @@ export class BCCAAEngine {
       stage0: {
         atomicFacts,
         propositions: atomicFacts.map((f) => f.proposition),
-        provenance: atomicFacts.map((f) => ({ factId: f.factId, source: f.source, extractionMethod: f.source.extractionMethod })),
+        provenance: atomicFacts.map((f) => ({ factId: f.factId, source: f.source,
+    sourceType: f.source.extractionMethod, extractionMethod: f.source.extractionMethod })),
         factualSummary: atomicFacts.length > 0 ? `Extracted ${atomicFacts.length} facts from input narrative.` : "No facts extracted.",
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
@@ -2628,7 +2692,7 @@ export class BCCAAEngine {
       stage2: {
         relevantSections: deps.legislation.relevantSections,
         primaryAct: deps.legislation.primaryAct,
-        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
+        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "BCCAA-REGISTRY-SIGNATURE", auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" },
         equityPrinciples: deps.equity.equityPrinciples,
         precedents: [],
       },
@@ -2638,6 +2702,7 @@ export class BCCAAEngine {
         limitationPeriodYears: deps.limitation.limitationPeriodYears,
         calculationType: deps.limitation.calculationType,
         timelineValidation: deps.limitation.timelineValidation,
+        preliminaryAnalysis: deps.limitation.preliminaryAnalysis,
       },
       stage4: {
         plaintiffs: deps.standi.plaintiffs.map((name: string) => ({
@@ -2705,7 +2770,7 @@ export class BCCAAEngine {
         legalConclusions: synthesis.legalConclusions,
         recommendations: synthesis.recommendations,
       },
-      f0Gate: {
+      gateF0: {
         gateStatus: f0Gate.gateStatus,
         conflictCount: f0Gate.conflictCount ?? 0,
         criticalConflicts: f0Gate.criticalConflicts ?? 0,
@@ -2750,7 +2815,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
       stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
@@ -2824,7 +2889,8 @@ export class BCCAAEngine {
       stage0: {
         atomicFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, propositionId: f.propositionId, assertionId: f.assertionId, proposition: f.proposition, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, polarity: f.polarity, source: f.source, assertionType: f.assertionType, validationStatus: f.validationStatus, confidence: f.confidence, assertedBy: f.assertedBy, eventDate: f.eventDate, normalizedValue: f.normalizedValue, contradicts: f.contradicts, supports: f.supports, disputedProposition: f.disputedProposition, validation: f.validation, provenanceAssertions: f.provenanceAssertions })),
         propositions: Array.from(ctx.factRegistry.values()).map((f) => f.proposition),
-        provenance: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, source: f.source, extractionMethod: f.source.extractionMethod })),
+        provenance: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, source: f.source,
+    sourceType: f.source.extractionMethod, extractionMethod: f.source.extractionMethod })),
         factualSummary: ctx.factRegistry.size > 0 ? `Extracted ${ctx.factRegistry.size} facts from input narrative.` : "No facts extracted.",
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
@@ -2834,7 +2900,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
@@ -2884,7 +2950,7 @@ export class BCCAAEngine {
         legalConclusions: synthesis.legalConclusions,
         recommendations: synthesis.recommendations,
       },
-      f0Gate: {
+      gateF0: {
         gateStatus: f0Gate.gateStatus,
         certification: "RED",
         summary: `F0 gate halted: ${f0Gate.gateStatus}`,
@@ -3031,7 +3097,7 @@ export class BCCAAEngine {
         legalConclusions: response.stage13?.legalConclusions,
         recommendations: response.stage13?.recommendations,
       },
-      f0Gate: {
+      gateF0: {
         gateStatus: response.f0Gate?.gateStatus,
         conflictCount: response.f0Gate?.conflictCount,
         criticalConflicts: response.f0Gate?.criticalConflicts,
