@@ -1214,12 +1214,17 @@ export class BCCAAEngine {
       (request as any).input = { factPattern: "" };
     }
     request.input.factPattern = String(request.input.factPattern ?? "").trim();
-    request.input.submissionDate = request.input.submissionDate || "2024-01-01";
+    // Fail-closed: missing submissionDate defaults to engine runtime date,
+    // never silently assumes a historical date that could affect limitation
+    request.input.submissionDate = request.input.submissionDate || new Date().toISOString().slice(0, 10);
     // ────────────────────────────────────────────────────────────────────
     const ctx = newContext();
 
     try {
-      const license = await this.licenseValidator.validate(request.user, request.license);
+      const license = await this.licenseValidator.validate(
+        request.user ?? { id: "anonymous", userId: "anonymous", email: "", name: "Anonymous", role: "GUEST", chamberId: "" },
+        request.license ?? { licenseId: "UNLICENSED", issuedTo: "anonymous" }
+      );
       if (!license.valid) {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `LICENSE_DENIED: ${license.reason ?? "unspecified"}`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
         return this.buildPreF0HaltResponse(ctx, caseId, "LICENSE_DENIED", license.reason ?? "unspecified");
@@ -1228,7 +1233,7 @@ export class BCCAAEngine {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
         return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
       }
-      if (request.input.factPattern.length > MAX_INPUT_LENGTH) {
+      if ((request.input.factPattern ?? "").length > MAX_INPUT_LENGTH) {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
         return this.buildPreF0HaltResponse(ctx, caseId, "INPUT_TOO_LARGE", `maximum ${MAX_INPUT_LENGTH} characters.`);
       }
@@ -1935,8 +1940,8 @@ export class BCCAAEngine {
         const propositionId = this.ensureProposition(ctx, subject, predicate, null, `[SYSTEM-GENERATED] No facts extracted for ${subject} ${predicate}`);
         const assertionId = shortId("A", ctx.assertionCounter++);
         const factId = shortId("F", ctx.factCounter++);
-        ctx.assertionRegistry.set(assertionId, { assertionId, propositionId, assertionType: AssertionType.ALLEGED, polarity: AssertionPolarity.UNKNOWN, sourceSpan: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" } });
-        ctx.factRegistry.set(factId, { factId, propositionId, assertionId, proposition: `[AUTO] ${subject} ${predicate} — not mentioned in input`, subject, predicate, object: null, truth: Tristate.UNKNOWN, polarity: AssertionPolarity.UNKNOWN, source: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" }, assertionType: AssertionType.ALLEGED, validationStatus: ValidationStatus.UNVERIFIED, confidence: FactConfidence.CANDIDATE, validation: { extractionStatus: ExtractionStatus.NOT_EXECUTED, sourceStatus: SourceStatus.UNRESOLVED, authenticationStatus: AuthenticationStatus.NOT_EXECUTED, corroborationStatus: CorroborationStatus.NOT_EXECUTED, humanValidationStatus: HumanValidationStatus.NOT_EXECUTED } });
+        ctx.assertionRegistry.set(assertionId, { assertionId, propositionId, assertionType: AssertionType.INFERRED, polarity: AssertionPolarity.UNKNOWN, sourceSpan: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" } });
+        ctx.factRegistry.set(factId, { factId, propositionId, assertionId, proposition: `[AUTO] ${subject} ${predicate} — not mentioned in input`, subject, predicate, object: null, truth: Tristate.UNKNOWN, polarity: AssertionPolarity.UNKNOWN, source: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" }, assertionType: AssertionType.INFERRED, validationStatus: ValidationStatus.UNVERIFIED, confidence: FactConfidence.CANDIDATE, validation: { extractionStatus: ExtractionStatus.NOT_EXECUTED, sourceStatus: SourceStatus.UNRESOLVED, authenticationStatus: AuthenticationStatus.NOT_EXECUTED, corroborationStatus: CorroborationStatus.NOT_EXECUTED, humanValidationStatus: HumanValidationStatus.NOT_EXECUTED } });
       }
     }
   }
