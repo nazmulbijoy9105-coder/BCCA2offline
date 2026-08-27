@@ -2431,22 +2431,8 @@ export class BCCAAEngine {
   private executeProcedureRules(
     _ctx: ExecutionContext,
     _claimType: ClaimType,
-  stage5: {
-  territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
-  pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
-  subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
-  objectionStrategy: null,
-  plaintChecklist: [],
-  groundsForRejection: [haltDetail],
-},
-  stage5: {
-  territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
-  pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
-  subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
-  objectionStrategy: null,
-  plaintChecklist: [],
-  groundsForRejection: ["F0 gate halted"],
-},
+  ): { proceduralCompliance: boolean; proceduralNotes: string[] } {
+    return { proceduralCompliance: true, proceduralNotes: [] };
   }
 
   // =======================================================================
@@ -2665,6 +2651,10 @@ export class BCCAAEngine {
         locusStandiSummary: deps.standi.locusStandiSummary,
       },
       stage5: {
+        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+        objectionStrategy: null,
         plaintChecklist: deps.pleading.plaintChecklist,
         groundsForRejection: deps.pleading.groundsForRejection,
       },
@@ -2753,7 +2743,14 @@ export class BCCAAEngine {
       stage2: { relevantSections: [], primaryAct: null, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
-      stage5: { plaintChecklist: [], groundsForRejection: [haltDetail] },
+      stage5: {
+        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+        objectionStrategy: null,
+        plaintChecklist: [],
+        groundsForRejection: [haltDetail],
+      },
       stage6: { framedIssues: [], issueCount: 0 },
       stage7: { oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
       stage8: {
@@ -2827,7 +2824,14 @@ export class BCCAAEngine {
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "PASS_100_PERCENT_DETERMINISTIC", validationStandard: "100% deterministic canonical registry verification" }, equityPrinciples: [] },
       stage3: { isTimeBarred: false, accrualDate: null, limitationPeriodYears: null, calculationType: "other_category", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [] } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
-      stage5: { plaintChecklist: [], groundsForRejection: ["F0 gate halted"] },
+      stage5: {
+        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+        objectionStrategy: null,
+        plaintChecklist: [],
+        groundsForRejection: ["F0 gate halted"],
+      },
       stage6: { framedIssues: [], issueCount: 0 },
       stage7: { oralAssertions: 0, documentaryEvidence: 0, missingEvidence: [] },
       stage8: {
