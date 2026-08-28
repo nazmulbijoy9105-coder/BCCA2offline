@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+import type { RuleGraphIdentity, RuleRegistry, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
 
 const engine = new BCCAAEngine({
   licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) },
@@ -556,5 +557,89 @@ describe("P1-STRESS: Determinism and boundary stress", () => {
     }));
     expect(r.stage3).toBeDefined();
     expect(r.stage3.accrualDate).toBeDefined();  // Engine extracts dates; temporal ordering validation is future work
+  });
+});
+
+describe("VALIDATED_PRODUCTION configuration guards", () => {
+  const validIdentity: RuleGraphIdentity = {
+    corpusId: "test-corpus",
+    corpusVersion: "1.0.0",
+    corpusDigest: "test-digest",
+    authorityRegistryVersion: "1.0.0",
+    authorityRegistryDigest: "test-digest",
+    ruleGraphVersion: "1.0.0",
+    ruleGraphDigest: "test-digest",
+  };
+
+  const validRuleRegistry: RuleRegistry = {
+    version: "1.0.0",
+    identity: validIdentity,
+    authorityStatus: "VALIDATED_PRODUCTION",
+    getClaimElements: () => [],
+    getLegislationMapping: () => ({ primaryAct: null, relevantSections: [] }),
+  };
+
+  const devRuleRegistry: RuleRegistry = {
+    ...validRuleRegistry,
+    authorityStatus: "DEVELOPMENT_FIXTURE",
+  };
+
+  const validAuditSink = {
+    append: async () => ({} as any),
+    atomicAppend: true,
+    durable: true,
+    concurrencySafe: true,
+  };
+
+  const incompleteAuditSink = {
+    append: async () => ({} as any),
+    atomicAppend: true,
+    durable: false,
+    concurrencySafe: true,
+  };
+
+  class StubProductionFactValidationProvider {
+    async validateFacts(input: {
+      facts: AtomicFact[];
+      propositions: Proposition[];
+      assertions: Assertion[];
+    }): Promise<AtomicFact[]> {
+      return input.facts;
+    }
+  }
+
+  it("throws when authorityStatus is not VALIDATED_PRODUCTION", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: devRuleRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(/VALIDATED_PRODUCTION requires ruleRegistry\.authorityStatus/);
+  });
+
+  it("throws when auditSink lacks atomicAppend/durable/concurrencySafe", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      auditSink: incompleteAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(/VALIDATED_PRODUCTION requires a ValidatedAuditSink/);
+  });
+
+  it("throws when factValidationProvider defaults to NoOp", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      auditSink: validAuditSink,
+    })).toThrow(/VALIDATED_PRODUCTION requires a production FactValidationProvider/);
+  });
+
+  it("does not throw when all VALIDATED_PRODUCTION requirements are met", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).not.toThrow();
   });
 });
