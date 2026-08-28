@@ -1,23 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
 import type { RuleGraphIdentity, RuleRegistry, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
+import { makeAnalyzeRequest as makeRequest } from "./testFixtures";
 
 const engine = new BCCAAEngine({
   licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) },
   factValidationProvider: new NoOpFactValidationProvider(),
 });
-
-function makeRequest(o: Partial<AnalyzeRequest> = {}) {
-  return {
-    caseId: o.caseId ?? "P2-TEST",
-    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST", chamberId: "test-chamber" },
-    license: { licenseId: "TEST", issuedTo: "TEST" },
-    input: {
-      factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
-      submissionDate: o.submissionDate,
-    },
-  };
-}
 
 describe("P1-17: Claim type detection — Specific Performance", () => {
   it("detects SPECIFIC_PERFORMANCE from narrative", async () => {
@@ -326,8 +315,8 @@ describe("P2-12: Input immutability", () => {
 
 describe("P2-13: Missing caseId handling", () => {
   it("handles absent caseId without throwing", async () => {
-    const req = makeRequest();
-    delete (req).caseId;
+    const req: any = makeRequest();
+    delete req.caseId;
     const r = await engine.analyze(req);
     expect(r).toBeDefined();
   });
@@ -335,8 +324,8 @@ describe("P2-13: Missing caseId handling", () => {
 
 describe("P2-14: Missing user object handling", () => {
   it("handles absent user object without throwing", async () => {
-    const req = makeRequest();
-    delete (req).user;
+    const req: any = makeRequest();
+    delete req.user;
     const r = await engine.analyze(req);
     expect(r).toBeDefined();
   });
