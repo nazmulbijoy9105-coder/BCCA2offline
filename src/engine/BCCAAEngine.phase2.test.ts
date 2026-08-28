@@ -508,7 +508,7 @@ describe("P1-STRESS: Determinism and boundary stress", () => {
     const results = await Promise.all(inputs.map((i) => engine.analyze(i)));
     expect(results[0].stage0!.atomicFacts!.some((f: any) => f.object === "DECEASED")).toBe(true);
     expect(results[1].stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
-    expect(results[2].stage3.isTimeBarred).toBe(true);
+    expect(results[2].stage3.isTimeBarred).toBe(null);  // P0: missing submissionDate -> fail-closed, cannot compute limitation
   });
 
   it("null at optional fields does not crash", async () => {

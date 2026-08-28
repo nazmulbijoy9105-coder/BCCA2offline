@@ -1211,12 +1211,13 @@ export class BCCAAEngine {
       || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
 
     if (!request.input) {
-      (request as unknown as { input: { factPattern: string } }).input = { factPattern: "" };
+      const normalizedRequest = request;  // P0: type safety wrapper
+      (normalizedRequest as unknown as { input: { factPattern: string } }).input = { factPattern: "" };
     }
     request.input.factPattern = String(request.input?.factPattern ?? "").trim();
     // Fail-closed: missing submissionDate defaults to engine runtime date,
     // never silently assumes a historical date that could affect limitation
-    request.input.submissionDate = request.input.submissionDate || new Date().toISOString().slice(0, 10);
+    request.input.submissionDate = request.input.submissionDate?.trim() || undefined;  // P0: never invent dates
     // ────────────────────────────────────────────────────────────────────
     const ctx = newContext();
 
@@ -2685,7 +2686,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: deps.executionStatus,
       outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2814,7 +2815,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: "ERROR",
       outcome: "ERROR",
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2899,7 +2900,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: "BLOCKED",
       outcome: "HALTED",
       corpusMode: ENGINE_MANIFEST.corpusMode,

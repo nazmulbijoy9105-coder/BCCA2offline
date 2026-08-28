@@ -145,7 +145,7 @@ export class FactConsistencyGate {
           sourceParagraph: f.proposition,
           factStatus: "ALLEGED",
           temporalStatus: "PAST",
-          confidence: 0.95 as any,
+          confidence: 0.95,
           materiality: "CRITICAL",
         });
       });
@@ -158,7 +158,7 @@ export class FactConsistencyGate {
           sourceParagraph: m[0],
           factStatus: "ALLEGED",
           temporalStatus: "PAST",
-          confidence: 0.95 as any,
+          confidence: 0.95,
           materiality: "CRITICAL",
         });
       });
@@ -173,7 +173,7 @@ export class FactConsistencyGate {
           sourceParagraph: f.proposition,
           factStatus: "ALLEGED",
           temporalStatus: "CURRENT",
-          confidence: 0.9 as any,
+          confidence: 0.9,
           materiality: "CRITICAL",
         });
       });
@@ -186,7 +186,7 @@ export class FactConsistencyGate {
           sourceParagraph: m[0],
           factStatus: "ALLEGED",
           temporalStatus: "CURRENT",
-          confidence: 0.9 as any,
+          confidence: 0.9,
           materiality: "CRITICAL",
         });
       });
@@ -201,7 +201,7 @@ export class FactConsistencyGate {
         sourceParagraph: c.factualSource,
         factStatus: "ALLEGED",
         temporalStatus: "PAST",
-        confidence: 0.85 as any,
+        confidence: 0.85,
         materiality: "MATERIAL",
       });
     });
@@ -219,7 +219,7 @@ export class FactConsistencyGate {
         },
         factStatus: isReg ? "PROVED" : isUnreg ? "DISPUTED" : "UNKNOWN",
         temporalStatus: "PAST",
-        confidence: 0.9 as any,
+        confidence: 0.9,
         materiality: "CRITICAL",
       });
     }
@@ -237,7 +237,7 @@ export class FactConsistencyGate {
         value: { dispossessionAsserted: true },
         factStatus: "DISPUTED",
         temporalStatus: "CURRENT",
-        confidence: 0.75 as any,
+        confidence: 0.75,
         materiality: "MATERIAL",
       });
     }
