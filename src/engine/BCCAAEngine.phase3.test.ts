@@ -1,22 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+import { makeAnalyzeRequest as makeRequest } from "./testFixtures";
 
 const engine = new BCCAAEngine({
   licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) },
   factValidationProvider: new NoOpFactValidationProvider(),
 });
-
-function makeRequest(o: Partial<AnalyzeRequest> = {}) {
-  return {
-    caseId: o.caseId ?? "P3-TEST",
-    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST", chamberId: "test-chamber" },
-    license: { licenseId: "TEST", issuedTo: "TEST" },
-    input: {
-      factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
-      submissionDate: o.submissionDate,
-    },
-  };
-}
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  P2-16 – P2-18  Offline boundary                                           */
