@@ -290,8 +290,11 @@ export class FactConsistencyGate {
         atomicFacts.find((f) => f.proposition.includes("alive"))?.factId ||
         "FACT-LIVING-001";
 
+      // P0 FIX: left/right were undefined. Use the resolved fact IDs for a stable hash.
+      const left = { propositionKey: "ANCESTOR_DEATH" };
+      const right = { propositionKey: "ANCESTOR_ALIVE" };
+
       conflicts.push({
-        // @ts-ignore -- TODO: left/right variables undefined; refactor
         conflictId: `CONF-VITAL-${canonicalHash(left.propositionKey + "|" + right.propositionKey).slice(0,12)}`,
         conflictType: "TEMPORAL_STATUS_CONTRADICTION",
         severity: "CRITICAL",
@@ -352,9 +355,9 @@ export class FactConsistencyGate {
     const normalizedDates = extractedDeathDates.map(normalizeDateForDedup);
     const uniqueDeathDates = Array.from(new Set(normalizedDates));
     if (uniqueDeathDates.length > 1) {
+      // P0 FIX: left/right were undefined. Hash the joined unique dates directly.
       conflicts.push({
-        // @ts-ignore -- TODO: left/right variables undefined; refactor
-        conflictId: `CONF-DATE-DEATH-${canonicalHash(left.date + "|" + right.date).slice(0,12)}`,
+        conflictId: `CONF-DATE-DEATH-${canonicalHash(uniqueDeathDates.join("|")).slice(0,12)}`,
         conflictType: "CHRONOLOGY_DATE_CLASH",
         severity: "CRITICAL",
         factIdA: "FACT-DATE-CLASH-A",
@@ -398,8 +401,11 @@ export class FactConsistencyGate {
       !lower.includes("alternative prayer") &&
       !lower.includes("in the alternative")
     ) {
+      // P0 FIX: left/right were undefined. Use static claim type identifiers.
+      const left = { claimType: "SPECIFIC_PERFORMANCE" };
+      const right = { claimType: "INHERITANCE_CONSULTATION" };
+
       conflicts.push({
-        // @ts-ignore -- TODO: left/right variables undefined; refactor
         conflictId: `CONF-COA-${canonicalHash(left.claimType + "|" + right.claimType).slice(0,12)}`,
         conflictType: "CAUSE_OF_ACTION_MUTUAL_EXCLUSION",
         severity: "MATERIAL",
@@ -440,8 +446,11 @@ export class FactConsistencyGate {
       (lower.includes("stranger") ||
         lower.includes("trespasser with no relation"));
     if (mentionsCoHeir && mentionsStranger) {
+      // P0 FIX: left/right were undefined. Use static role identifiers.
+      const left = { role: "CO_HEIR" };
+      const right = { role: "STRANGER" };
+
       conflicts.push({
-        // @ts-ignore -- TODO: left/right variables undefined; refactor
         conflictId: `CONF-PARTY-ROLE-${canonicalHash(left.role + "|" + right.role).slice(0,12)}`,
         conflictType: "PARTY_ROLE_INCONSISTENCY",
         severity: "MATERIAL",

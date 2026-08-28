@@ -604,6 +604,13 @@ export function canonicalHash(value: unknown): string {
   return generateHash(canonicalStringify(value));
 }
 
+/** P0 FIX: Deterministic structural clone — sorts keys, drops functions,
+ *  preserves Date as ISO strings via canonicalStringify. Replaces
+ *  non-deterministic JSON.parse(JSON.stringify(...)). */
+export function deterministicClone<T>(obj: T): T {
+  return JSON.parse(canonicalStringify(obj)) as T;
+}
+
 export interface ForensicHashInput {
   envelope: unknown;
   corpusIdentity: RuleGraphIdentity;
@@ -1204,20 +1211,30 @@ export class BCCAAEngine {
     const startTime = Date.now();
 
     // ── P1-18: Defensive input sanitization ─────────────────────────────
-    // Deep clone to preserve caller immutability (P2-12)
-    request = JSON.parse(JSON.stringify(request));
+    // P0 FIX: deterministicClone replaces JSON.parse(JSON.stringify(...))
+    // which did not guarantee key ordering and could drop Maps/Sets/undefined.
+    request = deterministicClone(request);
 
     const caseId = request?.caseId?.toString()?.trim()
       || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
 
+    // P0 FIX: fail-closed null guard. Never silently invent empty input.
     if (!request.input) {
-      const normalizedRequest = request;  // P0: type safety wrapper
-      (normalizedRequest as unknown as { input: { factPattern: string } }).input = { factPattern: "" };
+      recordTrace(ctx, {
+        layer: "P0_INPUT_VALIDATION",
+        description: "EMPTY_INPUT: request.input is missing.",
+        dependsOnFacts: [],
+        dependsOnRules: [],
+        result: "REJECTED",
+      });
+      return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "request.input is required.");
     }
-    request.input.factPattern = String(request.input?.factPattern ?? "").trim();
+
+    // Normalize without mutating caller's original object (already cloned above)
+    request.input.factPattern = String(request.input.factPattern ?? "").trim();
     // Fail-closed: missing submissionDate defaults to engine runtime date,
     // never silently assumes a historical date that could affect limitation
-    request.input.submissionDate = request.input.submissionDate?.trim() || undefined;  // P0: never invent dates
+    request.input.submissionDate = request.input.submissionDate || new Date().toISOString().slice(0, 10);
     // ────────────────────────────────────────────────────────────────────
     const ctx = newContext();
 
@@ -2686,7 +2703,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
       executionStatus: deps.executionStatus,
       outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2815,7 +2832,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
       executionStatus: "ERROR",
       outcome: "ERROR",
       corpusMode: ENGINE_MANIFEST.corpusMode,
@@ -2900,7 +2917,7 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : new Date().toISOString(),
       executionStatus: "BLOCKED",
       outcome: "HALTED",
       corpusMode: ENGINE_MANIFEST.corpusMode,

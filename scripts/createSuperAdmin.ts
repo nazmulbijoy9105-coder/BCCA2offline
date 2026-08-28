@@ -11,10 +11,27 @@ interface SuperAdminSetup {
 }
 
 function main() {
+  // P0 FIX: Never hardcode production passwords. Read from env or prompt.
+  const envPassword = process.env.BCCAA_SEED_PASSWORD;
+  const password = envPassword || (() => {
+    const arr = new Uint8Array(16);
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      crypto.getRandomValues(arr);
+    } else {
+      for (let i = 0; i < 16; i++) arr[i] = Math.floor(Math.random() * 256);
+    }
+    const pw = Array.from(arr).map(b => b.toString(36)).join("").slice(0, 12) + "!" + Date.now().toString(36).slice(-4);
+    return pw;
+  })();
+
+  if (!envPassword) {
+    console.warn("[BCCAA-SECURITY] No BCCAA_SEED_PASSWORD env var set. A random password was generated.");
+  }
+
   const setup: SuperAdminSetup = {
     name: "Md. Nazmul Islam",
     email: "nazmul.islam@neumlex.com",
-    password: "YourSecurePassword123!",
+    password,
     chamberId: "neum-lex-counsel-dhaka",
     setupKey: SETUP_KEY,
   };
@@ -49,6 +66,10 @@ function main() {
   console.log("Add this to your browser's localStorage as '_bccaa_users':");
   console.log(JSON.stringify([user], null, 2));
   console.log("\n⚠️  Then generate a license key and login!");
+  if (!envPassword) {
+    console.log(`\n🔐 ONE-TIME GENERATED PASSWORD: ${password}`);
+    console.log("   Set BCCAA_SEED_PASSWORD env var to make this deterministic.");
+  }
 }
 
 main();

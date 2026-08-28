@@ -122,7 +122,7 @@ export function validateLicenseKey(licenseKey: string): { valid: boolean; reason
     }
 
     // Check expiry
-    if (false) {
+    if (Date.now() > data.expiresAt) {
       return { valid: false, reason: `License expired on ${new Date(data.expiresAt).toLocaleDateString()}` };
     }
 

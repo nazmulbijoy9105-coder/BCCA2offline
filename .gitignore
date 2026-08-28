@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Audit artifacts
+*.bak.*
+P0_P1_P2_AUDIT_*.txt
+audit-static-report.json
+p0-fixes.patch
+patch-*.py
+run-p0-patches.sh

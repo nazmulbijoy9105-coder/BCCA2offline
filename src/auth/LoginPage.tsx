@@ -129,15 +129,20 @@ export default function LoginPage() {
       allowedDomains: ["localhost", "127.0.0.1", "run.app", "vercel.app", "vercel.dev", "github.io"],
       features: ["offline_engine", "pdf_export", "case_history", "audit_logs", "user_management"]
     });
+    // P0 FIX: Remove hardcoded passwords. Use seed from localStorage (set by AuthContext)
+    // or leave blank for manual entry.
+    const seedPw = (key: string): string => {
+      try { return localStorage.getItem(`_bccaa_seed_${key}`) || ""; } catch { return ""; }
+    };
     if (role === "super_admin") {
       setLoginIdentifier("nazmul.islam@neumlex.com");
-      setLoginPassword("YourSecurePassword123!");
+      setLoginPassword(seedPw("super_admin"));
     } else if (role === "admin") {
       setLoginIdentifier("advocate@neumlex.com");
-      setLoginPassword("AdvocatePass123!");
+      setLoginPassword(seedPw("admin"));
     } else {
       setLoginIdentifier("user@neumlex.com");
-      setLoginPassword("UserPass123!");
+      setLoginPassword(seedPw("user"));
     }
     setLicenseKey(demoKey);
     setCustomError(null);

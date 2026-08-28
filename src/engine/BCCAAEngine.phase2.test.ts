@@ -6,10 +6,10 @@ const engine = new BCCAAEngine({
   factValidationProvider: new NoOpFactValidationProvider(),
 });
 
-function makeRequest(o: any = {}) {
+function makeRequest(o: Partial<AnalyzeRequest> = {}) {
   return {
     caseId: o.caseId ?? "P2-TEST",
-    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST" as any as any, chamberId: "test-chamber" } as any,
+    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST", chamberId: "test-chamber" },
     license: { licenseId: "TEST", issuedTo: "TEST" },
     input: {
       factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
@@ -326,7 +326,7 @@ describe("P2-12: Input immutability", () => {
 describe("P2-13: Missing caseId handling", () => {
   it("handles absent caseId without throwing", async () => {
     const req = makeRequest();
-    delete (req as any).caseId;
+    delete (req).caseId;
     const r = await engine.analyze(req);
     expect(r).toBeDefined();
   });
@@ -335,7 +335,7 @@ describe("P2-13: Missing caseId handling", () => {
 describe("P2-14: Missing user object handling", () => {
   it("handles absent user object without throwing", async () => {
     const req = makeRequest();
-    delete (req as any).user;
+    delete (req).user;
     const r = await engine.analyze(req);
     expect(r).toBeDefined();
   });
@@ -417,7 +417,6 @@ describe("P2-20: Response determinism", () => {
 });
 });
 
-
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  P1-18  Boundary input resilience                                          */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -446,7 +445,7 @@ describe("P1-18: Boundary input resilience", () => {
     const r = await engine.analyze(makeRequest({
       caseId: "P1-18-D",
       factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
-      submissionDate: undefined as any,
+      submissionDate: undefined,
     }));
     expect(r.stage3).toBeDefined();
     expect(r.stage3.isTimeBarred).not.toBeUndefined();
@@ -474,14 +473,13 @@ describe("P1-18: Boundary input resilience", () => {
 
   it("null caseId is rejected or generates a fallback identifier", async () => {
     const r = await engine.analyze(makeRequest({
-      caseId: null as any,
+      caseId: null,
       factPattern: "Facts.",
     }));
     expect(r.caseId).toBeTruthy();
     expect(typeof r.caseId).toBe("string");
   });
 });
-
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  P1-STRESS: Determinism, isolation, and boundary stress tests              */
@@ -515,7 +513,7 @@ describe("P1-STRESS: Determinism and boundary stress", () => {
     const r = await engine.analyze(makeRequest({
       caseId: "P1-STRESS-3",
       factPattern: "Simple claim.",
-      submissionDate: null as any,
+      submissionDate: null,
     }));
     expect(r).toBeDefined();
     expect(r.caseId).toBe("P1-STRESS-3");

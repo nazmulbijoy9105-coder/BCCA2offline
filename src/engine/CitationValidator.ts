@@ -164,7 +164,7 @@ export const CANONICAL_PRECEDENT_REGISTRY: Record<string, AuthoritativePrecedent
       "Section 42, Specific Relief Act 1877",
       "Section 9, Code of Civil Procedure 1908"
     ],
-    ratioDecidendi: "During the lifetime of an ancestor, no descendant has any vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
+    ratioDecidendi: "During the lifetime of an ancestor, no descendant h as unknown vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
     summaryOfHolding: "No child acquires any legal interest in a parent's property during the parent's lifetime; inheritance rights do not exist prior to death.",
     factualContextTag: ["living_parent", "spes_successionis", "premature_suit", "lifetime_declaration"],
     bindingAuthority: "BINDING_APPELLATE_DIVISION",

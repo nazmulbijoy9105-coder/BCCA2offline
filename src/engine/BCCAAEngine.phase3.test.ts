@@ -6,10 +6,10 @@ const engine = new BCCAAEngine({
   factValidationProvider: new NoOpFactValidationProvider(),
 });
 
-function makeRequest(o: any = {}) {
+function makeRequest(o: Partial<AnalyzeRequest> = {}) {
   return {
     caseId: o.caseId ?? "P3-TEST",
-    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST" as any as any, chamberId: "test-chamber" } as any,
+    user: { id: "test-id", userId: "test-user", email: "test.com", name: "Test User", role: "TEST", chamberId: "test-chamber" },
     license: { licenseId: "TEST", issuedTo: "TEST" },
     input: {
       factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",

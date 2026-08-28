@@ -25,7 +25,7 @@ function makeRequest(overrides: {
 } = {}): AnalyzeRequest {
   return {
     caseId: overrides.caseId ?? `DET-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    user: { id: "test-id", userId: "test-runner", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST" as any as any as any, chamberId: "test-chamber" } as any,
+    user: { id: "test-id", userId: "test-runner", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST", chamberId: "test-chamber" },
     license: { licenseId: "TEST-LIC-001", issuedTo: "DETERMINISTIC_TEST_SUITE" },
     input: {
       factPattern:
@@ -37,7 +37,7 @@ function makeRequest(overrides: {
 }
 
 function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
-  const { gateF0, stage0, stage1, stage2, stage3, stage4, stage5, outcome } = response as any;
+  const { gateF0, stage0, stage1, stage2, stage3, stage4, stage5, outcome } = response;
   return canonicalStringify({
     gateF0,
     stage0: {
@@ -47,7 +47,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       disputedFacts: stage0?.disputedFacts,
       unknownFacts: stage0?.unknownFacts,
       quantumFacts: stage0?.quantumFacts,
-      dispossessionProven: (stage0 as any)?.dispossessionProven,
+      dispossessionProven: (stage0)?.dispossessionProven,
       atomicFactCount: stage0?.atomicFacts?.length ?? 0,
       propositionCount: stage0?.propositions?.length ?? 0,
       assertionCount: stage0?.assertions?.length ?? 0,
@@ -89,7 +89,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       pecuniary: stage5?.pecuniary,
       subjectMatter: stage5?.subjectMatter,
       objectionStrategy: stage5?.objectionStrategy,
-      timelineProgress: (stage5 as any)?.timelineProgress,
+      timelineProgress: (stage5)?.timelineProgress,
     },
     outcome,
   });
@@ -353,8 +353,8 @@ describe("PHASE 4: Pleading & Issue Framing", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      const i1 = (r1 as any).stage0?.issues ?? (r1 as any).issues ?? [];
-      const i2 = (r2 as any).stage0?.issues ?? (r2 as any).issues ?? [];
+      const i1 = (r1).stage0?.issues ?? (r1).issues ?? [];
+      const i2 = (r2).stage0?.issues ?? (r2).issues ?? [];
       expect(canonicalStringify(i1)).toBe(canonicalStringify(i2));
     });
   });
@@ -383,8 +383,8 @@ describe("PHASE 5: Evidence Assessment & Merits Analysis", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      const m1 = (r1 as any).merits ?? (r1 as any).stage0?.merits ?? [];
-      const m2 = (r2 as any).merits ?? (r2 as any).stage0?.merits ?? [];
+      const m1 = (r1).merits ?? (r1).stage0?.merits ?? [];
+      const m2 = (r2).merits ?? (r2).stage0?.merits ?? [];
       expect(canonicalStringify(m1)).toBe(canonicalStringify(m2));
     });
   });
@@ -412,7 +412,7 @@ describe("PHASE 6: Equity, Procedure & Appeal", () => {
           factPattern: "The suit was filed on 01 January 2024. Issues were framed on 15 February 2024. Evidence is ongoing.",
         })
       );
-      expect(((r.stage5 as any).timelineProgress ?? []).length).toBeGreaterThanOrEqual(0);
+      expect(((r.stage5).timelineProgress ?? []).length).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -425,8 +425,8 @@ describe("PHASE 6: Equity, Procedure & Appeal", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      const a1 = (r1 as any).appeal ?? (r1 as any).stage0?.appeal ?? [];
-      const a2 = (r2 as any).appeal ?? (r2 as any).stage0?.appeal ?? [];
+      const a1 = (r1).appeal ?? (r1).stage0?.appeal ?? [];
+      const a2 = (r2).appeal ?? (r2).stage0?.appeal ?? [];
       expect(canonicalStringify(a1)).toBe(canonicalStringify(a2));
     });
   });
@@ -464,14 +464,14 @@ describe("PHASE 7: Final Gate, Outcome & Audit Integrity", () => {
       const req = makeRequest({ caseId: "P7-03", factPattern: "The plaintiff relied on an unregistered bainapatra." });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      expect((r1 as any).auditHash).toBe((r2 as any).auditHash);
-      expect((r1 as any).auditHash).toBeTruthy();
+      expect((r1).auditHash).toBe((r2).auditHash);
+      expect((r1).auditHash).toBeTruthy();
     });
 
     it.skip("Different inputs produce different audit hashes [PENDING: auditHash not yet exposed on response]", async () => {
       const rA = await engine.analyze(makeRequest({ caseId: "P7-03-A", factPattern: "Fact pattern A." }));
       const rB = await engine.analyze(makeRequest({ caseId: "P7-03-B", factPattern: "Fact pattern B." }));
-      expect((rA as any).auditHash).not.toBe((rB as any).auditHash);
+      expect((rA).auditHash).not.toBe((rB).auditHash);
     });
   });
 });
@@ -510,9 +510,9 @@ describe("PHASE 8: Edge Cases & Regression Guards", () => {
       const rNone = await engine.analyze(
         makeRequest({ caseId: "P8-03-N", factPattern: "The plaintiff has a document." })
       );
-      expect((rUnreg.stage0 as any).bainapatraRegistration).toBe(false);
-      expect((rReg.stage0 as any).bainapatraRegistration).toBe(true);
-      expect((rNone.stage0 as any).bainapatraRegistration).toBe("unspecified");
+      expect((rUnreg.stage0).bainapatraRegistration).toBe(false);
+      expect((rReg.stage0).bainapatraRegistration).toBe(true);
+      expect((rNone.stage0).bainapatraRegistration).toBe("unspecified");
     });
   });
 

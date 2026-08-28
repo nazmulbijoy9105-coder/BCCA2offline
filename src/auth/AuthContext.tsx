@@ -64,6 +64,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Ensure default users for all roles exist (Super Admin, Chamber Admin, Standard User)
         let currentUsers = getUsers();
         if (currentUsers.length === 0 || !currentUsers.some(u => u.role === "admin") || !currentUsers.some(u => u.role === "user")) {
+          // P0 FIX: Generate cryptographically random seed passwords instead of hardcoding.
+          // Passwords are persisted in localStorage so they survive reloads.
+          const seedPw = (key: string): string => {
+            const stored = localStorage.getItem(`_bccaa_seed_${key}`);
+            if (stored) return stored;
+            const arr = new Uint8Array(16);
+            if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+              crypto.getRandomValues(arr);
+            } else {
+              for (let i = 0; i < 16; i++) arr[i] = Math.floor(Math.random() * 256);
+            }
+            const pw = Array.from(arr).map(b => b.toString(36)).join("").slice(0, 12) + "!" + Date.now().toString(36).slice(-4);
+            localStorage.setItem(`_bccaa_seed_${key}`, pw);
+            return pw;
+          };
+
+          const superAdminPw = seedPw("super_admin");
+          const adminPw = seedPw("admin");
+          const userPw = seedPw("user");
+
+          // eslint-disable-next-line no-console
+          console.warn("[BCCAA-SECURITY] Default seed accounts created. ONE-TIME PASSWORDS (check localStorage _bccaa_seed_*):");
+          console.warn(`  Super Admin (${"nazmul.islam@neumlex.com"}): ${superAdminPw}`);
+          console.warn(`  Chamber Admin (${"advocate@neumlex.com"}): ${adminPw}`);
+          console.warn(`  Standard User (${"user@neumlex.com"}): ${userPw}`);
+
           const defaultSuperAdmin: AuthUser & { passwordHash?: string } = {
             id: "SA-2026-DHAKA",
             email: "nazmul.islam@neumlex.com",
@@ -79,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             maxCasesPerDay: Infinity,
             casesToday: 0,
             lastCaseDate: "",
-            passwordHash: hashPassword("YourSecurePassword123!"),
+            passwordHash: hashPassword(superAdminPw),
           };
 
           const defaultChamberAdmin: AuthUser & { passwordHash?: string } = {
@@ -97,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             maxCasesPerDay: 100,
             casesToday: 0,
             lastCaseDate: "",
-            passwordHash: hashPassword("AdvocatePass123!"),
+            passwordHash: hashPassword(adminPw),
           };
 
           const defaultStandardUser: AuthUser & { passwordHash?: string } = {
@@ -115,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             maxCasesPerDay: 10,
             casesToday: 0,
             lastCaseDate: "",
-            passwordHash: hashPassword("UserPass123!"),
+            passwordHash: hashPassword(userPw),
           };
 
           // Combine with existing users without duplicate emails
@@ -316,7 +342,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         maxCasesPerDay: role === "super_admin" ? Infinity : (role === "admin" ? 100 : 10),
         casesToday: 0,
         lastCaseDate: new Date().toISOString().split("T")[0],
-        passwordHash: hashPassword(params.password || "GeneralPass123!"),
+        passwordHash: hashPassword(params.password ?? ""),
       };
 
       // Auto generate license
