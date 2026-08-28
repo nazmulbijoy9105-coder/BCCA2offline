@@ -1232,9 +1232,10 @@ export class BCCAAEngine {
 
     // Normalize without mutating caller's original object (already cloned above)
     request.input.factPattern = String(request.input.factPattern ?? "").trim();
-    // Fail-closed: missing submissionDate defaults to engine runtime date,
-    // never silently assumes a historical date that could affect limitation
-    request.input.submissionDate = request.input.submissionDate || new Date().toISOString().slice(0, 10);
+    // Fail-closed: missing submissionDate is left unset (falsy). Downstream,
+    // ctx.referenceDate resolves to 0 when submissionDate is absent, which
+    // correctly keeps isTimeBarred at null rather than computing off the
+    // runtime clock. Do NOT reintroduce a `|| new Date()` default here.
     // ────────────────────────────────────────────────────────────────────
     const ctx = newContext();
 
