@@ -1,4 +1,5 @@
 import { CaseAnalysisResponse } from "../types/types";
+import { makeTestUser } from "./testFixtures";
 import { describe, it, expect } from "vitest";
 import {
   BCCAAEngine,
@@ -25,7 +26,7 @@ function makeRequest(overrides: {
 } = {}): AnalyzeRequest {
   return {
     caseId: overrides.caseId ?? `DET-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    user: { id: "test-id", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST", chamberId: "test-chamber" },
+    user: makeTestUser(),
     license: { licenseId: "TEST-LIC-001", issuedTo: "DETERMINISTIC_TEST_SUITE" },
     input: {
       factPattern:
@@ -89,7 +90,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       pecuniary: stage5?.pecuniary,
       subjectMatter: stage5?.subjectMatter,
       objectionStrategy: stage5?.objectionStrategy,
-      timelineProgress: (stage5)?.timelineProgress,
+      timelineProgress: (response.stage11)?.timelineProgress,
     },
     outcome,
   });
@@ -510,9 +511,9 @@ describe("PHASE 8: Edge Cases & Regression Guards", () => {
       const rNone = await engine.analyze(
         makeRequest({ caseId: "P8-03-N", factPattern: "The plaintiff has a document." })
       );
-      expect((rUnreg.stage0).bainapatraRegistration).toBe(false);
-      expect((rReg.stage0).bainapatraRegistration).toBe(true);
-      expect((rNone.stage0).bainapatraRegistration).toBe("unspecified");
+      expect((rUnreg.stage0.factsMeta?.isRegisteredBainapatra)).toBe(false);
+      expect((rReg.stage0.factsMeta?.isRegisteredBainapatra)).toBe(true);
+      expect((rNone.stage0.factsMeta?.isRegisteredBainapatra)).toBe("unspecified");
     });
   });
 

@@ -17,3 +17,8 @@ run-p0-patches.sh
 
 # generated audit artifacts
 *_AUDIT*.txt
+
+# local/generated audit artifacts
+DETERMINISM_RISK.txt
+*_AUDIT*.txt
+*.pre-tsc-fix
