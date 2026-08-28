@@ -1221,6 +1221,9 @@ export class BCCAAEngine {
     const caseId = request?.caseId?.toString()?.trim()
       || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
 
+    // Must be declared before any early-return path below can reference it.
+    const ctx = newContext();
+
     // P0 FIX: fail-closed null guard. Never silently invent empty input.
     if (!request.input) {
       recordTrace(ctx, {
@@ -1240,7 +1243,6 @@ export class BCCAAEngine {
     // correctly keeps isTimeBarred at null rather than computing off the
     // runtime clock. Do NOT reintroduce a `|| new Date()` default here.
     // ────────────────────────────────────────────────────────────────────
-    const ctx = newContext();
 
     try {
       const license = await this.licenseValidator.validate(
