@@ -1171,25 +1171,28 @@ export class BCCAAEngine {
   private readonly licenseValidator: LicenseValidator;
   private readonly factValidationProvider: FactValidationProvider;
   private readonly authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
+  private readonly corpusMode: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
 
   constructor(deps?: {
     ruleRegistry?: RuleRegistry;
     auditSink?: AuditSink;
     licenseValidator?: LicenseValidator;
     factValidationProvider?: FactValidationProvider;
+    corpusMode?: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
   }) {
+    this.corpusMode = deps?.corpusMode ?? ENGINE_MANIFEST.corpusMode;
     this.ruleRegistry = (deps?.ruleRegistry ?? new DevelopmentRuleRegistry()) as RuleRegistry;
     this.auditSink = deps?.auditSink ?? new DefaultAuditSink();
     this.licenseValidator = deps?.licenseValidator ?? new DefaultLicenseValidator();
     this.factValidationProvider =
       deps?.factValidationProvider ??
-      (ENGINE_MANIFEST.corpusMode === "DEVELOPMENT"
+      (this.corpusMode === "DEVELOPMENT"
         ? new DevelopmentFactValidationProvider()
         : new NoOpFactValidationProvider());
     this.authorityStatus =
       deps?.ruleRegistry?.authorityStatus ?? this.ruleRegistry.authorityStatus ?? "DEVELOPMENT_FIXTURE";
 
-    if (ENGINE_MANIFEST.corpusMode === "VALIDATED_PRODUCTION") {
+    if (this.corpusMode === "VALIDATED_PRODUCTION") {
       if (this.authorityStatus !== "VALIDATED_PRODUCTION") {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires ruleRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.");
       }
@@ -2704,10 +2707,10 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+      executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: deps.executionStatus,
       outcome: this.determineOutcome(deps.executionStatus, deps.elementGate),
-      corpusMode: ENGINE_MANIFEST.corpusMode,
+      corpusMode: this.corpusMode,
       authorityStatus: this.authorityStatus,
       claimType,
       domain: deps.domain,
@@ -2833,10 +2836,10 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+      executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: "ERROR",
       outcome: "ERROR",
-      corpusMode: ENGINE_MANIFEST.corpusMode,
+      corpusMode: this.corpusMode,
       authorityStatus: this.authorityStatus,
       claimType: "GENERAL_CIVIL",
       domain: "UNKNOWN",
@@ -2918,10 +2921,10 @@ export class BCCAAEngine {
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
-      executionTimestamp: ENGINE_MANIFEST.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+      executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: "BLOCKED",
       outcome: "HALTED",
-      corpusMode: ENGINE_MANIFEST.corpusMode,
+      corpusMode: this.corpusMode,
       authorityStatus: this.authorityStatus,
       claimType,
       domain,
@@ -3035,7 +3038,7 @@ export class BCCAAEngine {
       corpusIdentity: this.ruleRegistry.identity,
       ruleGraphIdentity: this.ruleRegistry.identity,
       engineVersion: ENGINE_MANIFEST.engineVersion,
-      corpusMode: ENGINE_MANIFEST.corpusMode,
+      corpusMode: this.corpusMode,
     });
     const payload: AuditRecordPayload = {
       caseId,
