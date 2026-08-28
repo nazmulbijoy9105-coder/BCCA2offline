@@ -25,7 +25,7 @@ function makeRequest(overrides: {
 } = {}): AnalyzeRequest {
   return {
     caseId: overrides.caseId ?? `DET-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-    user: { id: "test-id", userId: "test-runner", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST", chamberId: "test-chamber" },
+    user: { id: "test-id", email: "test.com", name: "Test User", role: "DETERMINISTIC_TEST", chamberId: "test-chamber" },
     license: { licenseId: "TEST-LIC-001", issuedTo: "DETERMINISTIC_TEST_SUITE" },
     input: {
       factPattern:
@@ -47,7 +47,7 @@ function deterministicSnapshot(response: CaseAnalysisResponse): unknown {
       disputedFacts: stage0?.disputedFacts,
       unknownFacts: stage0?.unknownFacts,
       quantumFacts: stage0?.quantumFacts,
-      dispossessionProven: (stage0)?.dispossessionProven,
+      dispossessionProven: (stage0 as any)?.factsMeta?.dispossessionProven,
       atomicFactCount: stage0?.atomicFacts?.length ?? 0,
       propositionCount: stage0?.propositions?.length ?? 0,
       assertionCount: stage0?.assertions?.length ?? 0,
@@ -353,8 +353,8 @@ describe("PHASE 4: Pleading & Issue Framing", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      const i1 = (r1).stage0?.issues ?? (r1).issues ?? [];
-      const i2 = (r2).stage0?.issues ?? (r2).issues ?? [];
+      const i1 = (r1 as any).stage7?.issues ?? [];
+      const i2 = (r2 as any).stage7?.issues ?? [];
       expect(canonicalStringify(i1)).toBe(canonicalStringify(i2));
     });
   });
@@ -383,8 +383,8 @@ describe("PHASE 5: Evidence Assessment & Merits Analysis", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      const m1 = (r1).merits ?? (r1).stage0?.merits ?? [];
-      const m2 = (r2).merits ?? (r2).stage0?.merits ?? [];
+      const m1 = (r1 as any).stage9?.issueDetails ?? [];
+      const m2 = (r2 as any).stage9?.issueDetails ?? [];
       expect(canonicalStringify(m1)).toBe(canonicalStringify(m2));
     });
   });
@@ -412,7 +412,7 @@ describe("PHASE 6: Equity, Procedure & Appeal", () => {
           factPattern: "The suit was filed on 01 January 2024. Issues were framed on 15 February 2024. Evidence is ongoing.",
         })
       );
-      expect(((r.stage5).timelineProgress ?? []).length).toBeGreaterThanOrEqual(0);
+      expect(((r as any).stage11?.timelineProgress ?? []).length).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -425,8 +425,8 @@ describe("PHASE 6: Equity, Procedure & Appeal", () => {
       });
       const r1 = await engine.analyze(req);
       const r2 = await engine.analyze(req);
-      const a1 = (r1).appeal ?? (r1).stage0?.appeal ?? [];
-      const a2 = (r2).appeal ?? (r2).stage0?.appeal ?? [];
+      const a1 = (r1 as any).stage12?.appealNodes ?? [];
+      const a2 = (r2 as any).stage12?.appealNodes ?? [];
       expect(canonicalStringify(a1)).toBe(canonicalStringify(a2));
     });
   });

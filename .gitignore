@@ -14,3 +14,6 @@ audit-static-report.json
 p0-fixes.patch
 patch-*.py
 run-p0-patches.sh
+
+# generated audit artifacts
+*_AUDIT*.txt
