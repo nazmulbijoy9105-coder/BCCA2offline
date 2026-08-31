@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   role: UserRole;
   isActive: boolean;
   mfaRequired: boolean;
+  mfaEnabled: boolean;
 }
 
 export interface SessionRecord {
@@ -14,4 +15,6 @@ export interface SessionRecord {
   userId: string;
   tenantId: string;
   expiresAt: Date;
+  mfaVerified: boolean;
+  mfaVerifiedAt: Date | null;
 }

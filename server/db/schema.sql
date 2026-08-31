@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS users (
         CHECK (role IN ('super_admin', 'admin', 'user')),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     mfa_required BOOLEAN NOT NULL DEFAULT FALSE,
+    mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    mfa_secret_ciphertext TEXT,
+    mfa_enrolled_at TIMESTAMPTZ,
+    mfa_last_verified_at TIMESTAMPTZ,
     failed_login_count INTEGER NOT NULL DEFAULT 0,
     locked_until TIMESTAMPTZ,
     last_login_at TIMESTAMPTZ,
@@ -52,7 +56,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
     last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    revoked_at TIMESTAMPTZ
+    revoked_at TIMESTAMPTZ,
+    mfa_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    mfa_verified_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_tenant
@@ -66,6 +72,18 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user
 
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry
     ON sessions(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_users_mfa
+    ON users(tenant_id, mfa_enabled, mfa_required);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_mfa
+    ON sessions(user_id, mfa_verified, expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_users_mfa
+    ON users(tenant_id, mfa_enabled, mfa_required);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_mfa
+    ON sessions(user_id, mfa_verified, expires_at);
 
 CREATE INDEX IF NOT EXISTS idx_licenses_tenant
     ON licenses(tenant_id);

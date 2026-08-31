@@ -7,7 +7,8 @@ import {
   getSessionCookieName,
   revokeSession,
 } from "../auth/session";
-import { authenticate } from "../middleware/authenticate";
+import { authenticate, authenticateMfaPending } from "../middleware/authenticate";
+import { decryptTotpSecret, verifyTotp } from "../auth/totp";
 import { db } from "../db/pool";
 
 const router = Router();
@@ -104,6 +105,7 @@ router.post("/login", async (req, res) => {
       role: "super_admin" | "admin" | "user";
       is_active: boolean;
       mfa_required: boolean;
+      mfa_enabled: boolean;
       failed_login_count: number;
       locked_until: Date | null;
       tenant_status: "active" | "suspended" | "revoked";
@@ -117,6 +119,7 @@ router.post("/login", async (req, res) => {
           u.role,
           u.is_active,
           u.mfa_required,
+          u.mfa_enabled,
           u.failed_login_count,
           u.locked_until,
           t.status AS tenant_status
@@ -249,20 +252,35 @@ router.post("/login", async (req, res) => {
       role: user.role,
       isActive: user.is_active,
       mfaRequired: user.mfa_required,
+      mfaEnabled: user.mfa_enabled,
     };
 
-    await createSession(authenticatedUser, res);
+    const mfaRequired =
+      user.mfa_required ||
+      user.mfa_enabled;
+
+    const session = await createSession(
+      authenticatedUser,
+      res,
+      !mfaRequired,
+    );
 
     await recordSecurityEvent(
       "LOGIN",
-      "SUCCESS",
+      mfaRequired ? "MFA_REQUIRED" : "SUCCESS",
       user.tenant_id,
       user.id,
       req.requestId,
+      {
+        mfaRequired,
+        sessionId: session.id,
+      },
     );
 
     return res.status(200).json({
-      authenticated: true,
+      authenticated: !mfaRequired,
+      mfaRequired,
+      mfaVerified: session.mfaVerified,
       user: authenticatedUser,
     });
   } catch (error) {
@@ -270,6 +288,163 @@ router.post("/login", async (req, res) => {
 
     return res.status(500).json({
       error: "AUTHENTICATION_SERVICE_ERROR",
+    });
+  }
+});
+
+
+router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
+  const token = req.body?.token;
+
+  if (
+    typeof token !== "string" ||
+    !/^\d{6}$/.test(token)
+  ) {
+    return res.status(400).json({
+      error: "INVALID_MFA_CODE",
+    });
+  }
+
+  const user = req.auth;
+  const authSession = req.authSession;
+
+  if (!user || !authSession) {
+    return res.status(401).json({
+      error: "UNAUTHENTICATED",
+    });
+  }
+
+  try {
+    const result = await db.query<{
+      mfa_secret_ciphertext: string | null;
+    }>(
+      `
+        SELECT mfa_secret_ciphertext
+        FROM users
+        WHERE id = $1
+          AND tenant_id = $2
+          AND is_active = TRUE
+        LIMIT 1
+      `,
+      [user.id, user.tenantId],
+    );
+
+    if (
+      result.rows.length !== 1 ||
+      !result.rows[0].mfa_secret_ciphertext
+    ) {
+      await recordSecurityEvent(
+        "MFA_VERIFY",
+        "DENIED",
+        user.tenantId,
+        user.id,
+        req.requestId,
+        { reason: "mfa_secret_unavailable" },
+      );
+
+      return res.status(403).json({
+        error: "MFA_NOT_CONFIGURED",
+      });
+    }
+
+    const secret = decryptTotpSecret(
+      result.rows[0].mfa_secret_ciphertext,
+    );
+
+    const valid = verifyTotp(secret, token);
+
+    if (!valid) {
+      await recordSecurityEvent(
+        "MFA_VERIFY",
+        "DENIED",
+        user.tenantId,
+        user.id,
+        req.requestId,
+        { reason: "invalid_code" },
+      );
+
+      return res.status(401).json({
+        error: "INVALID_MFA_CODE",
+      });
+    }
+
+    const verified = await db.query(
+      `
+        UPDATE sessions
+        SET
+          mfa_verified = TRUE,
+          mfa_verified_at = NOW(),
+          last_seen_at = NOW()
+        WHERE id = $1
+          AND user_id = $2
+          AND tenant_id = $3
+          AND revoked_at IS NULL
+          AND expires_at > NOW()
+          AND mfa_verified = FALSE
+        RETURNING id
+      `,
+      [
+        authSession.id,
+        user.id,
+        user.tenantId,
+      ],
+    );
+
+    if (verified.rows.length !== 1) {
+      await recordSecurityEvent(
+        "MFA_VERIFY",
+        "DENIED",
+        user.tenantId,
+        user.id,
+        req.requestId,
+        { reason: "session_update_failed" },
+      );
+
+      return res.status(401).json({
+        error: "MFA_SESSION_INVALID",
+      });
+    }
+
+    await db.query(
+      `
+        UPDATE users
+        SET
+          mfa_last_verified_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [user.id],
+    );
+
+    await recordSecurityEvent(
+      "MFA_VERIFY",
+      "SUCCESS",
+      user.tenantId,
+      user.id,
+      req.requestId,
+      { sessionId: authSession.id },
+    );
+
+    return res.status(200).json({
+      authenticated: true,
+      mfaRequired: true,
+      mfaVerified: true,
+      user,
+    });
+  } catch (error) {
+    console.error("MFA verification failed:", error);
+
+    await recordSecurityEvent(
+      "MFA_VERIFY",
+      "ERROR",
+      user.tenantId,
+      user.id,
+      req.requestId,
+      { reason: "verification_service_error" },
+    ).catch(() => undefined);
+
+    return res.status(500).json({
+      error: "MFA_SERVICE_ERROR",
     });
   }
 });
