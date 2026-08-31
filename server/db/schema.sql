@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS licenses (
 CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id),
+    tenant_id UUID NOT NULL REFERENCES tenants(id),
     session_hash TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
