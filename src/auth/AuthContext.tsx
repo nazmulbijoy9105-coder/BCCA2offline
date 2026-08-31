@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { AuthUser, AuthState, UserRole, ROLE_PERMISSIONS, Permission } from "../types/auth.types";
 import { LicenseData } from "../types/auth.types";
-import { validateLicenseKey, getStoredLicense, storeLicense, clearLicense, generateLicenseKey } from "../utils/license";
+import { validateLicenseKey, getStoredLicense, storeLicense, clearLicense } from "../utils/license";
 import { hashPassword, verifyPassword, generateSecureId } from "../utils/crypto";
 import { logAudit } from "../utils/audit";
 import { getDeviceFingerprint } from "../utils/deviceFingerprint";
@@ -11,7 +11,6 @@ export interface PublicRegisterParams {
   email?: string;
   phone?: string;
   password?: string;
-  role: UserRole;
   chamberName?: string;
   authMethod: "email" | "phone" | "gmail";
 }
@@ -61,98 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedUser = localStorage.getItem(CURRENT_USER_KEY);
         const storedLicense = getStoredLicense();
 
-        // Ensure default users for all roles exist (Super Admin, Chamber Admin, Standard User)
-        let currentUsers = getUsers();
-        if (currentUsers.length === 0 || !currentUsers.some(u => u.role === "admin") || !currentUsers.some(u => u.role === "user")) {
-          // P0 FIX: Generate cryptographically random seed passwords instead of hardcoding.
-          // Passwords are persisted in localStorage so they survive reloads.
-          const seedPw = (key: string): string => {
-            const stored = localStorage.getItem(`_bccaa_seed_${key}`);
-            if (stored) return stored;
-            const arr = new Uint8Array(16);
-            if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-              crypto.getRandomValues(arr);
-            } else {
-              for (let i = 0; i < 16; i++) arr[i] = Math.floor(Math.random() * 256);
-            }
-            const pw = Array.from(arr).map(b => b.toString(36)).join("").slice(0, 12) + "!" + Date.now().toString(36).slice(-4);
-            localStorage.setItem(`_bccaa_seed_${key}`, pw);
-            return pw;
-          };
-
-          const superAdminPw = seedPw("super_admin");
-          const adminPw = seedPw("admin");
-          const userPw = seedPw("user");
-
-          // eslint-disable-next-line no-console
-          console.warn("[BCCAA-SECURITY] Default seed accounts created. ONE-TIME PASSWORDS (check localStorage _bccaa_seed_*):");
-          console.warn(`  Super Admin (${"nazmul.islam@neumlex.com"}): ${superAdminPw}`);
-          console.warn(`  Chamber Admin (${"advocate@neumlex.com"}): ${adminPw}`);
-          console.warn(`  Standard User (${"user@neumlex.com"}): ${userPw}`);
-
-          const defaultSuperAdmin: AuthUser & { passwordHash?: string } = {
-            id: "SA-2026-DHAKA",
-            email: "nazmul.islam@neumlex.com",
-            name: "Md. Nazmul Islam (Super Admin)",
-            role: "super_admin",
-            chamberId: "neum-lex-counsel-dhaka",
-            licenseKey: "",
-            createdAt: Date.now(),
-            lastLogin: 0,
-            sessionExpiry: 0,
-            mfaEnabled: false,
-            isActive: true,
-            maxCasesPerDay: Infinity,
-            casesToday: 0,
-            lastCaseDate: "",
-            passwordHash: hashPassword(superAdminPw),
-          };
-
-          const defaultChamberAdmin: AuthUser & { passwordHash?: string } = {
-            id: "ADM-2026-DHAKA",
-            email: "advocate@neumlex.com",
-            name: "Advocate Rahman (Chamber Lead)",
-            role: "admin",
-            chamberId: "neum-lex-counsel-dhaka",
-            licenseKey: "",
-            createdAt: Date.now(),
-            lastLogin: 0,
-            sessionExpiry: 0,
-            mfaEnabled: false,
-            isActive: true,
-            maxCasesPerDay: 100,
-            casesToday: 0,
-            lastCaseDate: "",
-            passwordHash: hashPassword(adminPw),
-          };
-
-          const defaultStandardUser: AuthUser & { passwordHash?: string } = {
-            id: "USR-2026-DHAKA",
-            email: "user@neumlex.com",
-            name: "Junior Associate (User)",
-            role: "user",
-            chamberId: "neum-lex-counsel-dhaka",
-            licenseKey: "",
-            createdAt: Date.now(),
-            lastLogin: 0,
-            sessionExpiry: 0,
-            mfaEnabled: false,
-            isActive: true,
-            maxCasesPerDay: 10,
-            casesToday: 0,
-            lastCaseDate: "",
-            passwordHash: hashPassword(userPw),
-          };
-
-          // Combine with existing users without duplicate emails
-          const existingMap = new Map(currentUsers.map(u => [u.email, u]));
-          if (!existingMap.has(defaultSuperAdmin.email)) existingMap.set(defaultSuperAdmin.email, defaultSuperAdmin);
-          if (!existingMap.has(defaultChamberAdmin.email)) existingMap.set(defaultChamberAdmin.email, defaultChamberAdmin);
-          if (!existingMap.has(defaultStandardUser.email)) existingMap.set(defaultStandardUser.email, defaultStandardUser);
-
-          currentUsers = Array.from(existingMap.values());
-          saveUsers(currentUsers);
-        }
+        // P0 SECURITY:
+        // Do not create default accounts with generated credentials.
+        // Do not persist plaintext seed passwords in localStorage.
+        // Do not print credentials to the browser console.
+        //
+        // Account provisioning must occur through an explicit registration/
+        // administrative provisioning flow with a user-supplied password.
+        const currentUsers = getUsers();
 
         if (storedUser && storedLicense) {
           const user: AuthUser = JSON.parse(storedUser);
@@ -167,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 isAuthenticated: true,
                 isLoading: false,
                 error: null,
-                licenseValid: true,
+                licenseValid: false,
                 mfaRequired: user.mfaEnabled,
                 mfaVerified: !user.mfaEnabled,
               });
@@ -211,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           resourceId: cleanIdent,
           outcome: "DENIED",
         });
-        throw new Error("Invalid credentials: No registered account found matching email or mobile number.");
+        throw new Error("Invalid credentials.");
       }
 
       // Step 2: Verify password
@@ -225,25 +140,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           resourceId: user.id,
           outcome: "DENIED",
         });
-        throw new Error("Invalid credentials: Password incorrect.");
+        throw new Error("Invalid credentials.");
       }
 
       // Step 3: Handle license key requirement
-      let activeLicenseKey = licenseKey || "";
+      // P0 SECURITY:
+      // A missing license must fail closed.
+      // Never mint a license during authentication.
+      const activeLicenseKey = licenseKey?.trim() || "";
 
       if (!activeLicenseKey) {
-        // Automatically generate a valid enterprise license if none provided
-        const { licenseKey: autoKey } = generateLicenseKey({
-          issuedTo: `${user.name} (${user.role.toUpperCase()} License)`,
-          issuedBy: "Md. Nazmul Islam (Super Admin)",
-          expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
-          maxAdmins: 10,
-          maxUsers: 100,
-          tier: "enterprise",
-          allowedDomains: ["localhost", "127.0.0.1", "run.app", "vercel.app", "vercel.dev", "github.io"],
-          features: ["offline_engine", "pdf_export", "case_history", "audit_logs", "user_management"]
-        });
-        activeLicenseKey = autoKey;
+        throw new Error("License key required.");
       }
 
       // Step 4: Validate the license
@@ -314,6 +221,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const users = getUsers();
       
+      // P0 SECURITY:
+      // Public registration must provide a real password.
+      // Never hash an absent or undefined password.
+      if (typeof params.password !== "string" || params.password.length < 12) {
+        throw new Error("Password must be at least 12 characters.");
+      }
+
+      // Narrowed after runtime validation so hashing receives a string.
+      const password = params.password;
+
       const cleanEmail = params.email?.trim().toLowerCase() || "";
       const cleanPhone = params.phone?.trim() || "";
 
@@ -324,7 +241,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(`An account with mobile number '${cleanPhone}' is already registered.`);
       }
 
-      const role = params.role || "user";
+      // P0 SECURITY:
+      // Public registration can NEVER self-provision privileged roles.
+      // Admin/Super Admin accounts must be created only through the
+      // authenticated administrative provisioning flow.
+      // P0 SECURITY:
+      // Public registration is permanently constrained to the
+      // least-privileged standard user role.
+      const role: UserRole = "user";
+
       const newUser: AuthUser & { passwordHash?: string } = {
         id: generateSecureId(),
         email: cleanEmail || `${cleanPhone}@bdmobile.neumlex.local`,
@@ -339,41 +264,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionExpiry: Date.now() + 8 * 60 * 60 * 1000,
         mfaEnabled: false,
         isActive: true,
-        maxCasesPerDay: role === "super_admin" ? Infinity : (role === "admin" ? 100 : 10),
+        // Publicly registered accounts are always standard users.
+        maxCasesPerDay: 10,
         casesToday: 0,
         lastCaseDate: new Date().toISOString().split("T")[0],
-        passwordHash: hashPassword(params.password ?? ""),
+        passwordHash: hashPassword(password),
       };
 
-      // Auto generate license
-      const { licenseKey: autoKey, licenseData } = generateLicenseKey({
-        issuedTo: `${newUser.name} (${role.toUpperCase()})`,
-        issuedBy: "Md. Nazmul Islam (Super Admin)",
-        expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
-        maxAdmins: 10,
-        maxUsers: 100,
-        tier: "enterprise",
-        allowedDomains: ["localhost", "127.0.0.1", "run.app", "vercel.app", "vercel.dev", "github.io"],
-        features: ["offline_engine", "pdf_export", "case_history", "audit_logs", "user_management"]
-      });
-
-      newUser.licenseKey = autoKey;
+      // P0 SECURITY:
+      // Public registration cannot mint, assign, or activate a license.
+      // Licensing must be provisioned through an authenticated administrative
+      // workflow and validated during login/session establishment.
       users.push(newUser);
       saveUsers(users);
 
-      storeLicense(autoKey);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+      // P0 SECURITY:
+      // Registration creates an account record only.
+      // It MUST NOT create an authenticated session.
+      // It MUST NOT manufacture license validity.
+      // The user must authenticate through the normal login boundary.
+      localStorage.removeItem(CURRENT_USER_KEY);
+      clearLicense();
 
-      setLicense(licenseData || null);
-      setState({
-        user: newUser,
-        isAuthenticated: true,
+      setState(prev => ({
+        ...prev,
+        user: null,
+        isAuthenticated: false,
         isLoading: false,
         error: null,
-        licenseValid: true,
+        licenseValid: false,
         mfaRequired: false,
-        mfaVerified: true,
-      });
+        mfaVerified: false,
+      }));
 
       logAudit({
         action: "USER_CREATE",
@@ -383,7 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resourceType: "AUTH",
         resourceId: newUser.id,
         outcome: "SUCCESS",
-        metadata: { method: params.authMethod, role: params.role }
+        metadata: { method: params.authMethod, role, authenticated: false }
       });
     } catch (err: any) {
       setState(prev => ({
@@ -423,9 +345,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.user]);
 
   const createUser = useCallback(async (params: CreateUserParams) => {
-    if (!state.user || state.user.role !== "super_admin") {
-      throw new Error("Unauthorized: Only Super Admin can create users");
+    // P0 SECURITY:
+    // Only an authenticated Super Admin may provision accounts.
+    // NOTE: In a browser-only/localStorage auth model this remains a
+    // client-side authorization boundary and must not be treated as
+    // equivalent to server-side authorization.
+    if (!state.user || state.user.role !== "super_admin" || !state.user.isActive) {
+      throw new Error("Unauthorized: Only an active Super Admin can create users");
     }
+
+    // P0 SECURITY:
+    // Super Admin accounts must never be provisioned through this generic
+    // user-creation flow. They require a separate controlled bootstrap/
+    // recovery mechanism.
+    if (params.role === "super_admin") {
+      throw new Error("Forbidden: Super Admin accounts cannot be created through user provisioning");
+    }
+
+    // P0 SECURITY:
+    // Administrative provisioning must never hash an absent or weak password.
+    if (typeof params.password !== "string" || params.password.length < 12) {
+      throw new Error("Password must be at least 12 characters.");
+    }
+
+    const password = params.password;
 
     const users = getUsers();
     
@@ -458,7 +401,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Store password hash separately (not in AuthUser)
-    const passwordHash = hashPassword(params.password);
+    const passwordHash = hashPassword(password);
     const userWithPassword = { ...newUser, passwordHash };
 
     users.push(userWithPassword);
@@ -500,8 +443,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.user]);
 
   const hasPermission = useCallback((perm: Permission): boolean => {
-    if (!state.user) return false;
-    return ROLE_PERMISSIONS[state.user.role].includes(perm);
+    const user = state.user;
+
+    if (!user || !user.isActive) {
+      return false;
+    }
+
+    if (!Number.isFinite(user.sessionExpiry) || Date.now() >= user.sessionExpiry) {
+      return false;
+    }
+
+    const permissions = ROLE_PERMISSIONS[user.role];
+
+    // FAIL CLOSED for malformed or unknown roles.
+    if (!Array.isArray(permissions)) {
+      return false;
+    }
+
+    return permissions.includes(perm);
   }, [state.user]);
 
   const getCurrentUser = useCallback(() => state.user, [state.user]);

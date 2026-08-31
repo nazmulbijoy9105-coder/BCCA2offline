@@ -22,3 +22,7 @@ run-p0-patches.sh
 DETERMINISM_RISK.txt
 *_AUDIT*.txt
 *.pre-tsc-fix
+
+.security-backup/
+
+.security-backup/

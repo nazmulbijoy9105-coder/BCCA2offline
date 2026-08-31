@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, FileCheck, Loader2, ShieldCheck, Sparkles, X, Trash2, RotateCcw, FolderOpen, History, ArrowUpRight } from "lucide-react";
 
 import * as pdfjsLib from "pdfjs-dist";
+import { generateSecureId } from "../utils/crypto";
 
 // Set pdfjs worker source safely to matching cdnjs
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -133,7 +134,7 @@ export default function DocumentUploader({ onTextExtracted, onClearText, current
       const charCount = text.length;
 
       const newDoc: ExtractedDoc = {
-        id: "DOC-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+        id: generateSecureId(),
         fileName,
         fileSize,
         fileType: ext.toUpperCase(),

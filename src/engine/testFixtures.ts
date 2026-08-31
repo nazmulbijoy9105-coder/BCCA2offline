@@ -12,7 +12,7 @@ export function makeTestUser(overrides: Partial<AuthUser> = {}): AuthUser {
     id: "test-id",
     email: "test@test.com",
     name: "Test User",
-    role: "DETERMINISTIC_TEST",
+    role: "user",
     chamberId: "test-chamber",
     licenseKey: "TEST-LICENSE",
     createdAt: 0,
