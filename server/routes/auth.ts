@@ -140,7 +140,7 @@ router.post("/login", async (req, res) => {
         null,
         req.requestId,
         { reason: "invalid_credentials" },
-      );
+    ).catch(() => undefined);
 
       return res.status(401).json({
         error: "INVALID_CREDENTIALS",
@@ -160,7 +160,7 @@ router.post("/login", async (req, res) => {
         user.id,
         req.requestId,
         { reason: "account_locked" },
-      );
+    ).catch(() => undefined);
 
       return res.status(423).json({
         error: "ACCOUNT_LOCKED",
@@ -178,7 +178,7 @@ router.post("/login", async (req, res) => {
         user.id,
         req.requestId,
         { reason: "account_or_tenant_inactive" },
-      );
+    ).catch(() => undefined);
 
       return res.status(403).json({
         error: "ACCOUNT_UNAVAILABLE",
@@ -191,32 +191,29 @@ router.post("/login", async (req, res) => {
     );
 
     if (!validPassword) {
-      const nextFailedCount = user.failed_login_count + 1;
+      const lockoutResult = await db.query<{
+        failed_login_count: number;
+        locked_until: Date | null;
+      }>(
+        `
+          UPDATE users
+          SET
+            failed_login_count = failed_login_count + 1,
+            locked_until = CASE
+              WHEN failed_login_count + 1 >= $2
+                THEN NOW() + ($3 * INTERVAL '1 minute')
+              ELSE locked_until
+            END,
+            updated_at = NOW()
+          WHERE id = $1
+          RETURNING failed_login_count, locked_until
+        `,
+        [user.id, MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES],
+      );
 
-      if (nextFailedCount >= MAX_LOGIN_ATTEMPTS) {
-        await db.query(
-          `
-            UPDATE users
-            SET
-              failed_login_count = 0,
-              locked_until = NOW() + ($2 * INTERVAL '1 minute'),
-              updated_at = NOW()
-            WHERE id = $1
-          `,
-          [user.id, LOCKOUT_MINUTES],
-        );
-      } else {
-        await db.query(
-          `
-            UPDATE users
-            SET
-              failed_login_count = $2,
-              updated_at = NOW()
-            WHERE id = $1
-          `,
-          [user.id, nextFailedCount],
-        );
-      }
+      const isNowLocked =
+        lockoutResult.rows[0].locked_until !== null &&
+        lockoutResult.rows[0].locked_until.getTime() > Date.now();
 
       await recordSecurityEvent(
         "LOGIN",
@@ -224,8 +221,18 @@ router.post("/login", async (req, res) => {
         user.tenant_id,
         user.id,
         req.requestId,
-        { reason: "invalid_password" },
-      );
+        {
+          reason: "invalid_password",
+          failedLoginCount: lockoutResult.rows[0].failed_login_count,
+          locked: isNowLocked,
+        },
+      ).catch(() => undefined);
+
+      if (isNowLocked) {
+        return res.status(423).json({
+          error: "ACCOUNT_LOCKED",
+        });
+      }
 
       return res.status(401).json({
         error: "INVALID_CREDENTIALS",
@@ -274,7 +281,7 @@ router.post("/login", async (req, res) => {
         mfaRequired,
         sessionId: session.id,
       },
-    );
+  ).catch(() => undefined);
 
     return res.status(200).json({
       authenticated: !mfaRequired,
@@ -339,7 +346,7 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
         user.id,
         req.requestId,
         { reason: "mfa_secret_unavailable" },
-      );
+    ).catch(() => undefined);
 
       return res.status(403).json({
         error: "MFA_NOT_CONFIGURED",
@@ -648,7 +655,7 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
         {
           reason: "mfa_locked",
         },
-      );
+    ).catch(() => undefined);
 
       return res.status(429).json({
         error: "MFA_LOCKED",
@@ -673,7 +680,7 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
         {
           reason: "totp_replay",
         },
-      );
+    ).catch(() => undefined);
 
       return res.status(401).json({
         error: "INVALID_MFA_CODE",
@@ -690,7 +697,7 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
         {
           reason: "invalid_code",
         },
-      );
+    ).catch(() => undefined);
 
       return res.status(401).json({
         error: "INVALID_MFA_CODE",
@@ -707,7 +714,7 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
         {
           reason: "session_update_failed",
         },
-      );
+    ).catch(() => undefined);
 
       return res.status(401).json({
         error: "MFA_SESSION_INVALID",
@@ -724,7 +731,7 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
         sessionId: authSession.id,
         acceptedCounter,
       },
-    );
+  ).catch(() => undefined);
 
     return res.status(200).json({
       authenticated: true,

@@ -3,6 +3,7 @@ import {
   getSessionCookieName,
   resolveSession,
 } from "../auth/session";
+import { requireAuthenticatedUser } from "../auth/authorization";
 import type { AuthenticatedUser } from "../auth/types";
 
 declare global {
@@ -61,6 +62,14 @@ export async function authenticate(
       mfaVerified: resolved.session.mfaVerified,
       mfaVerifiedAt: resolved.session.mfaVerifiedAt,
     };
+
+    try {
+      requireAuthenticatedUser(req);
+    } catch (err) {
+      return res.status(401).json({
+        error: "UNAUTHENTICATED",
+      });
+    }
 
     return next();
   } catch (error) {
