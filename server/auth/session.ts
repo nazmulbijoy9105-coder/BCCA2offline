@@ -4,10 +4,25 @@ import { db } from "../db/pool";
 import type { AuthenticatedUser, SessionRecord } from "./types";
 
 const COOKIE_NAME =
-  process.env.SESSION_COOKIE_NAME?.trim() ||
-  (process.env.NODE_ENV === "production"
-    ? "__Host-bccaa_session"
-    : "bccaa_session");
+  process.env.NODE_ENV === "production"
+    ? (() => {
+        const envName = process.env.SESSION_COOKIE_NAME?.trim();
+        if (!envName) return "__Host-bccaa_session";
+        if (
+          envName === "sessionId" ||
+          envName === "connect.sid" ||
+          envName === "sid" ||
+          !envName.startsWith("__Host-")
+        ) {
+          console.warn(
+            `SESSION_COOKIE_NAME "${envName}" does not use __Host- prefix. ` +
+            `Forcing __Host-bccaa_session in production.`
+          );
+          return "__Host-bccaa_session";
+        }
+        return envName;
+      })()
+    : (process.env.SESSION_COOKIE_NAME?.trim() || "bccaa_session");
 
 const DEFAULT_TTL_SECONDS = 8 * 60 * 60;
 const MIN_TTL_SECONDS = 5 * 60;
@@ -202,6 +217,7 @@ export async function resolveSession(
       WHERE s.session_hash = $1
         AND s.revoked_at IS NULL
         AND s.expires_at > NOW()
+        AND u.tenant_id = s.tenant_id
         AND u.is_active = TRUE
         AND t.status = 'active'
       LIMIT 1
