@@ -53,7 +53,6 @@ function cookieOptions() {
 export async function createSession(
   user: AuthenticatedUser,
   res: Response,
-  mfaVerified = false,
 ): Promise<SessionRecord> {
   const token = generateToken();
   const sessionHash = hashToken(token);
@@ -62,16 +61,18 @@ export async function createSession(
   const ttl = sessionTtlSeconds();
 
   /*
-   * MFA state is decided server-side.
+   * MFA state is derived exclusively from server-side policy.
    *
-   * A caller cannot promote a session merely by changing a
-   * client-side mfaVerified flag. For MFA-required accounts,
-   * the initial session is always pending until /mfa/verify
-   * successfully completes.
+   * MFA-required or MFA-enabled users always receive a
+   * pending session. They can only become MFA-verified
+   * through the authoritative /mfa/verify transaction.
+   *
+   * Users without MFA policy receive an immediately
+   * authenticated session.
    */
   const effectiveMfaVerified =
     user.mfaRequired || user.mfaEnabled
-      ? mfaVerified
+      ? false
       : true;
 
   const result = await db.query<{
@@ -244,27 +245,6 @@ export async function resolveSession(
       mfaEnabled: row.mfa_enabled,
     },
   };
-}
-
-export async function markSessionMfaVerified(
-  sessionId: string,
-): Promise<boolean> {
-  const result = await db.query(
-    `
-      UPDATE sessions
-      SET
-        mfa_verified = TRUE,
-        mfa_verified_at = NOW(),
-        last_seen_at = NOW()
-      WHERE id = $1
-        AND revoked_at IS NULL
-        AND expires_at > NOW()
-      RETURNING id
-    `,
-    [sessionId],
-  );
-
-  return result.rows.length === 1;
 }
 
 export async function revokeSession(

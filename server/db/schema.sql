@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS users (
     mfa_secret_ciphertext TEXT,
     mfa_enrolled_at TIMESTAMPTZ,
     mfa_last_verified_at TIMESTAMPTZ,
+    mfa_last_accepted_counter BIGINT,
+    mfa_failed_attempt_count INTEGER NOT NULL DEFAULT 0,
+    mfa_locked_until TIMESTAMPTZ,
     failed_login_count INTEGER NOT NULL DEFAULT 0,
     locked_until TIMESTAMPTZ,
     last_login_at TIMESTAMPTZ,
@@ -58,7 +61,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     revoked_at TIMESTAMPTZ,
     mfa_verified BOOLEAN NOT NULL DEFAULT FALSE,
-    mfa_verified_at TIMESTAMPTZ
+    mfa_verified_at TIMESTAMPTZ,
+    mfa_failed_attempt_count INTEGER NOT NULL DEFAULT 0,
+    mfa_locked_until TIMESTAMPTZ,
+    mfa_last_accepted_counter BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_tenant
@@ -79,11 +85,17 @@ CREATE INDEX IF NOT EXISTS idx_users_mfa
 CREATE INDEX IF NOT EXISTS idx_sessions_mfa
     ON sessions(user_id, mfa_verified, expires_at);
 
-CREATE INDEX IF NOT EXISTS idx_users_mfa
-    ON users(tenant_id, mfa_enabled, mfa_required);
+CREATE INDEX IF NOT EXISTS idx_users_mfa_lock
+    ON users(tenant_id, mfa_locked_until);
 
-CREATE INDEX IF NOT EXISTS idx_sessions_mfa
-    ON sessions(user_id, mfa_verified, expires_at);
+CREATE INDEX IF NOT EXISTS idx_users_mfa_replay
+    ON users(tenant_id, id, mfa_last_accepted_counter);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_mfa_lock
+    ON sessions(user_id, mfa_locked_until);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_mfa_replay
+    ON sessions(user_id, mfa_last_accepted_counter);
 
 CREATE INDEX IF NOT EXISTS idx_licenses_tenant
     ON licenses(tenant_id);

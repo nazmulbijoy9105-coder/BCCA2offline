@@ -262,7 +262,6 @@ router.post("/login", async (req, res) => {
     const session = await createSession(
       authenticatedUser,
       res,
-      !mfaRequired,
     );
 
     await recordSecurityEvent(
@@ -351,16 +350,329 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
       result.rows[0].mfa_secret_ciphertext,
     );
 
-    const valid = verifyTotp(secret, token);
+    const totp = verifyTotp(secret, token);
 
-    if (!valid) {
+    const client = await db.connect();
+
+    let outcome:
+      | "SUCCESS"
+      | "INVALID"
+      | "REPLAY"
+      | "LOCKED"
+      | "SESSION_INVALID" = "INVALID";
+
+    let acceptedCounter: number | null = null;
+    let lockUntil: Date | null = null;
+
+    try {
+      await client.query("BEGIN");
+
+      /*
+       * Lock ordering is deliberately fixed:
+       *   1. user
+       *   2. session
+       *
+       * This prevents concurrent MFA requests from racing on
+       * attempt counters, lockout state, or TOTP consumption.
+       */
+      const userState = await client.query<{
+        id: string;
+        tenant_id: string;
+        is_active: boolean;
+        mfa_required: boolean;
+        mfa_enabled: boolean;
+        mfa_failed_attempt_count: number;
+        mfa_locked_until: Date | null;
+        mfa_last_accepted_counter: string | number | null;
+      }>(
+        `
+          SELECT
+            id,
+            tenant_id,
+            is_active,
+            mfa_required,
+            mfa_enabled,
+            mfa_failed_attempt_count,
+            mfa_locked_until,
+            mfa_last_accepted_counter
+          FROM users
+          WHERE id = $1
+            AND tenant_id = $2
+          FOR UPDATE
+        `,
+        [user.id, user.tenantId],
+      );
+
+      if (userState.rows.length !== 1) {
+        outcome = "SESSION_INVALID";
+        await client.query("ROLLBACK");
+      } else {
+        const currentUser = userState.rows[0];
+
+        const sessionState = await client.query<{
+          id: string;
+          user_id: string;
+          tenant_id: string;
+          mfa_verified: boolean;
+          mfa_verified_at: Date | null;
+          mfa_failed_attempt_count: number;
+          mfa_locked_until: Date | null;
+          mfa_last_accepted_counter: string | number | null;
+          expires_at: Date;
+          revoked_at: Date | null;
+        }>(
+          `
+            SELECT
+              id,
+              user_id,
+              tenant_id,
+              mfa_verified,
+              mfa_verified_at,
+              mfa_failed_attempt_count,
+              mfa_locked_until,
+              mfa_last_accepted_counter,
+              expires_at,
+              revoked_at
+            FROM sessions
+            WHERE id = $1
+              AND user_id = $2
+              AND tenant_id = $3
+            FOR UPDATE
+          `,
+          [
+            authSession.id,
+            user.id,
+            user.tenantId,
+          ],
+        );
+
+        if (sessionState.rows.length !== 1) {
+          outcome = "SESSION_INVALID";
+          await client.query("ROLLBACK");
+        } else {
+          const currentSession = sessionState.rows[0];
+          const now = Date.now();
+
+          const userLocked =
+            currentUser.mfa_locked_until &&
+            currentUser.mfa_locked_until.getTime() > now;
+
+          const sessionLocked =
+            currentSession.mfa_locked_until &&
+            currentSession.mfa_locked_until.getTime() > now;
+
+          if (
+            !currentUser.is_active ||
+            !currentSession.expires_at ||
+            currentSession.expires_at.getTime() <= now ||
+            currentSession.revoked_at !== null ||
+            currentSession.mfa_verified
+          ) {
+            outcome = "SESSION_INVALID";
+            await client.query("ROLLBACK");
+          } else if (userLocked || sessionLocked) {
+            lockUntil =
+              currentUser.mfa_locked_until &&
+              currentUser.mfa_locked_until.getTime() > now
+                ? currentUser.mfa_locked_until
+                : currentSession.mfa_locked_until;
+
+            outcome = "LOCKED";
+            await client.query("ROLLBACK");
+          } else if (
+            !totp.valid ||
+            totp.counter === null
+          ) {
+            const nextSessionAttempts =
+              currentSession.mfa_failed_attempt_count + 1;
+
+            const nextUserAttempts =
+              currentUser.mfa_failed_attempt_count + 1;
+
+            const shouldLock =
+              nextSessionAttempts >= 5 ||
+              nextUserAttempts >= 5;
+
+            const newLockUntil = shouldLock
+              ? new Date(Date.now() + 15 * 60 * 1000)
+              : null;
+
+            await client.query(
+              `
+                UPDATE sessions
+                SET
+                  mfa_failed_attempt_count = $1,
+                  mfa_locked_until = $2
+                WHERE id = $3
+              `,
+              [
+                nextSessionAttempts,
+                newLockUntil,
+                currentSession.id,
+              ],
+            );
+
+            await client.query(
+              `
+                UPDATE users
+                SET
+                  mfa_failed_attempt_count = $1,
+                  mfa_locked_until = $2,
+                  updated_at = NOW()
+                WHERE id = $3
+              `,
+              [
+                nextUserAttempts,
+                newLockUntil,
+                currentUser.id,
+              ],
+            );
+
+            await client.query("COMMIT");
+
+            outcome = shouldLock ? "LOCKED" : "INVALID";
+            lockUntil = newLockUntil;
+          } else {
+            const sessionPreviousCounter =
+              currentSession.mfa_last_accepted_counter === null
+                ? null
+                : BigInt(
+                    currentSession.mfa_last_accepted_counter,
+                  );
+
+            const userPreviousCounter =
+              currentUser.mfa_last_accepted_counter === null
+                ? null
+                : BigInt(
+                    currentUser.mfa_last_accepted_counter,
+                  );
+
+            const candidateCounter = BigInt(totp.counter);
+
+            /*
+             * USER-SCOPED replay barrier is authoritative.
+             *
+             * Because the user row is locked FOR UPDATE above,
+             * concurrent sessions for this user cannot both
+             * consume the same TOTP counter.
+             *
+             * The session counter remains defense-in-depth.
+             */
+            if (
+              (userPreviousCounter !== null &&
+                candidateCounter <= userPreviousCounter) ||
+              (sessionPreviousCounter !== null &&
+                candidateCounter <= sessionPreviousCounter)
+            ) {
+              outcome = "REPLAY";
+              await client.query("ROLLBACK");
+            } else {
+              acceptedCounter = totp.counter;
+
+              const sessionUpdate = await client.query(
+                `
+                  UPDATE sessions
+                  SET
+                    mfa_verified = TRUE,
+                    mfa_verified_at = NOW(),
+                    last_seen_at = NOW(),
+                    mfa_failed_attempt_count = 0,
+                    mfa_locked_until = NULL,
+                    mfa_last_accepted_counter = $1
+                  WHERE id = $2
+                    AND user_id = $3
+                    AND tenant_id = $4
+                    AND mfa_verified = FALSE
+                    AND revoked_at IS NULL
+                    AND expires_at > NOW()
+                  RETURNING id
+                `,
+                [
+                  acceptedCounter,
+                  currentSession.id,
+                  currentUser.id,
+                  currentUser.tenant_id,
+                ],
+              );
+
+              if (sessionUpdate.rows.length !== 1) {
+                outcome = "SESSION_INVALID";
+                await client.query("ROLLBACK");
+              } else {
+                const userUpdate = await client.query(
+                  `
+                    UPDATE users
+                    SET
+                      mfa_last_verified_at = NOW(),
+                      mfa_last_accepted_counter = $1,
+                      mfa_failed_attempt_count = 0,
+                      mfa_locked_until = NULL,
+                      updated_at = NOW()
+                    WHERE id = $2
+                      AND tenant_id = $3
+                  `,
+                  [
+                    acceptedCounter,
+                    currentUser.id,
+                    currentUser.tenant_id,
+                  ],
+                );
+
+                if (userUpdate.rowCount !== 1) {
+                  outcome = "SESSION_INVALID";
+                  await client.query("ROLLBACK");
+                } else {
+                  await client.query("COMMIT");
+
+                  outcome = "SUCCESS";
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    if (outcome === "LOCKED") {
       await recordSecurityEvent(
         "MFA_VERIFY",
         "DENIED",
         user.tenantId,
         user.id,
         req.requestId,
-        { reason: "invalid_code" },
+        {
+          reason: "mfa_locked",
+        },
+      );
+
+      return res.status(429).json({
+        error: "MFA_LOCKED",
+        retryAfterSeconds: lockUntil
+          ? Math.max(
+              1,
+              Math.ceil(
+                (lockUntil.getTime() - Date.now()) / 1000,
+              ),
+            )
+          : 900,
+      });
+    }
+
+    if (outcome === "REPLAY") {
+      await recordSecurityEvent(
+        "MFA_VERIFY",
+        "DENIED",
+        user.tenantId,
+        user.id,
+        req.requestId,
+        {
+          reason: "totp_replay",
+        },
       );
 
       return res.status(401).json({
@@ -368,36 +680,33 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
       });
     }
 
-    const verified = await db.query(
-      `
-        UPDATE sessions
-        SET
-          mfa_verified = TRUE,
-          mfa_verified_at = NOW(),
-          last_seen_at = NOW()
-        WHERE id = $1
-          AND user_id = $2
-          AND tenant_id = $3
-          AND revoked_at IS NULL
-          AND expires_at > NOW()
-          AND mfa_verified = FALSE
-        RETURNING id
-      `,
-      [
-        authSession.id,
-        user.id,
-        user.tenantId,
-      ],
-    );
-
-    if (verified.rows.length !== 1) {
+    if (outcome === "INVALID") {
       await recordSecurityEvent(
         "MFA_VERIFY",
         "DENIED",
         user.tenantId,
         user.id,
         req.requestId,
-        { reason: "session_update_failed" },
+        {
+          reason: "invalid_code",
+        },
+      );
+
+      return res.status(401).json({
+        error: "INVALID_MFA_CODE",
+      });
+    }
+
+    if (outcome === "SESSION_INVALID") {
+      await recordSecurityEvent(
+        "MFA_VERIFY",
+        "DENIED",
+        user.tenantId,
+        user.id,
+        req.requestId,
+        {
+          reason: "session_update_failed",
+        },
       );
 
       return res.status(401).json({
@@ -405,24 +714,16 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
       });
     }
 
-    await db.query(
-      `
-        UPDATE users
-        SET
-          mfa_last_verified_at = NOW(),
-          updated_at = NOW()
-        WHERE id = $1
-      `,
-      [user.id],
-    );
-
     await recordSecurityEvent(
       "MFA_VERIFY",
       "SUCCESS",
       user.tenantId,
       user.id,
       req.requestId,
-      { sessionId: authSession.id },
+      {
+        sessionId: authSession.id,
+        acceptedCounter,
+      },
     );
 
     return res.status(200).json({

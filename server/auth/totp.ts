@@ -102,13 +102,21 @@ export function generateTotpSecret(): string {
   return base32Encode(randomBytes(SECRET_BYTES));
 }
 
+export interface TotpVerificationResult {
+  valid: boolean;
+  counter: number | null;
+}
+
 export function verifyTotp(
   secretText: string,
   token: string,
   timestampMs = Date.now(),
-): boolean {
+): TotpVerificationResult {
   if (!/^\d{6}$/.test(token)) {
-    return false;
+    return {
+      valid: false,
+      counter: null,
+    };
   }
 
   const secret = base32Decode(secretText);
@@ -121,17 +129,25 @@ export function verifyTotp(
    * Small clock-skew window.
    *
    * Accept current, previous and next time step.
-   * This is deliberately limited to +/-30 seconds.
+   * The accepted counter is returned so the persistence layer
+   * can enforce one-time consumption and prevent replay.
    */
   for (const offset of [-1, 0, 1]) {
-    const expected = hotp(secret, counter + offset);
+    const acceptedCounter = counter + offset;
+    const expected = hotp(secret, acceptedCounter);
 
     if (expected === token) {
-      return true;
+      return {
+        valid: true,
+        counter: acceptedCounter,
+      };
     }
   }
 
-  return false;
+  return {
+    valid: false,
+    counter: null,
+  };
 }
 
 export function createOtpAuthUri(
