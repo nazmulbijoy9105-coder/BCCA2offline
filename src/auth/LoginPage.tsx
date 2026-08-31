@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "./AuthContext";
-import { Scale, ShieldAlert, Key, Mail, Sparkles, Phone, User, Building, CheckCircle, Smartphone, Globe } from "lucide-react";
-import { generateLicenseKey } from "../utils/license";
-import { UserRole } from "../types/auth.types";
+import { Scale, ShieldAlert, Key, Mail, Sparkles, Phone, User, Building, CheckCircle, Smartphone } from "lucide-react";
 
 export default function LoginPage() {
   const { login, registerUser, state } = useAuth();
@@ -10,17 +8,12 @@ export default function LoginPage() {
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [licenseKey, setLicenseKey] = useState("");
-  const [selectedRole, setSelectedRole] = useState<UserRole>("user");
-  const [signupMethod, setSignupMethod] = useState<"email" | "phone" | "gmail">("phone");
+  const [signupMethod, setSignupMethod] = useState<"email" | "phone">("phone");
   const [fullName, setFullName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPhone, setSignupPhone] = useState("+880 ");
   const [signupPassword, setSignupPassword] = useState("");
   const [chamberName, setChamberName] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [simulatedOtp, setSimulatedOtp] = useState("");
-  const [userEnteredOtp, setUserEnteredOtp] = useState("");
-  const [otpVerified, setOtpVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -38,19 +31,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleSendOtp = () => {
-    if (!signupPhone || signupPhone.length < 10) {
-      setCustomError("Please enter a valid 11-digit Bangladesh mobile number (+880 1712-XXXXXX).");
-      return;
-    }
-    setCustomError(null);
-    const mockOtp = Math.floor(1000 + Math.random() * 9000).toString();
-    setSimulatedOtp(mockOtp);
-    setOtpSent(true);
-    setUserEnteredOtp(mockOtp);
-    setOtpVerified(true);
-  };
-
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -62,90 +42,23 @@ export default function LoginPage() {
       } else {
         if (!signupEmail || !signupEmail.includes("@")) throw new Error("Please enter a valid Gmail / Email address.");
       }
-      if (signupMethod !== "gmail" && (!signupPassword || signupPassword.length < 6)) {
-        throw new Error("Password must be at least 6 characters.");
+      if ((!signupPassword || signupPassword.length < 12)) {
+        throw new Error("Password must be at least 12 characters.");
       }
       await registerUser({
         name: fullName.trim(),
-        email: signupMethod !== "phone" ? signupEmail.trim() : undefined,
+        email: signupMethod === "email" ? signupEmail.trim() : undefined,
         phone: signupMethod === "phone" ? signupPhone.trim() : undefined,
-        password: signupPassword || "GeneralPass123!",
-        role: selectedRole,
+        password: signupPassword,
         chamberName: chamberName.trim() || "Chamber BD",
         authMethod: signupMethod,
       });
-      setSuccessMsg(`Registration successful! Logged in as ${selectedRole.toUpperCase()}.`);
+      setSuccessMsg(`Registration successful. Please sign in.`);
     } catch (err: any) {
       setCustomError(err.message || "Registration failed. Please check your inputs.");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleGoogleQuickAuth = async (role: UserRole) => {
-    setIsSubmitting(true);
-    setCustomError(null);
-    try {
-      const mockGoogleEmails: Record<string, string> = {
-        super_admin: "nazmul.islam.bd@gmail.com",
-        admin: "advocate.hossain.dhaka@gmail.com",
-        user: "associate.kamal.bd@gmail.com",
-      };
-      const mockNames: Record<string, string> = {
-        super_admin: "Md. Nazmul Islam (Super Admin)",
-        admin: "Advocate Hossain (Chamber Lead)",
-        user: "Junior Advocate Kamal (User)",
-      };
-      await registerUser({
-        name: mockNames[role],
-        email: mockGoogleEmails[role],
-        password: "GoogleAuthPass123!",
-        role: role,
-        chamberName: "Supreme Court Bar Counsel Dhaka",
-        authMethod: "gmail",
-      });
-    } catch (err: any) {
-      try {
-        await login(
-          role === "super_admin" ? "nazmul.islam.bd@gmail.com" : (role === "admin" ? "advocate.hossain.dhaka@gmail.com" : "associate.kamal.bd@gmail.com"),
-          "GoogleAuthPass123!"
-        );
-      } catch (loginErr: any) {
-        setCustomError(err.message || "Google Authentication failed.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAutofillRole = (role: UserRole) => {
-    const { licenseKey: demoKey } = generateLicenseKey({
-      issuedTo: `Neum Lex Counsel (${role.toUpperCase()})`,
-      issuedBy: "Md. Nazmul Islam (Super Admin)",
-      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      maxUsers: 20,
-      maxAdmins: 5,
-      tier: "enterprise",
-      allowedDomains: ["localhost", "127.0.0.1", "run.app", "vercel.app", "vercel.dev", "github.io"],
-      features: ["offline_engine", "pdf_export", "case_history", "audit_logs", "user_management"]
-    });
-    // P0 FIX: Remove hardcoded passwords. Use seed from localStorage (set by AuthContext)
-    // or leave blank for manual entry.
-    const seedPw = (key: string): string => {
-      try { return localStorage.getItem(`_bccaa_seed_${key}`) || ""; } catch { return ""; }
-    };
-    if (role === "super_admin") {
-      setLoginIdentifier("nazmul.islam@neumlex.com");
-      setLoginPassword(seedPw("super_admin"));
-    } else if (role === "admin") {
-      setLoginIdentifier("advocate@neumlex.com");
-      setLoginPassword(seedPw("admin"));
-    } else {
-      setLoginIdentifier("user@neumlex.com");
-      setLoginPassword(seedPw("user"));
-    }
-    setLicenseKey(demoKey);
-    setCustomError(null);
   };
 
   return (
@@ -171,7 +84,7 @@ export default function LoginPage() {
               className={`flex-1 py-3 px-4 font-bold uppercase tracking-wider transition text-center cursor-pointer ${activeTab === "login" ? "bg-[#1E252B] text-white" : "bg-[#FAF9F5] text-[#1E252B] hover:bg-neutral-100"}`}>Log In to Account</button>
             <button type="button" onClick={() => { setActiveTab("signup"); setCustomError(null); }}
               className={`flex-1 py-3 px-4 font-bold uppercase tracking-wider transition text-center cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "signup" ? "bg-[#1E252B] text-white" : "bg-[#FAF9F5] text-[#1E252B] hover:bg-neutral-100"}`}>
-              <Sparkles className="h-3.5 w-3.5 text-[#C5A059]" /><span>General Sign Up (BD)</span>
+              <Sparkles className="h-3.5 w-3.5 text-[#C5A059]" /><span>Create Standard Account</span>
             </button>
           </div>
           {(state.error || customError) && (
@@ -209,66 +122,25 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-[10px] font-bold font-mono text-[#1E252B] uppercase tracking-widest">Enterprise License Key</label>
-                    <span className="text-[9px] font-mono text-[#C5A059] bg-[#C5A059]/10 px-1.5 py-0.5 uppercase tracking-wider font-bold">Auto-generated if empty</span>
-                  </div>
+
                   <input type="text" value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)}
-                    className="w-full text-[10px] font-mono p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="Leave empty for auto license provision" />
+                    className="w-full text-[10px] font-mono p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" />
                 </div>
                 <button type="submit" disabled={isSubmitting || state.isLoading}
                   className="w-full py-3 bg-[#1E252B] hover:bg-[#C5A059] text-white hover:text-[#1E252B] disabled:bg-neutral-300 font-bold uppercase text-xs tracking-wider font-mono border border-[#1E252B] transition cursor-pointer flex items-center justify-center gap-2">
                   {isSubmitting || state.isLoading ? "Authenticating Session..." : "Log In to Legal Engine"}
                 </button>
               </form>
-              <div className="pt-2 border-t border-[#E5E1D8] space-y-2">
-                <p className="text-[10px] font-mono text-[#4A5560] uppercase text-center">Or sign in with Google / Gmail Account:</p>
-                <button type="button" onClick={() => handleGoogleQuickAuth("user")}
-                  className="w-full py-2 bg-white hover:bg-neutral-50 border border-[#E5E1D8] text-xs font-mono text-[#1E252B] font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-sm">
-                  <Globe className="h-4 w-4 text-blue-600" /><span>Continue with Gmail / Google Account</span>
-                </button>
-              </div>
-              <div className="border-t border-[#E5E1D8] pt-4 space-y-2">
-                <p className="text-[10px] font-mono font-bold text-[#1E252B] uppercase tracking-wider text-center">Preset Trial Accounts (Vercel & GitHub Ready)</p>
-                <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
-                  <button type="button" onClick={() => handleAutofillRole("super_admin")}
-                    className="p-2 bg-[#1E252B] hover:bg-[#C5A059] text-white hover:text-[#1E252B] font-bold uppercase transition text-center cursor-pointer border border-[#1E252B]"
-                    title="Super Admin (Full Governance & User Mgmt)">Super Admin</button>
-                  <button type="button" onClick={() => handleAutofillRole("admin")}
-                    className="p-2 bg-[#FAF9F5] hover:bg-[#1E252B] hover:text-white text-[#1E252B] border border-[#E5E1D8] hover:border-[#1E252B] font-bold uppercase transition text-center cursor-pointer"
-                    title="Chamber Lead / Admin (100 Cases/Day)">Chamber Admin</button>
-                  <button type="button" onClick={() => handleAutofillRole("user")}
-                    className="p-2 bg-[#FAF9F5] hover:bg-[#1E252B] hover:text-white text-[#1E252B] border border-[#E5E1D8] hover:border-[#1E252B] font-bold uppercase transition text-center cursor-pointer"
-                    title="Junior Associate / Standard User (10 Cases/Day)">Standard User</button>
-                </div>
-              </div>
             </div>
           )}
           {activeTab === "signup" && (
             <div className="space-y-5">
               <div className="border-b border-[#E5E1D8] pb-3">
                 <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-[#1E252B]">General Account Registration (Bangladesh)</h3>
-                <p className="text-[11px] text-[#4A5560] mt-1">Create an account as a <strong className="text-[#1E252B]">Standard User</strong>, <strong className="text-[#1E252B]">Chamber Admin</strong>, or <strong className="text-[#1E252B]">Super Admin</strong> using mobile (+880) or Gmail.</p>
+                <p className="text-[11px] text-[#4A5560] mt-1">Create a standard user account using your Bangladesh mobile number (+880) or Gmail / Email. Administrative accounts are provisioned separately by authorized administrators.</p>
               </div>
               <div className="space-y-1.5 font-mono">
-                <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">1. Select Account Authorization Level</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button type="button" onClick={() => setSelectedRole("user")}
-                    className={`p-2.5 border text-left transition cursor-pointer ${selectedRole === "user" ? "border-[#1E252B] bg-[#1E252B] text-white" : "border-[#E5E1D8] bg-[#FAF9F5] text-[#1E252B] hover:border-[#1E252B]"}`}>
-                    <div className="text-[11px] font-bold uppercase">Standard User</div><div className="text-[9px] opacity-80 mt-0.5">Junior Associate / Client (10 cases/day)</div>
-                  </button>
-                  <button type="button" onClick={() => setSelectedRole("admin")}
-                    className={`p-2.5 border text-left transition cursor-pointer ${selectedRole === "admin" ? "border-[#1E252B] bg-[#1E252B] text-white" : "border-[#E5E1D8] bg-[#FAF9F5] text-[#1E252B] hover:border-[#1E252B]"}`}>
-                    <div className="text-[11px] font-bold uppercase">Chamber Admin</div><div className="text-[9px] opacity-80 mt-0.5">Chamber Lead / Partner (100 cases/day)</div>
-                  </button>
-                  <button type="button" onClick={() => setSelectedRole("super_admin")}
-                    className={`p-2.5 border text-left transition cursor-pointer ${selectedRole === "super_admin" ? "border-[#1E252B] bg-[#1E252B] text-white" : "border-[#E5E1D8] bg-[#FAF9F5] text-[#1E252B] hover:border-[#1E252B]"}`}>
-                    <div className="text-[11px] font-bold uppercase">Super Admin</div><div className="text-[9px] opacity-80 mt-0.5">System Governor (Unlimited cases)</div>
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-1.5 font-mono">
-                <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">2. Choose Registration Method</label>
+                <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">1. Choose Registration Method</label>
                 <div className="grid grid-cols-3 gap-2 text-[10px]">
                   <button type="button" onClick={() => { setSignupMethod("phone"); setCustomError(null); }}
                     className={`p-2 border font-bold uppercase transition flex items-center justify-center gap-1.5 cursor-pointer ${signupMethod === "phone" ? "bg-[#C5A059] text-white border-[#C5A059]" : "bg-white text-[#1E252B] border-[#E5E1D8]"}`}>
@@ -278,25 +150,9 @@ export default function LoginPage() {
                     className={`p-2 border font-bold uppercase transition flex items-center justify-center gap-1.5 cursor-pointer ${signupMethod === "email" ? "bg-[#C5A059] text-white border-[#C5A059]" : "bg-white text-[#1E252B] border-[#E5E1D8]"}`}>
                     <Mail className="h-3.5 w-3.5" /><span>Gmail / Email</span>
                   </button>
-                  <button type="button" onClick={() => { setSignupMethod("gmail"); setCustomError(null); }}
-                    className={`p-2 border font-bold uppercase transition flex items-center justify-center gap-1.5 cursor-pointer ${signupMethod === "gmail" ? "bg-[#C5A059] text-white border-[#C5A059]" : "bg-white text-[#1E252B] border-[#E5E1D8]"}`}>
-                    <Globe className="h-3.5 w-3.5 text-blue-600" /><span>Google 1-Click</span>
-                  </button>
                 </div>
               </div>
-              {signupMethod === "gmail" ? (
-                <div className="p-4 bg-[#FAF9F5] border border-[#E5E1D8] text-center space-y-3 font-mono">
-                  <div className="p-3 bg-white border border-[#E5E1D8] inline-block rounded-full"><Globe className="h-6 w-6 text-blue-600" /></div>
-                  <div>
-                    <h4 className="text-xs font-bold text-[#1E252B] uppercase">One-Click Google / Gmail Sign Up</h4>
-                    <p className="text-[10px] text-[#4A5560] mt-1">Register and log in instantly as <strong className="text-[#1E252B] uppercase">{selectedRole}</strong> with your verified Google profile.</p>
-                  </div>
-                  <button type="button" disabled={isSubmitting} onClick={() => handleGoogleQuickAuth(selectedRole)}
-                    className="w-full py-2.5 bg-[#1E252B] hover:bg-[#C5A059] text-white hover:text-[#1E252B] text-xs font-bold uppercase transition cursor-pointer flex items-center justify-center gap-2">
-                    <Sparkles className="h-4 w-4 text-[#C5A059]" /><span>Complete Google Registration ({selectedRole.toUpperCase()})</span>
-                  </button>
-                </div>
-              ) : (
+
                 <form className="space-y-3 font-mono" onSubmit={handleSignupSubmit}>
                   <div className="space-y-1">
                     <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">Full Legal Name</label>
@@ -324,12 +180,6 @@ export default function LoginPage() {
                         <input type="tel" required value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
                           className="w-full text-xs pl-10 pr-3 py-2 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="+880 1712-345678" />
                       </div>
-                      <div className="pt-1 flex items-center justify-between text-[10px]">
-                        <button type="button" onClick={handleSendOtp} className="text-[#C5A059] hover:underline font-bold uppercase flex items-center gap-1 cursor-pointer">
-                          <Smartphone className="h-3 w-3" /><span>{otpSent ? "Resend SMS OTP" : "Send SMS Verification OTP"}</span>
-                        </button>
-                        {otpSent && <span className="text-emerald-700 font-bold">OTP Auto-Verified: {simulatedOtp}</span>}
-                      </div>
                     </div>
                   ) : (
                     <div className="space-y-1">
@@ -351,10 +201,9 @@ export default function LoginPage() {
                   </div>
                   <button type="submit" disabled={isSubmitting || state.isLoading}
                     className="w-full py-3 bg-[#1E252B] hover:bg-[#C5A059] text-white hover:text-[#1E252B] disabled:bg-neutral-300 font-bold uppercase text-xs tracking-wider border border-[#1E252B] transition cursor-pointer flex items-center justify-center gap-2 mt-4">
-                    {isSubmitting ? "Creating Account..." : `Register as ${selectedRole.toUpperCase()}`}
+                    {isSubmitting ? "Creating Account..." : "Create Account"}
                   </button>
                 </form>
-              )}
             </div>
           )}
         </div>
