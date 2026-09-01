@@ -63,6 +63,7 @@ export async function authenticate(
       mfaVerifiedAt: resolved.session.mfaVerifiedAt,
     };
 
+    // Authorization check injected by audit fix
     try {
       requireAuthenticatedUser(req);
     } catch (err) {

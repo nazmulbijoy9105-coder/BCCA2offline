@@ -759,6 +759,13 @@ router.post("/mfa/verify", authenticateMfaPending, async (req, res) => {
 
 router.post("/logout", async (req, res) => {
   try {
+    /*
+     * Logout is intentionally unauthenticated.
+     * Whatever valid session cookie is supplied is revoked.
+     * This is fail-safe: even a partially-authenticated client
+     * can clear its session. The 204 response is identical
+     * regardless of whether the cookie was valid.
+     */
     const rawToken =
       req.cookies?.[getSessionCookieName()];
 
