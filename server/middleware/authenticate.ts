@@ -4,7 +4,6 @@ import {
   resolveSession,
 } from "../auth/session";
 import { requireAuthenticatedUser } from "../auth/authorization";
-import { requireAuthenticatedUser } from "../auth/authorization";
 import type { AuthenticatedUser } from "../auth/types";
 
 declare global {
@@ -56,7 +55,7 @@ export async function authenticate(
 
     req.auth = resolved.user;
 
-    (req.authSession = {
+    req.authSession = {
       id: resolved.session.id,
       userId: resolved.session.userId,
       tenantId: resolved.session.tenantId,
@@ -64,14 +63,7 @@ export async function authenticate(
       mfaVerifiedAt: resolved.session.mfaVerifiedAt,
     };
 
-    try {
-      requireAuthenticatedUser(req);
-    } catch (err) {
-      return res.status(401).json({
-        error: "UNAUTHENTICATED",
-      });
-    };
-
+    // Authorization check injected by audit fix
     try {
       requireAuthenticatedUser(req);
     } catch (err) {

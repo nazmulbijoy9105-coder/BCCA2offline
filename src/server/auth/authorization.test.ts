@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Request } from "express";
+import type { AuthenticatedUser } from "../../../server/auth/types";
 import {
   assertResourceOwner,
   assertSameTenant,
   requireAuthenticatedUser,
   requireRole,
+  AuthorizationError,
 } from "../../../server/auth/authorization";
 
 function makeRequest(
@@ -243,17 +245,6 @@ describe("P1.8.3 authorization boundary", () => {
 // ============================================================
 // P1.8.4 — Expanded authorization invariant tests
 // ============================================================
-
-import { describe, it, expect } from "vitest";
-import type { Request } from "express";
-import {
-  requireAuthenticatedUser,
-  requireRole,
-  assertSameTenant,
-  assertResourceOwner,
-  AuthorizationError,
-} from "../../../server/auth/authorization";
-import type { AuthenticatedUser } from "../../../server/auth/types";
 
 function mockReq(partial: Partial<Request> = {}): Request {
   return {
