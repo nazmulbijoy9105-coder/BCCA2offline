@@ -239,3 +239,144 @@ describe("P1.8.3 authorization boundary", () => {
     });
   });
 });
+
+// ============================================================
+// P1.8.4 — Expanded authorization invariant tests
+// ============================================================
+
+import { describe, it, expect } from "vitest";
+import type { Request } from "express";
+import {
+  requireAuthenticatedUser,
+  requireRole,
+  assertSameTenant,
+  assertResourceOwner,
+  AuthorizationError,
+} from "../../../server/auth/authorization";
+import type { AuthenticatedUser } from "../../../server/auth/types";
+
+function mockReq(partial: Partial<Request> = {}): Request {
+  return {
+    auth: undefined,
+    authSession: undefined,
+    ...partial,
+  } as unknown as Request;
+}
+
+const baseUser: AuthenticatedUser = {
+  id: "user-1",
+  tenantId: "tenant-1",
+  email: "test@example.com",
+  role: "user",
+  isActive: true,
+  mfaRequired: false,
+  mfaEnabled: false,
+};
+
+const baseSession = {
+  id: "session-1",
+  userId: "user-1",
+  tenantId: "tenant-1",
+  mfaVerified: true,
+  mfaVerifiedAt: null as Date | null,
+};
+
+describe("P1.8.4: session authorization invariants", () => {
+  it("rejects unauthenticated (no user, no session)", () => {
+    const req = mockReq();
+    expect(() => requireAuthenticatedUser(req)).toThrow(
+      AuthorizationError,
+    );
+  });
+
+  it("rejects when session.userId !== user.id", () => {
+    const req = mockReq({
+      auth: baseUser,
+      authSession: { ...baseSession, userId: "user-2" },
+    });
+    expect(() => requireAuthenticatedUser(req)).toThrow(
+      AuthorizationError,
+    );
+  });
+
+  it("rejects when session.tenantId !== user.tenantId", () => {
+    const req = mockReq({
+      auth: baseUser,
+      authSession: { ...baseSession, tenantId: "tenant-2" },
+    });
+    expect(() => requireAuthenticatedUser(req)).toThrow(
+      AuthorizationError,
+    );
+  });
+
+  it("rejects inactive user", () => {
+    const req = mockReq({
+      auth: { ...baseUser, isActive: false },
+      authSession: baseSession,
+    });
+    expect(() => requireAuthenticatedUser(req)).toThrow(
+      AuthorizationError,
+    );
+  });
+
+  it("allows active user with matching session", () => {
+    const req = mockReq({
+      auth: baseUser,
+      authSession: baseSession,
+    });
+    expect(requireAuthenticatedUser(req)).toEqual(baseUser);
+  });
+});
+
+describe("P1.8.4: role enforcement", () => {
+  it("returns 403 for unauthorized role", () => {
+    const req = mockReq({
+      auth: { ...baseUser, role: "user" as const },
+      authSession: baseSession,
+    });
+    const res: any = { status: (code: number) => ({ json: (body: any) => ({ code, body }) }) };
+    const next = () => ({ code: 200 });
+
+    const middleware = requireRole("super_admin");
+    const result = middleware(req, res, next) as any;
+    expect(result.code).toBe(403);
+  });
+
+  it("allows authorized role", () => {
+    const req = mockReq({
+      auth: { ...baseUser, role: "admin" as const },
+      authSession: baseSession,
+    });
+    let called = false;
+    const next = () => { called = true; };
+    const middleware = requireRole("admin", "super_admin");
+    middleware(req, {} as any, next);
+    expect(called).toBe(true);
+  });
+});
+
+describe("P1.8.4: tenant and resource boundaries", () => {
+  it("allows same-tenant resource", () => {
+    expect(() =>
+      assertSameTenant("tenant-1", "tenant-1"),
+    ).not.toThrow();
+  });
+
+  it("denies cross-tenant resource", () => {
+    expect(() =>
+      assertSameTenant("tenant-1", "tenant-2"),
+    ).toThrow(AuthorizationError);
+  });
+
+  it("denies wrong resource owner", () => {
+    expect(() =>
+      assertResourceOwner("user-1", "user-2"),
+    ).toThrow(AuthorizationError);
+  });
+
+  it("allows correct resource owner", () => {
+    expect(() =>
+      assertResourceOwner("user-1", "user-1"),
+    ).not.toThrow();
+  });
+});

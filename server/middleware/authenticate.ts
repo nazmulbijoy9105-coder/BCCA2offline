@@ -4,6 +4,7 @@ import {
   resolveSession,
 } from "../auth/session";
 import { requireAuthenticatedUser } from "../auth/authorization";
+import { requireAuthenticatedUser } from "../auth/authorization";
 import type { AuthenticatedUser } from "../auth/types";
 
 declare global {
@@ -55,12 +56,20 @@ export async function authenticate(
 
     req.auth = resolved.user;
 
-    req.authSession = {
+    (req.authSession = {
       id: resolved.session.id,
       userId: resolved.session.userId,
       tenantId: resolved.session.tenantId,
       mfaVerified: resolved.session.mfaVerified,
       mfaVerifiedAt: resolved.session.mfaVerifiedAt,
+    };
+
+    try {
+      requireAuthenticatedUser(req);
+    } catch (err) {
+      return res.status(401).json({
+        error: "UNAUTHENTICATED",
+      });
     };
 
     try {
