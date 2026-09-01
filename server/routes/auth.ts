@@ -10,6 +10,12 @@ import {
 import { authenticate, authenticateMfaPending } from "../middleware/authenticate";
 import { decryptTotpSecret, verifyTotp } from "../auth/totp";
 import { db } from "../db/pool";
+import {
+  createPasswordResetToken,
+  resetPasswordWithToken,
+  isValidNewPassword,
+  isValidResetToken,
+} from "../auth/password-reset";
 
 const router = Router();
 
@@ -85,6 +91,109 @@ async function recordSecurityEvent(
     ],
   );
 }
+
+
+router.post("/password-reset/request", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+
+  if (!email) {
+    return res.status(400).json({
+      error: "INVALID_EMAIL",
+    });
+  }
+
+  try {
+    const result = await createPasswordResetToken(email);
+
+    /*
+     * Enumeration-resistant response:
+     * the externally visible response is identical whether
+     * the account exists or not.
+     *
+     * In development/test only, expose the generated token so
+     * the endpoint can be exercised without an email provider.
+     */
+    if (
+      process.env.NODE_ENV !== "production" &&
+      result.token
+    ) {
+      return res.status(200).json({
+        message: "If the account exists, a password reset has been initiated.",
+        resetToken: result.token,
+      });
+    }
+
+    return res.status(200).json({
+      message: "If the account exists, a password reset has been initiated.",
+    });
+  } catch (error) {
+    console.error("Password reset request failed:", error);
+
+    return res.status(500).json({
+      error: "PASSWORD_RESET_SERVICE_ERROR",
+    });
+  }
+});
+
+router.post("/password-reset/confirm", async (req, res) => {
+  const token = req.body?.token;
+  const newPassword = req.body?.newPassword;
+
+  if (
+    !isValidResetToken(token) ||
+    !isValidNewPassword(newPassword)
+  ) {
+    return res.status(400).json({
+      error: "INVALID_PASSWORD_RESET_REQUEST",
+    });
+  }
+
+  try {
+    const result = await resetPasswordWithToken(
+      token,
+      newPassword,
+    );
+
+    if (!result.success) {
+      await recordSecurityEvent(
+        "PASSWORD_RESET",
+        "DENIED",
+        null,
+        null,
+        req.requestId,
+        {
+          reason: "invalid_or_expired_token",
+        },
+      ).catch(() => undefined);
+
+      return res.status(401).json({
+        error: "INVALID_OR_EXPIRED_RESET_TOKEN",
+      });
+    }
+
+    await recordSecurityEvent(
+      "PASSWORD_RESET",
+      "SUCCESS",
+      result.tenantId,
+      result.userId,
+      req.requestId,
+      {
+        reason: "password_changed",
+      },
+    ).catch(() => undefined);
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Password reset confirmation failed:", error);
+
+    return res.status(500).json({
+      error: "PASSWORD_RESET_SERVICE_ERROR",
+    });
+  }
+});
+
 
 router.post("/login", async (req, res) => {
   const email = normalizeEmail(req.body?.email);
