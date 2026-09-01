@@ -6,9 +6,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-async function startServer() {
+export async function createApp() {
   const app = express();
-  const PORT = Number(process.env.PORT || 3000);
 
   app.disable("x-powered-by");
 
@@ -38,7 +37,10 @@ async function startServer() {
 
   app.use("/api/auth", authRouter);
 
-  if (process.env.NODE_ENV !== "production") {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.VITEST !== "true"
+  ) {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
@@ -47,7 +49,7 @@ async function startServer() {
     });
 
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.NODE_ENV === "production") {
     const distPath = path.join(process.cwd(), "dist");
 
     app.use(express.static(distPath));
@@ -57,14 +59,22 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(
-      `Server running on http://0.0.0.0:${PORT}`,
-    );
-  });
+  return app;
 }
 
-startServer().catch((error) => {
-  console.error("Fatal server startup error:", error);
-  process.exit(1);
-});
+if (process.env.VITEST !== "true") {
+  createApp()
+    .then((app) => {
+      const PORT = Number(process.env.PORT || 3000);
+
+      app.listen(PORT, "0.0.0.0", () => {
+        console.log(
+          `Server running on http://0.0.0.0:${PORT}`,
+        );
+      });
+    })
+    .catch((error) => {
+      console.error("Fatal server startup error:", error);
+      process.exit(1);
+    });
+}
