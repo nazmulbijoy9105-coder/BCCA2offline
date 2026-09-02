@@ -2549,10 +2549,41 @@ export class BCCAAEngine {
   // =======================================================================
 
   private executeAppealRules(): {
-    appealable: boolean;
+    appealStatus:
+      | "NOT_DETERMINED"
+      | "DETERMINED_APPEALABLE"
+      | "DETERMINED_NOT_APPEALABLE";
     appealGrounds: string[];
+    appealNodes: Array<{
+      level: string;
+      authority: string;
+      scope: string;
+      governingSection: string | null;
+    }>;
+    appealDeterminationReason: string;
   } {
-    return { appealable: false, appealGrounds: [] };
+    /*
+     * P3-07 LEGAL-INTEGRITY RULE:
+     *
+     * Appealability must never be inferred from absence of an appeal rule,
+     * absence of extracted facts, or an empty appeal-node collection.
+     *
+     * The current RuleRegistry contains no validated appellate-rule graph.
+     * It is explicitly a DEVELOPMENT_FIXTURE and therefore cannot establish
+     * a substantive appealability determination.
+     *
+     * Consequently the only legally safe result in the current corpus is
+     * NOT_DETERMINED. A future validated appellate-rule graph may return
+     * DETERMINED_APPEALABLE or DETERMINED_NOT_APPEALABLE with rule,
+     * authority, fact, and provenance evidence.
+     */
+    return {
+      appealStatus: "NOT_DETERMINED",
+      appealGrounds: [],
+      appealNodes: [],
+      appealDeterminationReason:
+        "Appealability cannot be determined because no validated appellate rule is available in the active rule registry.",
+    };
   }
 
   // =======================================================================
@@ -2567,11 +2598,36 @@ export class BCCAAEngine {
     merits: { meritScore: number },
     equity: { equityScore: number },
     procedure: { proceduralCompliance: boolean },
-    appeal: { appealable: boolean },
+    appeal: {
+      appealStatus:
+        | "NOT_DETERMINED"
+        | "DETERMINED_APPEALABLE"
+        | "DETERMINED_NOT_APPEALABLE";
+    },
   ): PipelineExecutionStatus {
     if (standi.plaintiffs.length === 0 || standi.defendants.length === 0) return "BLOCKED";
     if (pleading.groundsForRejection.length > 0) return "PARTIAL";
-    if (issues.framedIssues.length === 0 && evidence.missingEvidence.length === 0 && merits.meritScore >= 80 && equity.equityScore >= 1 && procedure.proceduralCompliance && !appeal.appealable) return "COMPLETED";
+
+    /*
+     * P3-07: COMPLETED is prohibited while appealability remains unresolved.
+     * Absence of an appellate rule is not equivalent to a finding that no
+     * appeal lies.
+     */
+    const appealDetermined =
+      appeal.appealStatus === "DETERMINED_APPEALABLE" ||
+      appeal.appealStatus === "DETERMINED_NOT_APPEALABLE";
+
+    if (
+      issues.framedIssues.length === 0 &&
+      evidence.missingEvidence.length === 0 &&
+      merits.meritScore >= 80 &&
+      equity.equityScore >= 1 &&
+      procedure.proceduralCompliance &&
+      appealDetermined
+    ) {
+      return "COMPLETED";
+    }
+
     if (merits.meritScore < 50) return "PARTIAL";
     return "PARTIAL";
   }
@@ -2803,8 +2859,10 @@ export class BCCAAEngine {
         proceduralNotes: deps.procedure.proceduralNotes,
       },
       stage12: {
-        appealable: deps.appeal.appealable,
+        appealNodes: deps.appeal.appealNodes,
+        appealStatus: deps.appeal.appealStatus,
         appealGrounds: deps.appeal.appealGrounds,
+        appealDeterminationReason: deps.appeal.appealDeterminationReason,
       },
       stage13: {
         conclusion: synthesis.conclusion,
@@ -2899,7 +2957,12 @@ export class BCCAAEngine {
         proceduralCompliance: false,
         proceduralNotes: [haltDetail],
       },
-      stage12: { appealNodes: [], appealable: false, appealGrounds: [] },
+      stage12: {
+        appealNodes: [],
+        appealStatus: "NOT_DETERMINED",
+        appealGrounds: [],
+        appealDeterminationReason: "Appealability was not determined because execution halted before appellate-rule evaluation.",
+      },
       stage13: { conclusion: `Execution halted: ${haltReason}`, confidence: "NONE", requiresHumanReview: true, humanReviewReason: haltDetail, elementSummary: [], legalConclusions: [], recommendations: [] },
       gateF0: { gateStatus: "HALT" as const, conflicts: [], atomicFacts: [], conflictCount: 0, criticalConflicts: 0, warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason] },
       auditHash: "PENDING",
@@ -2980,7 +3043,12 @@ export class BCCAAEngine {
         equityScore: 0,
       },
       stage11: { timelineProgress: [], proceduralCompliance: false, proceduralNotes: ["F0 gate halted"] },
-      stage12: { appealNodes: [], appealable: false, appealGrounds: [] },
+      stage12: {
+        appealNodes: [],
+        appealStatus: "NOT_DETERMINED",
+        appealGrounds: [],
+        appealDeterminationReason: "Appealability was not determined because execution halted before appellate-rule evaluation.",
+      },
       stage13: {
         overview: `Execution halted: ${f0Gate.summary || "F0 gate halted"}`,
         reliefDecree: null,

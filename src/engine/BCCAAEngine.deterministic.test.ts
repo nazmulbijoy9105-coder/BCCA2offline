@@ -433,6 +433,74 @@ describe("PHASE 6: Equity, Procedure & Appeal", () => {
   });
 });
 
+
+describe("P3-07 Appeal legal-integrity guards", () => {
+  it("P3-07.1 does not equate absent appellate rules with non-appealability", async () => {
+    const req = makeRequest({
+      caseId: "P3-07-1",
+      factPattern:
+        "The suit was decreed by the Senior Assistant Judge. The defendant prefers appeal to the District Judge.",
+    });
+
+    const result = await engine.analyze(req);
+    const stage12 = (result as any).stage12;
+
+    expect(stage12?.appealStatus).toBe("NOT_DETERMINED");
+    expect(stage12?.appealGrounds).toEqual([]);
+    expect(stage12?.appealNodes).toEqual([]);
+    expect(stage12?.appealDeterminationReason).toContain(
+      "no validated appellate rule",
+    );
+
+    expect(stage12).not.toHaveProperty("appealable");
+  });
+
+  it("P3-07.2 unresolved appealability cannot produce COMPLETED execution status", async () => {
+    const req = makeRequest({
+      caseId: "P3-07-2",
+      factPattern:
+        "The plaintiff and defendant are identified and the pleaded elements appear complete.",
+    });
+
+    const result = await engine.analyze(req);
+
+    expect((result as any).stage12?.appealStatus).toBe("NOT_DETERMINED");
+    expect((result as any).executionStatus).not.toBe("COMPLETED");
+  });
+
+  it("P3-07.3 appeal status is deterministic across identical executions", async () => {
+    const req = makeRequest({
+      caseId: "P3-07-3",
+      factPattern:
+        "The suit was decreed by the Senior Assistant Judge. The defendant prefers appeal to the District Judge.",
+    });
+
+    const r1 = await engine.analyze(req);
+    const r2 = await engine.analyze(req);
+
+    expect(
+      canonicalStringify((r1 as any).stage12),
+    ).toBe(
+      canonicalStringify((r2 as any).stage12),
+    );
+  });
+
+  it("P3-07.4 halted execution reports appealability as NOT_DETERMINED", async () => {
+    const req = makeRequest({
+      caseId: "P3-07-4",
+      factPattern:
+        "Conflicting facts establish that the same proposition is simultaneously true and false.",
+    });
+
+    const result = await engine.analyze(req);
+    const stage12 = (result as any).stage12;
+
+    expect(stage12?.appealStatus).toBe("NOT_DETERMINED");
+    expect(stage12?.appealGrounds).toEqual([]);
+    expect(stage12?.appealNodes).toEqual([]);
+  });
+});
+
 describe("PHASE 7: Final Gate, Outcome & Audit Integrity", () => {
   describe("P7-01 Element gate determinism", () => {
     it("Element gate result is identical across reruns for same input", async () => {
@@ -599,5 +667,82 @@ describe("P3-02: Stage 13 conclusion integrity", () => {
 
       expect(mutatedHash).not.toBe(originalHash);
     }
+  });
+});
+
+describe("P3-03–P3-06: Legal-engine semantic fail-closed guards", () => {
+  async function analyzeP3Case(caseId: string) {
+    return engine.analyze(
+      makeRequest({
+        caseId,
+        factPattern:
+          "The plaintiff relied on an unregistered bainapatra. " +
+          "The defendant refused to execute the sale deed on 15 August 2023. " +
+          "The plaintiff paid the agreed consideration and has documentary proof. " +
+          "The defendant is the owner of the property.",
+        submissionDate: "2024-01-15",
+      }),
+    );
+  }
+
+  it("P3-04: merit is not numerically inferred from element satisfaction", async () => {
+    const r = await analyzeP3Case("P3-04-MERIT-SEMANTICS");
+
+    expect(r.stage9.meritScore).toBe(0);
+    expect(r.stage9.meritAssessment).toContain("NOT_DETERMINED");
+    expect(r.stage9.meritAssessment).toContain(
+      "no validated merits rule graph",
+    );
+  });
+
+  it("P3-05: equity is not inferred from element satisfaction or contradiction absence", async () => {
+    const r = await analyzeP3Case("P3-05-EQUITY-SEMANTICS");
+
+    expect(r.stage10.equityScore).toBe(0);
+    expect((r.stage10?.equityPrinciples ?? []).join(" ")).toContain("NOT_DETERMINED");
+    expect((r.stage10?.equityPrinciples ?? []).join(" ")).not.toContain("Clean hands");
+    expect((r.stage10?.equityPrinciples ?? []).join(" ")).not.toContain(
+      "equitable relief favored",
+    );
+  });
+
+  it("P3-06: procedure never defaults to affirmative compliance", async () => {
+    const r = await analyzeP3Case("P3-06-PROCEDURE-SEMANTICS");
+
+    expect(r.stage11?.proceduralCompliance).toBe(false);
+    expect((r.stage11?.proceduralNotes ?? []).join(" ")).toContain("NOT_DETERMINED");
+    expect((r.stage11?.proceduralNotes ?? []).join(" ")).toContain(
+      "no validated procedural rule graph",
+    );
+  });
+
+  it("P3-03: Stage 13 remains indeterminate when upstream legal stages are unresolved", async () => {
+    const r = await analyzeP3Case("P3-03-SYNTHESIS-SEMANTICS");
+
+    expect(r.stage13.confidence).toBe("LOW");
+    expect(r.stage13.requiresHumanReview).toBe(true);
+    expect(r.stage13.legalConclusions).toEqual([]);
+    expect(r.stage13.conclusion).toContain(
+      "cannot produce a substantive legal conclusion",
+    );
+    expect(r.stage13.humanReviewReason).toContain(
+      "merits are not determined by a validated rule graph",
+    );
+    expect(r.stage13.humanReviewReason).toContain(
+      "equity is not determined by a validated rule graph",
+    );
+    expect(r.stage13.humanReviewReason).toContain(
+      "procedural compliance is not established by a validated rule graph",
+    );
+  });
+
+  it("P3-03: structurally plausible facts cannot produce an affirmative substantive outcome", async () => {
+    const r = await analyzeP3Case("P3-03-NO-AFFIRMATIVE-OUTCOME");
+
+    expect(r.stage13.legalConclusions).toEqual([]);
+    expect(r.stage13.requiresHumanReview).toBe(true);
+    expect(["INDETERMINATE", "STRUCTURAL_ONLY", "PARTIAL", "HALTED"]).toContain(
+      r.outcome,
+    );
   });
 });
