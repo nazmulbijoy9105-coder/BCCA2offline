@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2, Download, ShieldCheck } from "lucide-react";
 import { useAuth } from "./auth/AuthContext";
-import { BCCAAEngine } from "./engine/BCCAAEngine";
+import { BCCAAEngine, ENGINE_MANIFEST } from "./engine/BCCAAEngine";
+import { assertLegalEngineProductionReady } from "./engine/productionGate";
 import { generateWatermark } from "./utils/watermark";
 import { downloadSecurePDF } from "./utils/pdfGeneratorSecure";
 import { downloadCaseBriefDOCX } from "./utils/docxGenerator";
@@ -109,7 +110,16 @@ export default function App() {
     }, 400);
 
     try {
-      // 4.4.0-HARDENED ENGINE — NO API CALL
+      assertLegalEngineProductionReady(import.meta.env.PROD, {
+        corpusMode: ENGINE_MANIFEST.corpusMode,
+        authorityStatus:
+          ENGINE_MANIFEST.corpusMode === "VALIDATED_PRODUCTION"
+            ? "VALIDATED_PRODUCTION"
+            : "DEVELOPMENT_FIXTURE",
+      });
+
+      // Local deterministic engine.
+      // Production is fail-closed unless a validated production corpus is wired.
       const engine = new BCCAAEngine();
       const result = await engine.analyze({
         user,
