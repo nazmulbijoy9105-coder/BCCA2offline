@@ -634,8 +634,12 @@ export interface CaseAnalysisResponse {
       scope: string;
       governingSection: string | null;
     }>;
-    appealable?: boolean;
-    appealGrounds?: any[];
+    appealStatus?:
+      | "NOT_DETERMINED"
+      | "DETERMINED_APPEALABLE"
+      | "DETERMINED_NOT_APPEALABLE";
+    appealGrounds?: string[];
+    appealDeterminationReason?: string;
   };
   stage13: {
     overview?: string;

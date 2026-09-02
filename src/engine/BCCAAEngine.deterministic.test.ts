@@ -729,7 +729,7 @@ describe("P3-03–P3-06: Legal-engine semantic fail-closed guards", () => {
       "merits are not determined by a validated rule graph",
     );
     expect(r.stage13.humanReviewReason).toContain(
-      "equity is not determined by a validated rule graph",
+      "equity is not determined by a validated equity rule graph",
     );
     expect(r.stage13.humanReviewReason).toContain(
       "procedural compliance is not established by a validated rule graph",
