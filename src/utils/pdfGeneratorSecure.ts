@@ -35,7 +35,12 @@ export async function downloadSecurePDF(
     minute: "2-digit"
   });
 
-  const isMaintainable = !analysis.stage3.isTimeBarred;
+  const limitationStatus =
+    analysis.stage3.isTimeBarred === true
+      ? "TIME-BARRED"
+      : analysis.stage3.isTimeBarred === false
+        ? "MAINTAINABLE"
+        : "UNKNOWN / REQUIRES REVIEW";
 
   // Render HTML structure
   container.innerHTML = `
@@ -208,9 +213,15 @@ export async function downloadSecurePDF(
         <div class="card-title">Limitation & Maintainability</div>
         <div>
           <strong>Limitation Status:</strong> 
-          <span class="badge ${isMaintainable ? 'badge-success' : 'badge-danger'}">
-            ${isMaintainable ? 'MAINTAINABLE' : 'TIME BARRED'}
-          </span>
+          <span class="badge ${
+  analysis.stage3.isTimeBarred === true
+    ? 'badge-danger'
+    : analysis.stage3.isTimeBarred === false
+      ? 'badge-success'
+      : 'badge-warning'
+}">
+  ${limitationStatus}
+</span>
         </div>
         <div><strong>Limitation Article:</strong> Article ${analysis.stage3.limitationArticle} (Limitation Act 1908)</div>
         <div><strong>Accrual Date:</strong> ${analysis.stage3.accrualDate}</div>

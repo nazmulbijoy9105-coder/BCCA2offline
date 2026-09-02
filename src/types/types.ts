@@ -377,7 +377,7 @@ export interface CaseHistoryItem {
   title: string;
   primaryDomain: string;
   courtLevel: string | null;
-  isTimeBarred: boolean;
+  isTimeBarred: boolean | null;
   factPattern: string;
   focusDomain: string;
   analysis: CaseAnalysisResponse;

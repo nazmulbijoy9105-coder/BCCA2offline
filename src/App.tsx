@@ -52,7 +52,7 @@ export default function App() {
         title: analysis.stage2.primaryAct ?? "",
         primaryDomain: analysis.stage1.primaryDomain,
         courtLevel: analysis.stage5?.pecuniary?.courtLevel ?? null,
-        isTimeBarred: analysis.stage3.isTimeBarred ?? false,
+        isTimeBarred: analysis.stage3.isTimeBarred,
         factPattern: facts,
         focusDomain: domain,
         analysis,
@@ -555,8 +555,20 @@ export default function App() {
                     <span className="px-3 py-1 bg-[#FDFBF7] border border-[#E5E1D8] text-[11px] font-mono text-[#1E252B]">
                      Court: <strong>{analysisResult.stage5?.pecuniary?.courtLevel ?? "Not determined"}</strong>
                     </span>
-                    <span className={`px-3 py-1 border font-mono font-bold text-[10px] uppercase tracking-wider ${analysisResult.stage3.isTimeBarred ? "bg-red-55 border-red-300 text-red-900" : "bg-emerald-55 border-emerald-300 text-emerald-900"}`}>
-                      Limitation: {analysisResult.stage3.isTimeBarred ? "TIME BARRED" : "MAINTAINABLE"}
+                    <span className={`px-3 py-1 border font-mono font-bold text-[10px] uppercase tracking-wider ${
+                      analysisResult.stage3.isTimeBarred === true
+                        ? "bg-red-55 border-red-300 text-red-900"
+                        : analysisResult.stage3.isTimeBarred === false
+                          ? "bg-emerald-55 border-emerald-300 text-emerald-900"
+                          : "bg-amber-50 border-amber-300 text-amber-900"
+                    }`}>
+                      Limitation: {
+                        analysisResult.stage3.isTimeBarred === true
+                          ? "TIME BARRED"
+                          : analysisResult.stage3.isTimeBarred === false
+                            ? "MAINTAINABLE"
+                            : "UNKNOWN / REQUIRES REVIEW"
+                      }
                     </span>
                   </div>
                 </div>

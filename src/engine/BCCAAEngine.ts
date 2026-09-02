@@ -2860,7 +2860,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
       stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
@@ -2945,7 +2945,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: false, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },

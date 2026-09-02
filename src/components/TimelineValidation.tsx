@@ -4,7 +4,7 @@ import { CaseAnalysisResponse } from "../types/types";
 
 interface TimelineValidationProps {
   timeline: NonNullable<CaseAnalysisResponse["stage3"]["timelineValidation"]>;
-  isTimeBarred: boolean;
+  isTimeBarred: boolean | null;
   accrualDate: string;
   category?: string;
 }
@@ -341,13 +341,21 @@ export default function TimelineValidation({ timeline, isTimeBarred, accrualDate
             <div className="space-y-1">
               <div className="flex sm:flex-col items-center gap-2 sm:gap-1.5 text-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs font-bold border-2 ${
-                  isTimeBarred 
-                    ? "bg-red-50 border-red-500 text-red-700" 
-                    : "bg-emerald-50 border-emerald-500 text-emerald-700"
+                  isTimeBarred === true
+    ? "bg-red-50 border-red-500 text-red-700"
+    : isTimeBarred === false
+      ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+      : "bg-amber-50 border-amber-500 text-amber-700"
                 }`}>
                   4
                 </div>
-                <span className="text-[11px] font-bold text-[#1E252B]">Filing Deadline</span>
+                <span className="text-[11px] font-bold text-[#1E252B]">
+  {isTimeBarred === true
+    ? "Filing Deadline — TIME-BARRED"
+    : isTimeBarred === false
+      ? "Filing Deadline — WITHIN LIMITATION"
+      : "Filing Deadline — UNKNOWN / REQUIRES REVIEW"}
+</span>
               </div>
               <p className="text-[10px] text-neutral-500 text-left sm:text-center">
                 1 Year from Accrual

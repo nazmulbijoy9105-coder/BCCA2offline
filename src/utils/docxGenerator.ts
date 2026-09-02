@@ -28,7 +28,12 @@ export async function downloadCaseBriefDOCX(
   factPattern: string,
   watermark: Watermark
 ): Promise<void> {
-  const isMaintainable = !analysis.stage3.isTimeBarred;
+  const limitationStatus =
+    analysis.stage3.isTimeBarred === true
+      ? "TIME-BARRED"
+      : analysis.stage3.isTimeBarred === false
+        ? "MAINTAINABLE"
+        : "UNKNOWN / REQUIRES REVIEW";
   const formattedDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -214,8 +219,16 @@ export async function downloadCaseBriefDOCX(
         children: [
           createCell("Statutory Limitation Status"),
           createCell(
-            `${isMaintainable ? "MAINTAINABLE" : "TIME-BARRED"} (Article ${analysis.stage3.limitationArticle || "N/A"})`,
-            { bold: true, color: isMaintainable ? "059669" : "DC2626" }
+            `${limitationStatus} (Article ${analysis.stage3.limitationArticle || "N/A"})`,
+            {
+              bold: true,
+              color:
+                analysis.stage3.isTimeBarred === true
+                  ? "DC2626"
+                  : analysis.stage3.isTimeBarred === false
+                    ? "059669"
+                    : "B45309",
+            }
           ),
         ],
       }),
@@ -320,14 +333,27 @@ export async function downloadCaseBriefDOCX(
 
           // Status Banner Box
           new Paragraph({
-            shading: { fill: isMaintainable ? "ECFDF5" : "FEF2F2", type: ShadingType.CLEAR },
+            shading: {
+              fill:
+                analysis.stage3.isTimeBarred === true
+                  ? "FEF2F2"
+                  : analysis.stage3.isTimeBarred === false
+                    ? "ECFDF5"
+                    : "FFFBEB",
+              type: ShadingType.CLEAR,
+            },
             spacing: { before: 100, after: 200 },
             children: [
               new TextRun({
-                text: `  SUIT STATUS: ${isMaintainable ? "MAINTAINABLE WITHIN LIMITATION" : "TIME-BARRED UNDER SECTION 3 LIMITATION ACT"}  |  FORUM: ${analysis.stage5?.pecuniary?.courtLevel ?? ""}  `,
+                text: `  SUIT STATUS: ${limitationStatus}  |  FORUM: ${analysis.stage5?.pecuniary?.courtLevel ?? ""}  `,
                 bold: true,
                 size: 20,
-                color: isMaintainable ? "065F46" : "991B1B",
+                color:
+                  analysis.stage3.isTimeBarred === true
+                    ? "991B1B"
+                    : analysis.stage3.isTimeBarred === false
+                      ? "065F46"
+                      : "92400E",
                 font: "Calibri",
               }),
             ],

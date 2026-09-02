@@ -526,13 +526,19 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
               {activeStage === 3 && (
                 <div className="space-y-4">
                   <div className={`p-4 border rounded ${
-                    analysis.stage3.isTimeBarred 
-                      ? "bg-red-50 text-red-900 border-red-200" 
-                      : "bg-emerald-50 text-emerald-900 border-emerald-200"
+                    analysis.stage3.isTimeBarred === true
+                      ? "bg-red-50 text-red-900 border-red-200"
+                      : analysis.stage3.isTimeBarred === false
+                        ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                        : "bg-amber-50 text-amber-900 border-amber-200"
                   }`}>
                     <div className="text-[10px] font-mono font-bold uppercase tracking-wider">Limitation Decision</div>
                     <h4 className="text-sm font-bold mt-1">
-                      {analysis.stage3.isTimeBarred ? "⚠️ SUIT APPARENTLY TIME BARRED" : "✓ SUIT IS WITHIN LIMITATION WINDOW"}
+                      {analysis.stage3.isTimeBarred === true
+                        ? "⚠️ SUIT APPARENTLY TIME BARRED"
+                        : analysis.stage3.isTimeBarred === false
+                          ? "✓ SUIT IS WITHIN LIMITATION WINDOW"
+                          : "⚠️ LIMITATION UNKNOWN — REQUIRES REVIEW"}
                     </h4>
                   </div>
 
@@ -562,7 +568,7 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                   {analysis.stage3.timelineValidation && (
                     <TimelineValidation 
                       timeline={analysis.stage3.timelineValidation}
-                      isTimeBarred={analysis.stage3.isTimeBarred ?? false}
+                      isTimeBarred={analysis.stage3.isTimeBarred}
                       accrualDate={analysis.stage3.accrualDate ?? ""}
                       category={analysis.stage0.factsMeta?.category}
                     />

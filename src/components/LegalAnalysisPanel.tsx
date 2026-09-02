@@ -26,7 +26,12 @@ import { generateWatermark } from "../utils/watermark";
 export const generateLegalMemo = (factPattern: string, result: CaseAnalysisResponse): string => {
   const category = result.stage0?.factsMeta?.category;
   const primaryAct = result.stage2?.primaryAct;
-  const limitationStatus = result.stage3?.isTimeBarred ? "TIME-BARRED" : "WITHIN LIMITATION";
+  const limitationStatus =
+    result.stage3?.isTimeBarred === true
+      ? "TIME-BARRED"
+      : result.stage3?.isTimeBarred === false
+        ? "WITHIN LIMITATION"
+        : "UNKNOWN / REQUIRES REVIEW";
   const courtLevel = result.stage5?.pecuniary?.courtLevel;
   const courtFeesNotes = result.stage5?.pecuniary?.suitsValuationActNotes;
   
