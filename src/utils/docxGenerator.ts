@@ -169,7 +169,7 @@ export async function downloadCaseBriefDOCX(
       citationParas.push(
         new Paragraph({
           children: [
-            new TextRun({ text: `✓ ${p.verificationStatus || "VERIFIED CANONICAL"}`, size: 16, font: "Consolas", color: "059669" }),
+            new TextRun({ text: `✓ ${p.verificationStatus || "NOT_EXECUTED"}`, size: 16, font: "Consolas", color: "059669" }),
           ],
         })
       );
@@ -579,7 +579,7 @@ export async function downloadCaseBriefDOCX(
                 font: "Consolas",
               }),
               new TextRun({
-                text: `Security Hash: ${watermark.forensicHash}\nLicense Holder: ${watermark.issuedTo} (${watermark.licenseId})\nCase Verification ID: ${watermark.caseId}\nTimestamp: ${new Date(watermark.timestamp).toLocaleString()}\nIntegrity Guarantee: 100% Deterministic Statutory Validation Node`,
+                text: `Security Hash: ${watermark.forensicHash}\nLicense Holder: ${watermark.issuedTo} (${watermark.licenseId})\nCase Verification ID: ${watermark.caseId}\nTimestamp: ${new Date(watermark.timestamp).toLocaleString()}\nIntegrity: deterministic document/hash processing; substantive legal validity requires independent validation`,
                 size: 16,
                 color: "4B5563",
                 font: "Consolas",

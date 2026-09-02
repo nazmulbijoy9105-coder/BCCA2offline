@@ -285,10 +285,10 @@ export async function downloadSecurePDF(
       ${analysis.stage2.precedents && analysis.stage2.precedents.length > 0 ? `
         <div style="margin-top: 14px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
           <p style="margin: 0; font-weight: bold; color: #1E252B; font-size: 11px;">
-            Authoritative Supreme Court Precedents (Verified Canonical Registry):
+            Supreme Court Precedents (Canonical Registry Match Status):
           </p>
           <span style="font-size: 8px; font-family: monospace; color: #047857; background: #ecfdf5; padding: 2px 6px; border: 1px solid #a7f3d0; border-radius: 2px; font-weight: bold;">
-            ✓ 100% DETERMINISTIC VALIDATION
+            ✓ Deterministic canonical-registry verification
           </span>
         </div>
         <table class="pdf-table">
@@ -306,7 +306,7 @@ export async function downloadSecurePDF(
                 <td>
                   <strong>${p.citation}</strong>
                   ${p.caseTitle ? `<div style="font-size: 8.5px; color: #374151; font-style: italic; margin-top: 2px;">${p.caseTitle}</div>` : ''}
-                  <div style="font-size: 7.5px; color: #059669; font-family: monospace; margin-top: 2px;">✓ ${p.verificationStatus || 'VERIFIED_CANONICAL'}</div>
+                  <div style="font-size: 7.5px; color: #059669; font-family: monospace; margin-top: 2px;">✓ ${p.verificationStatus || 'NOT_EXECUTED'}</div>
                 </td>
                 <td>
                   ${p.court}

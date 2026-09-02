@@ -73,7 +73,7 @@ describe("P3-02: No Date.now() in legal reasoning", () => {
   });
 });
 
-describe("P3-03: Canonical registry verification standard", () => {
+describe("P3-03: Deterministic canonical-registry citation verification standard", () => {
   it("citation audit references deterministic registry", async () => {
     const r = await engine.analyze(makeRequest({
       caseId: "P3-03",

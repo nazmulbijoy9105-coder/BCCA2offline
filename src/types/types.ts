@@ -490,7 +490,7 @@ export interface CaseAnalysisResponse {
       validatedCitations?: number;
       unverifiedCitations?: number;
       validationStandard: string;
-      auditStatus: CitationState | "PASS_100_PERCENT_DETERMINISTIC" | "FAIL_UNVERIFIED_DETECTED";
+      auditStatus: CitationState;
       registrySignature?: string;
     };
     equityPrinciples: string[];

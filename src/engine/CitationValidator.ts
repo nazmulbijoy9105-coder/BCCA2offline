@@ -457,7 +457,7 @@ export class CitationValidator {
 
   /**
    * Deterministically select and validate verified precedents for a specific case category & factual context.
-   * GUARANTEES that ONLY 100% verified citations are ever returned.
+   * Returns only citations that passed the deterministic canonical-registry lookup.
    */
   public static getVerifiedPrecedentsForContext(
     category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION",

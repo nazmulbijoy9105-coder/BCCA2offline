@@ -252,10 +252,10 @@ describe("PHASE 2: Domain Classification & Legislation", () => {
       );
       expect(r.stage2!.citationValidationAudit!.totalCitations).toBeGreaterThanOrEqual(0);
       expect(r.stage2!.citationValidationAudit!.validationStandard).toBe(
-        "100% deterministic canonical registry verification"
+        "Deterministic canonical-registry citation verification"
       );
-      expect(["PASS_100_PERCENT_DETERMINISTIC", "FAIL_UNVERIFIED_DETECTED"]).toContain(
-        r.stage2!.citationValidationAudit!.auditStatus
+      expect(r.stage2!.citationValidationAudit!.auditStatus).toBe(
+        "NOT_EXECUTED"
       );
     });
   });
