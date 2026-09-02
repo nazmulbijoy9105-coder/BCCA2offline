@@ -532,3 +532,72 @@ describe("PHASE 8: Edge Cases & Regression Guards", () => {
     });
   });
 });
+
+describe("P3-02: Stage 13 conclusion integrity", () => {
+  it("persisted outputHash covers every user-visible Stage 13 legal-output field", async () => {
+    const captured: any[] = [];
+
+    const auditSink = {
+      append: async (payload: any) => {
+        captured.push(payload);
+        return {
+          ...payload,
+          previousHash: null,
+          recordHash: "P3-02-TEST-RECORD-HASH",
+        };
+      },
+    };
+
+    const testEngine = new BCCAAEngine({
+      licenseValidator: {
+        validate: async () => ({
+          valid: true,
+          licenseId: "TEST-LIC-001",
+          issuedTo: "DETERMINISTIC_TEST_SUITE",
+        }),
+      },
+      factValidationProvider: new NoOpFactValidationProvider(),
+      auditSink,
+    });
+
+    const request = makeRequest({
+      caseId: "P3-02-STAGE13",
+    });
+
+    const response = await testEngine.analyze(request);
+
+    expect(captured).toHaveLength(1);
+
+    const originalHash = (testEngine as any).computeOutputHash(
+      response,
+      request.caseId,
+    );
+
+    expect(captured[0].outputHash).toBe(originalHash);
+
+    const protectedFields = [
+      "overview",
+      "reliefDecree",
+      "costsApportionment",
+      "equitableBars",
+      "executionPathway",
+    ] as const;
+
+    for (const field of protectedFields) {
+      const mutatedResponse: CaseAnalysisResponse = {
+        ...response,
+        stage13: {
+          ...response.stage13,
+          [field]: `P3-02-${field}-MUTATED`,
+        },
+      };
+
+      const mutatedHash = (testEngine as any).computeOutputHash(
+        mutatedResponse,
+        request.caseId,
+      );
+
+      expect(mutatedHash).not.toBe(originalHash);
+    }
+  });
+});
