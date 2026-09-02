@@ -1,0 +1,73 @@
+2204-  } {
+2205-    const facts = Array.from(ctx.factRegistry.values());
+2206-    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
+2207-    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+2208-    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+2209-    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
+2210-    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+2211-    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
+2212-    let accrualDate: string | null = null;
+2213-    let limitationPeriodYears: number | null = null;
+2214:    let calculationType = "other_category";
+2215-
+2216-    if (claimType === "SPECIFIC_PERFORMANCE") {
+2217-      // P1-04 FAIL-CLOSED:
+2218-      // A refusal date alone cannot establish the legally operative
+2219-      // accrual trigger. Execution/agreement context must independently
+--
+2227-      if (refusalDate && executionDate) {
+2228-        const refusalTs = strictDateTimestamp(refusalDate);
+2229-        const executionTs = strictDateTimestamp(executionDate);
+2230-
+2231-        if (
+2232-          refusalTs !== null &&
+2233-          executionTs !== null &&
+2234-          refusalTs !== executionTs
+2235-        ) {
+2236-          accrualDate = toISODate(refusalDate);
+2237:          limitationPeriodYears = 3;
+2238:          calculationType = "refusal_date";
+2239-        } else {
+2240-          accrualDate = "NOT_EXTRACTED";
+2241:          limitationPeriodYears = null;
+2242:          calculationType = "missing_dates";
+2243-        }
+2244-      } else {
+2245-        accrualDate = "NOT_EXTRACTED";
+2246:        limitationPeriodYears = null;
+2247:        calculationType = "missing_dates";
+2248-      }
+2249-    }
+2250-    else if (claimType === "DECLARATION_AND_POSSESSION") {
+2251-      if (dispossessionDate) {
+2252-        accrualDate = dispossessionDate;
+2253:        limitationPeriodYears = 12;
+2254:        calculationType = "dispossession_date";
+2255-      } else {
+2256-        accrualDate = "NOT_EXTRACTED";
+2257:        limitationPeriodYears = null;
+2258:        calculationType = "missing_dates";
+2259-      }
+2260-    } else if (claimType === "INHERITANCE_CONSULTATION") {
+2261-      if (deathDate) {
+2262-        accrualDate = deathDate;
+2263:        limitationPeriodYears = 12;
+2264:        calculationType = "death_date";
+2265-      } else {
+2266-        accrualDate = "NOT_EXTRACTED";
+2267:        limitationPeriodYears = null;
+2268:        calculationType = "missing_dates";
+2269-      }
+2270-    } else {
+2271-      // P1-04 FAIL-CLOSED:
+2272-      // Unknown/general claim categories have no legally established
+2273-      // accrual trigger in this engine. Never promote an arbitrary
+2274-      // chronological event into an authoritative accrual date.
+2275-      accrualDate = "NOT_EXTRACTED";
+2276:      limitationPeriodYears = null;
+2277:      calculationType = "missing_dates";
+2278-    }
+2279-    // FAIL-CLOSED: limitation must never silently become "not barred"
+2280-    // when the accrual trigger, limitation period, or reference date is
+2281-    // unavailable. "false" is reserved for a computable non-barred result.
+2282-    let isTimeBarred: boolean | null = null;

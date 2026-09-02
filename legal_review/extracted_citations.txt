@@ -1,0 +1,384 @@
+21-  statutorySubjects: string[];
+22-  governingActs: string[];
+23:  ratioDecidendi: string;
+24:  summaryOfHolding: string;
+25-  factualContextTag: string[];
+26-  bindingAuthority: "BINDING_APPELLATE_DIVISION" | "BINDING_HIGH_COURT_DIVISION";
+27-  verificationHash: string;
+28-}
+29-
+30-export interface VerifiedPrecedentOutput {
+31-  citation: string;
+32-  caseTitle: string;
+33-  court: string;
+34-  decisionYear: number;
+35-  reporter: string;
+36-  volume: number;
+37-  page: number;
+38-  bench?: string;
+39-  statutorySubject: string;
+40-  holding: string;
+41-  relevance: string;
+42:  ratioDecidendi: string;
+43-  verificationStatus: "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED";
+44-  verificationHash: string;
+45-  isDeterministic: boolean;
+46-  securityHashToken: string;
+47-}
+48-
+49-/**
+50- * Deterministic Hash computation for Precedent Validation
+51- */
+52-function computePrecedentValidationHash(citation: string, title: string, year: number, reporter: string, vol: number, page: number): string {
+53-  const payload = `${citation}::${title}::${year}::${reporter}::${vol}::${page}::BANGLADESH_MINISTRY_OF_LAW`;
+54-  let hash = 0x811c9dc5;
+55-  for (let i = 0; i < payload.length; i++) {
+56-    hash ^= payload.charCodeAt(i);
+57-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+58-  }
+59-  return `BD-CIT-${Math.abs(hash).toString(16).toUpperCase().padStart(8, "0")}`;
+60-}
+61-
+62-/**
+--
+86-      "Order XX Rule 18, Code of Civil Procedure 1908"
+87-    ],
+88:    ratioDecidendi: "Under Islamic Law of Inheritance, succession opens immediately and automatically upon the death of the propositus/ancestor. The shares of lawful heirs vest instantaneously without requiring any probate, letter of administration, or mutation. An ante-mortem disowning declaration has zero legal effect.",
+89:    summaryOfHolding: "Succession opens instantaneously on the death of the ancestor. Estate vests in the lawful heirs automatically by operation of Shariat law.",
+90-    factualContextTag: ["inheritance", "succession", "disown", "partition", "co-sharer", "deceased_ancestor"],
+91-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+92-    verificationHash: computePrecedentValidationHash("45 DLR (AD) 124", "Mvi. Md. Abdul Jalil v. Md. Abul Hossain", 1993, "DLR", 45, 124),
+93-  },
+94-
+95-  "55 DLR (AD) 180": {
+96-    id: "CIT-55DLR180-AD",
+97-    citation: "55 DLR (AD) 180",
+98-    normalizedCitation: "55-dlr-ad-180",
+99-    caseTitle: "Md. Mofizul Islam and others v. Md. Nurul Islam and others",
+100-    decisionYear: 2003,
+101-    courtForum: "Appellate Division",
+102-    reporter: "DLR",
+103-    volume: 55,
+104-    page: 180,
+105-    bench: "Appellate Division of Bangladesh",
+106-    governingActs: [
+107-      "Muslim Personal Law (Shariat) Application Act 1937",
+108-      "Specific Relief Act 1877"
+109-    ],
+--
+112-      "Section 42, Specific Relief Act 1877"
+113-    ],
+114:    ratioDecidendi: "A unilateral declaration, affidavit, or newspaper notice 'disowning' a child is unknown to Muslim law and Bangladesh civil jurisprudence. It cannot disinherit a legal heir or divest lawful proprietary rights.",
+115:    summaryOfHolding: "Unilateral disowning affidavits or newspaper declarations have zero legal standing to alter Muslim law of succession.",
+116-    factualContextTag: ["disowning_affidavit", "inheritance", "newspaper_notice", "heir_rights"],
+117-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+118-    verificationHash: computePrecedentValidationHash("55 DLR (AD) 180", "Md. Mofizul Islam v. Md. Nurul Islam", 2003, "DLR", 55, 180),
+119-  },
+120-
+121-  "39 DLR (AD) 162": {
+122-    id: "CIT-39DLR162-AD",
+123-    citation: "39 DLR (AD) 162",
+124-    normalizedCitation: "39-dlr-ad-162",
+125-    caseTitle: "Sona Mia and others v. Abdul Jabbar and others",
+126-    decisionYear: 1987,
+127-    courtForum: "Appellate Division",
+128-    reporter: "DLR",
+129-    volume: 39,
+130-    page: 162,
+131-    bench: "Appellate Division of Bangladesh",
+132-    governingActs: [
+133-      "State Acquisition and Tenancy Act 1950",
+134-      "Specific Relief Act 1877"
+135-    ],
+--
+138-      "Section 42, Specific Relief Act 1877"
+139-    ],
+140:    ratioDecidendi: "Mutation of names (namjari khatian) in the revenue records and rent receipts are maintained strictly for fiscal collection purposes; they neither create title in favour of the recorded person nor extinguish the lawful title of other co-sharers.",
+141:    summaryOfHolding: "Revenue mutation entries do not create or divest proprietary title in immovable property.",
+142-    factualContextTag: ["mutation", "namjari", "khatian", "exclusive_mutation", "co-sharers"],
+143-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+144-    verificationHash: computePrecedentValidationHash("39 DLR (AD) 162", "Sona Mia v. Abdul Jabbar", 1987, "DLR", 39, 162),
+145-  },
+146-
+147-  "30 DLR (SC) 115": {
+148-    id: "CIT-30DLR115-SC",
+149-    citation: "30 DLR (SC) 115",
+150-    normalizedCitation: "30-dlr-sc-115",
+151-    caseTitle: "Mst. Amena Khatun v. Mst. Sabira Khatun",
+152-    decisionYear: 1978,
+153-    courtForum: "Supreme Court of Bangladesh",
+154-    reporter: "DLR",
+155-    volume: 30,
+156-    page: 115,
+157-    bench: "Supreme Court of Bangladesh",
+158-    governingActs: [
+159-      "Muslim Personal Law (Shariat) Application Act 1937",
+160-      "Specific Relief Act 1877",
+161-      "Code of Civil Procedure 1908"
+--
+165-      "Section 9, Code of Civil Procedure 1908"
+166-    ],
+167:    ratioDecidendi: "During the lifetime of an ancestor, no descendant h as unknown vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
+168:    summaryOfHolding: "No child acquires any legal interest in a parent's property during the parent's lifetime; inheritance rights do not exist prior to death.",
+169-    factualContextTag: ["living_parent", "spes_successionis", "premature_suit", "lifetime_declaration"],
+170-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+171-    verificationHash: computePrecedentValidationHash("30 DLR (SC) 115", "Mst. Amena Khatun v. Mst. Sabira Khatun", 1978, "DLR", 30, 115),
+172-  },
+173-
+174-  // ─── SPECIFIC PERFORMANCE (BAINAPATRA) ───
+175-  "60 DLR (AD) 54": {
+176-    id: "CIT-60DLR54-AD",
+177-    citation: "60 DLR (AD) 54",
+178-    normalizedCitation: "60-dlr-ad-54",
+179-    caseTitle: "Md. Arfan Ali and others v. Md. Abdul Barek and others",
+180-    decisionYear: 2008,
+181-    courtForum: "Appellate Division",
+182-    reporter: "DLR",
+183-    volume: 60,
+184-    page: 54,
+185-    bench: "Appellate Division of Bangladesh",
+186-    governingActs: [
+187-      "Specific Relief Act 1877",
+188-      "Registration Act 1908",
+--
+194-      "Section 54, Transfer of Property Act 1882"
+195-    ],
+196:    ratioDecidendi: "Registration of the contract for sale (Bainapatra) under Section 17A of the Registration Act 1908 and deposit of the remaining consideration in court via treasury challan are mandatory statutory prerequisites under Section 21A SRA. Non-compliance renders the suit incompetent ab initio.",
+197:    summaryOfHolding: "Mandatory registration of Bainapatra and court deposit of balance consideration under Section 21A SRA are non-negotiable statutory preconditions.",
+198-    factualContextTag: ["specific_performance", "bainapatra", "section_21a", "registration_17a", "treasury_deposit"],
+199-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+200-    verificationHash: computePrecedentValidationHash("60 DLR (AD) 54", "Md. Arfan Ali v. Md. Abdul Barek", 2008, "DLR", 60, 54),
+201-  },
+202-
+203-  "59 DLR (AD) 112": {
+204-    id: "CIT-59DLR112-AD",
+205-    citation: "59 DLR (AD) 112",
+206-    normalizedCitation: "59-dlr-ad-112",
+207-    caseTitle: "Al-Haj Md. Serajul Islam v. Md. Abdul Khalique and others",
+208-    decisionYear: 2007,
+209-    courtForum: "Appellate Division",
+210-    reporter: "DLR",
+211-    volume: 59,
+212-    page: 112,
+213-    bench: "Appellate Division of Bangladesh",
+214-    governingActs: [
+215-      "Specific Relief Act 1877",
+216-      "Contract Act 1872"
+217-    ],
+--
+220-      "Section 39, Contract Act 1872"
+221-    ],
+222:    ratioDecidendi: "In a suit for specific performance, the purchaser must aver and prove continuous readiness and willingness to perform his part of the contract. The statutory deposit of the balance consideration into court conclusively satisfies this requirement.",
+223:    summaryOfHolding: "Tendering and depositing balance consideration establishes readiness and willingness in specific performance.",
+224-    factualContextTag: ["readiness_willingness", "specific_performance", "balance_deposit", "contract_breach"],
+225-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+226-    verificationHash: computePrecedentValidationHash("59 DLR (AD) 112", "Al-Haj Md. Serajul Islam v. Md. Abdul Khalique", 2007, "DLR", 59, 112),
+227-  },
+228-
+229-  // ─── DECLARATION OF TITLE, POSSESSION & REGISTRATION ───
+230-  "56 DLR (AD) 34": {
+231-    id: "CIT-56DLR34-AD",
+232-    citation: "56 DLR (AD) 34",
+233-    normalizedCitation: "56-dlr-ad-34",
+234-    caseTitle: "Abdul Gafur and others v. Secretary, Ministry of Land and others",
+235-    decisionYear: 2004,
+236-    courtForum: "Appellate Division",
+237-    reporter: "DLR",
+238-    volume: 56,
+239-    page: 34,
+240-    bench: "Appellate Division of Bangladesh",
+241-    governingActs: [
+242-      "Transfer of Property Act 1882",
+243-      "Registration Act 1908",
+--
+249-      "Section 8, Specific Relief Act 1877"
+250-    ],
+251:    ratioDecidendi: "An unregistered contract or sale agreement conveys no proprietary title or interest in immovable property. A duly registered conveyance (Kabala) supported by valid chain of deeds and possession must prevail over unregistered claims.",
+252:    summaryOfHolding: "Registered sale deed with mutation and possession prevails over any unregistered claim or agreement.",
+253-    factualContextTag: ["registered_title", "unregistered_contract", "kabala", "ownership_priority", "possession"],
+254-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+255-    verificationHash: computePrecedentValidationHash("56 DLR (AD) 34", "Abdul Gafur v. Ministry of Land", 2004, "DLR", 56, 34),
+256-  },
+257-
+258-  "12 BLC (AD) 102": {
+259-    id: "CIT-12BLC102-AD",
+260-    citation: "12 BLC (AD) 102",
+261-    normalizedCitation: "12-blc-ad-102",
+262-    caseTitle: "Abdur Rashid and others v. Md. Nurul Islam and others",
+263-    decisionYear: 2007,
+264-    courtForum: "Appellate Division",
+265-    reporter: "BLC",
+266-    volume: 12,
+267-    page: 102,
+268-    bench: "Appellate Division of Bangladesh",
+269-    governingActs: [
+270-      "State Acquisition and Tenancy Act 1950",
+271-      "Evidence Act 1872",
+272-      "Specific Relief Act 1877"
+--
+276-      "Section 35 & 114, Evidence Act 1872"
+277-    ],
+278:    ratioDecidendi: "Continuous entries in record-of-rights (Khatian) coupled with payment of land development tax receipts (Dakhila) establish presumption of possession in favour of the recorded owner against third-party trespassers.",
+279:    summaryOfHolding: "Mutation khatian and tax receipts constitute strong corroborative evidence of continuous possession.",
+280-    factualContextTag: ["possession_corroboration", "dakhila", "khatian_presumption", "trespass"],
+281-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+282-    verificationHash: computePrecedentValidationHash("12 BLC (AD) 102", "Abdur Rashid v. Md. Nurul Islam", 2007, "BLC", 12, 102),
+283-  },
+284-
+285-  // ─── LIMITATION, BURDEN OF PROOF & CPC ───
+286-  "42 DLR (AD) 289": {
+287-    id: "CIT-42DLR289-AD",
+288-    citation: "42 DLR (AD) 289",
+289-    normalizedCitation: "42-dlr-ad-289",
+290-    caseTitle: "Moniruddin and others v. Soleman Ali and others",
+291-    decisionYear: 1990,
+292-    courtForum: "Appellate Division",
+293-    reporter: "DLR",
+294-    volume: 42,
+295-    page: 289,
+296-    bench: "Appellate Division of Bangladesh",
+297-    governingActs: [
+298-      "Limitation Act 1908",
+299-      "Code of Civil Procedure 1908"
+--
+303-      "Order VII Rule 11(d), Code of Civil Procedure 1908"
+304-    ],
+305:    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+306:    summaryOfHolding: "Court is duty-bound under Section 3 Limitation Act to dismiss a time-barred suit on its own motion.",
+307-    factualContextTag: ["limitation", "section_3", "time_barred", "mandatory_dismissal", "rejection_of_plaint"],
+308-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+309-    verificationHash: computePrecedentValidationHash("42 DLR (AD) 289", "Moniruddin v. Soleman Ali", 1990, "DLR", 42, 289),
+310-  },
+311-
+312-  "43 DLR (AD) 21": {
+313-    id: "CIT-43DLR21-AD",
+314-    citation: "43 DLR (AD) 21",
+315-    normalizedCitation: "43-dlr-ad-21",
+316-    caseTitle: "Amena Khatun and others v. Serajuddin and others",
+317-    decisionYear: 1991,
+318-    courtForum: "Appellate Division",
+319-    reporter: "DLR",
+320-    volume: 43,
+321-    page: 21,
+322-    bench: "Appellate Division of Bangladesh",
+323-    governingActs: [
+324-      "Evidence Act 1872"
+325-    ],
+326-    statutorySubjects: [
+327-      "Sections 101, 102 & 103, Evidence Act 1872"
+328-    ],
+329:    ratioDecidendi: "The burden of proof in civil litigation lies firmly upon the party who substantiates the affirmative of the issue. A plaintiff must succeed on the strength of his own title and cannot rely on the weakness of the defendant's case.",
+330:    summaryOfHolding: "Plaintiff must succeed on the strength of their own evidence and title, not defendant's weaknesses.",
+331-    factualContextTag: ["burden_of_proof", "onus_probandi", "evidence_act_101", "affirmative_proof"],
+332-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+333-    verificationHash: computePrecedentValidationHash("43 DLR (AD) 21", "Amena Khatun v. Serajuddin", 1991, "DLR", 43, 21),
+334-  },
+335-
+336-  "51 DLR (AD) 234": {
+337-    id: "CIT-51DLR234-AD",
+338-    citation: "51 DLR (AD) 234",
+339-    normalizedCitation: "51-dlr-ad-234",
+340-    caseTitle: "Md. Ali and others v. Md. Hanif and others",
+341-    decisionYear: 1999,
+342-    courtForum: "Appellate Division",
+343-    reporter: "DLR",
+344-    volume: 51,
+345-    page: 234,
+346-    bench: "Appellate Division of Bangladesh",
+347-    governingActs: [
+348-      "Code of Civil Procedure 1908",
+349-      "Partition Act 1893"
+350-    ],
+--
+353-      "Order XX Rule 18, Code of Civil Procedure 1908"
+354-    ],
+355:    ratioDecidendi: "In a suit for partition of joint ancestral property, all co-sharers are necessary parties. Non-joinder of any surviving legal heir is a fatal defect that vitiates the partition proceedings and renders the decree defective.",
+356:    summaryOfHolding: "All co-heirs are necessary parties in partition suits; non-joinder is fatal.",
+357-    factualContextTag: ["partition", "necessary_parties", "order_1_rule_9", "co_heirs_joinder"],
+358-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+359-    verificationHash: computePrecedentValidationHash("51 DLR (AD) 234", "Md. Ali v. Md. Hanif", 1999, "DLR", 51, 234),
+360-  },
+361-
+362-  "17 BLD (AD) 77": {
+363-    id: "CIT-17BLD77-AD",
+364-    citation: "17 BLD (AD) 77",
+365-    normalizedCitation: "17-bld-ad-77",
+366-    caseTitle: "Shamsuddin Ahmed v. General Manager, Bangladesh Railway",
+367-    decisionYear: 1997,
+368-    courtForum: "Appellate Division",
+369-    reporter: "BLD",
+370-    volume: 17,
+371-    page: 77,
+372-    bench: "Appellate Division of Bangladesh",
+373-    governingActs: [
+374-      "Specific Relief Act 1877"
+375-    ],
+376-    statutorySubjects: [
+377-      "Proviso to Section 42, Specific Relief Act 1877"
+378-    ],
+379:    ratioDecidendi: "A suit for mere declaration of title is barred under the Proviso to Section 42 of the Specific Relief Act 1877 if the plaintiff, being out of physical possession, omits to pray for consequential relief of recovery of possession.",
+380:    summaryOfHolding: "Declaratory suit without prayer for recovery of possession is barred under Section 42 SRA proviso when plaintiff is out of possession.",
+381-    factualContextTag: ["declaration_proviso", "consequential_relief", "section_42_proviso", "possession_recovery"],
+382-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+383-    verificationHash: computePrecedentValidationHash("17 BLD (AD) 77", "Shamsuddin Ahmed v. Bangladesh Railway", 1997, "BLD", 17, 77),
+384-  },
+385-};
+386-
+387-/**
+388- * Deterministic Citation Normalizer
+389- */
+390-export function normalizeCitationString(citation: string): string {
+391-  return citation
+392-    .trim()
+393-    .toLowerCase()
+394-    .replace(/[^a-z0-9]/g, "-")
+395-    .replace(/-+/g, "-");
+396-}
+397-
+398-/**
+399- * Deterministic Citation Validator Engine
+400- */
+--
+428-        holding: "This citation does not exist in the authoritative Bangladesh Supreme Court registry and was rejected by the deterministic validation layer.",
+429-        relevance: customRelevance || "Citation rejected: unverified against Bangladesh law reports.",
+430:        ratioDecidendi: "REJECTED_UNVERIFIED",
+431-        verificationStatus: "FAILED_UNVERIFIED",
+432-        verificationHash: "INVALID-HASH-REJECTED",
+433-        isDeterministic: true,
+434-        securityHashToken: "UNVERIFIED_BLOCKED",
+435-      };
+436-    }
+437-
+438-    return {
+439-      citation: match.citation,
+440-      caseTitle: match.caseTitle,
+441-      court: match.courtForum,
+442-      decisionYear: match.decisionYear,
+443-      reporter: match.reporter,
+444-      volume: match.volume,
+445-      page: match.page,
+446-      bench: match.bench,
+447-      statutorySubject: match.statutorySubjects.join("; "),
+448-      holding: match.ratioDecidendi,
+449-      relevance: customRelevance || match.summaryOfHolding,
+450:      ratioDecidendi: match.ratioDecidendi,
+451-      verificationStatus: "VERIFIED_CANONICAL",
+452-      verificationHash: match.verificationHash,
+453-      isDeterministic: true,
+454-      securityHashToken: match.id,
+455-    };
+456-  }
+457-
+458-  /**
+459-   * Deterministically select and validate verified precedents for a specific case category & factual context.
+460-   * Returns only citations that passed the deterministic canonical-registry lookup.
+461-   */
+462-  public static getVerifiedPrecedentsForContext(
+463-    category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION",
+464-    options: {
+465-      isAncestorDeceased?: boolean;
+466-      hasRegisteredBainapatra?: boolean;
+467-      hasTreasuryDeposit?: boolean;
+468-      isDispossessed?: boolean;
+469-      rawText?: string;
+470-    } = {}
