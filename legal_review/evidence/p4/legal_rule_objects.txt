@@ -1,0 +1,42 @@
+src/components/StageExplorer.tsx:629:                      <span className="text-[9px] font-mono text-[#C5A059] block mt-1">Section: {analysis.stage5?.territorial?.governingSection ?? ""}</span>
+src/components/StageExplorer.tsx:639:                      <span className="text-[9px] font-mono text-neutral-500 block mt-1">Statute: {analysis.stage5?.subjectMatter?.governingStatute ?? ""}</span>
+src/components/StageExplorer.tsx:724:                            <div>Section: <code>{ev.governingSection}</code></div>
+src/engine/BCCAAEngine.ts:309:  section: string;
+src/engine/BCCAAEngine.ts:333:  ruleId: string;
+src/engine/BCCAAEngine.ts:405:  ruleId: string;
+src/engine/BCCAAEngine.ts:450:    ruleId: string;
+src/engine/BCCAAEngine.ts:800:          ruleId: "SP-ELEMENT-REGISTRATION",
+src/engine/BCCAAEngine.ts:825:          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:829:          ruleId: "SP-ELEMENT-DEPOSIT",
+src/engine/BCCAAEngine.ts:854:          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:862:          ruleId: "SUCCESSION-DEATH-ELEMENT",
+src/engine/BCCAAEngine.ts:887:          authority: { act: "Applicable succession law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:895:          ruleId: "DP-ELEMENT-TITLE",
+src/engine/BCCAAEngine.ts:920:          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+src/engine/BCCAAEngine.ts:924:          ruleId: "DP-ELEMENT-POSSESSION",
+src/engine/BCCAAEngine.ts:949:          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
+src/engine/BCCAAEngine.ts:2221:    limitationPeriodYears: number | null;
+src/engine/BCCAAEngine.ts:2234:    let limitationPeriodYears: number | null = null;
+src/engine/BCCAAEngine.ts:2360:        ruleId: rule.ruleId,
+src/engine/BCCAAEngine.ts:2582:      governingSection: string | null;
+src/engine/BCCAAEngine.ts:2703:      ruleId: r.ruleId,
+src/engine/BCCAAEngine.ts:2986:        limitationPeriodYears: deps.limitation.limitationPeriodYears,
+src/engine/BCCAAEngine.ts:3008:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3010:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3104:      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+src/engine/BCCAAEngine.ts:3107:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3109:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3194:      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+src/engine/BCCAAEngine.ts:3197:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3199:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3374:          ruleId: r.ruleId,
+src/types/types.ts:179:  section: string;
+src/types/types.ts:194:  ruleId: string;
+src/types/types.ts:249:  ruleId: string;
+src/types/types.ts:539:      governingSection: string | null;
+src/types/types.ts:551:      governingStatute: string | null;
+src/types/types.ts:582:      governingSection: string | null;
+src/types/types.ts:587:      statuteSection: string;
+src/types/types.ts:635:      governingSection: string | null;
+src/utils/docxGenerator.ts:188:            createCell(`${p.statutorySubject ? `Statute: ${p.statutorySubject}\n` : ""}${p.relevance}`, { bg: idx % 2 === 0 ? "F9FAFB" : "FFFFFF" }),
+src/utils/pdfGeneratorSecure.ts:331:                  ${p.statutorySubject ? `<div style="font-size: 8px; font-family: monospace; color: #4B5563; margin-bottom: 3px;"><strong>Statute:</strong> ${p.statutorySubject}</div>` : ''}

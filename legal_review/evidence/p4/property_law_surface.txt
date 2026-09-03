@@ -1,0 +1,552 @@
+src/admin/SuperAdminDashboard.tsx:108:        {/* Title Header */}
+src/App.tsx:21:  const [factPattern, setFactPattern] = useState("");
+src/App.tsx:52:        title: analysis.stage2.primaryAct ?? "",
+src/App.tsx:56:        factPattern: facts,
+src/App.tsx:63:        const filtered = prev.filter(item => item.factPattern.trim() !== facts.trim());
+src/App.tsx:90:    if (!factPattern.trim() || !user || !license) return;
+src/App.tsx:127:        input: { factPattern, focusDomain },
+src/App.tsx:132:      saveToHistory(result, factPattern, focusDomain);
+src/App.tsx:166:      await downloadSecurePDF(analysisResult, factPattern, watermark);
+src/App.tsx:188:      await downloadCaseBriefDOCX(analysisResult, factPattern, watermark);
+src/App.tsx:214:    setFactPattern("");
+src/App.tsx:321:                    Provide the raw factual record, deed timelines, possession sequences, or statutory breaches. Upload PDF/text legal files or enter text manually. The secure local cascade engine will isolate critical parameters across 14 discrete analytical gateways.
+src/App.tsx:328:                    currentTextLength={factPattern.length}
+src/App.tsx:331:                        setFactPattern(extractedText);
+src/App.tsx:333:                        setFactPattern(prev => (prev ? prev + "\n\n" + extractedText : extractedText));
+src/App.tsx:336:                    onClearText={() => setFactPattern("")}
+src/App.tsx:347:                        {factPattern && (
+src/App.tsx:350:                              {factPattern.trim().split(/\s+/).filter(Boolean).length} words &bull; {factPattern.length} chars
+src/App.tsx:354:                              onClick={() => setFactPattern("")}
+src/App.tsx:364:                      value={factPattern}
+src/App.tsx:365:                      onChange={e => setFactPattern(e.target.value)}
+src/App.tsx:384:                        <option value="Specific Performance">Specific Performance (SRA 1877 s.12)</option>
+src/App.tsx:385:                        <option value="Declaration of Title">Declaration of Title & Partition</option>
+src/App.tsx:388:                        <option value="Injunction">Injunction (SRA 1877 ss.52-57)</option>
+src/App.tsx:394:                        disabled={loading || !factPattern.trim()}
+src/App.tsx:514:                  title="Export complete 14-stage analytical brief to Microsoft Word (.docx)"
+src/App.tsx:523:                  title="Export complete 14-stage analytical brief to PDF"
+src/App.tsx:587:            <LegalAnalysisPanel factPattern={factPattern} analysisResult={analysisResult} />
+src/App.tsx:621:                    onClick={() => { setAnalysisResult(item.analysis); setFactPattern(item.factPattern); setIsHistoryOpen(false); }}
+src/App.tsx:624:                    <div className="text-xs font-bold text-[#1E252B] line-clamp-1">{item.title}</div>
+src/App.tsx:625:                    <p className="text-[11px] text-[#4A5560] line-clamp-2 italic font-serif">"{item.factPattern}"</p>
+src/components/DocumentUploader.tsx:111:            const page = await pdf.getPage(i);
+src/components/DocumentUploader.tsx:237:      const sampleText = `CONVOLUTED LAND DISPUTE & BAINAPATRA BREACH (SPECIFIC PERFORMANCE)
+src/components/DocumentUploader.tsx:242:1. On January 10, 2022, Plaintiff Rafiqul Islam entered into a registered Bainapatra (Agreement for Sale Deed No. 4451) with Defendant Abdul Barek for the purchase of 12 Decimals of land in Mouza Dhanmondi, Khatian No. 882, Plot No. 1045.
+src/components/DocumentUploader.tsx:252:Plaintiff seeks Specific Performance of the registered Bainapatra under Section 12 of the Specific Relief Act 1877, alongside a Temporary Injunction under Order XXXIX Rules 1 & 2 CPC to restrain Defendant from transferring the property.`;
+src/components/DocumentUploader.tsx:276:1. Ancestor late Hazi Karim Box died intestate on March 14, 2018, leaving behind 2 sons (Plaintiff Kamrul & Defendant Rahim) and 1 daughter (Defendant Fatema), along with 30 Decimals of ancestral land in Mouza Rupsha, Khatian 102.
+src/components/DocumentUploader.tsx:279:4. Based on this void affidavit, Defendant Rahim obtained an exclusive Namjari mutation in his sole name and threatened to alienate undivided suit land to third-party developers.
+src/components/DocumentUploader.tsx:280:5. Plaintiff Kamrul remains in constructive joint possession of the suit property and seeks a decree of partition and declaration that the Tejya Putro affidavit is null, void, and inoperative in law.`;
+src/components/DocumentUploader.tsx:391:            Bainapatra Specific Performance (.pdf sample)
+src/components/DocumentUploader.tsx:468:                title="Delete Document and Clear Input"
+src/components/DocumentUploader.tsx:561:                        title="Delete file"
+src/components/DocumentUploader.tsx:599:                        title="Restore Document back to active state"
+src/components/DocumentUploader.tsx:608:                        title="Permanently remove"
+src/components/LegalAnalysisPanel.tsx:26:export const generateLegalMemo = (factPattern: string, result: CaseAnalysisResponse): string => {
+src/components/LegalAnalysisPanel.tsx:42:2. **Sharia Shares Verification**: The calculated shares are mathematically absolute. Co-sharers have joint constructive possession of undivided suit land unless explicit ouster is proved.`;
+src/components/LegalAnalysisPanel.tsx:44:    customNarrative = `### SPECIFIC RELIEF ACT 1877 APPLICABILITY
+src/components/LegalAnalysisPanel.tsx:45:1. **Section 12 specific performance**: Suit for enforcement of the registered contract (Bainapatra).
+src/components/LegalAnalysisPanel.tsx:46:2. **Deposit of Balance**: Verify whether the balance consideration has been deposited in court under Section 21A of the Specific Relief Act, 1877.`;
+src/components/LegalAnalysisPanel.tsx:47:  } else if (category === "DECLARATION_AND_POSSESSION") {
+src/components/LegalAnalysisPanel.tsx:48:    customNarrative = `### SPECIFIC RELIEF ACT 1877 DECLARATORY REMEDIES
+src/components/LegalAnalysisPanel.tsx:49:1. **Section 42 (Declaration of Title)**: Plaintiff must sue for declaration of legal character or title. If dispossessed, plaintiff must couple this with a consequential relief of recovery of possession under Section 7(iv)(c) of the Court Fees Act 1870, or a standalone Section 8 / 9 action.
+src/components/LegalAnalysisPanel.tsx:50:2. **Constructive Joint Possession**: If co-sharer, constructive possession is presumed.`;
+src/components/LegalAnalysisPanel.tsx:54:2. **Substantive Title**: The plaintiff's standing is predicated on valid deeds or inheritance.`;
+src/components/LegalAnalysisPanel.tsx:65:    : `- **75 DLR 142 (HCD)**: Held that a disowning affidavit has zero recognition under Muslim Personal Law (Shariat) Application Act 1937.\n- **56 DLR 215 (AD)**: Held that possession of one co-sharer is the possession of all co-sharers unless ouster is established.`;
+src/components/LegalAnalysisPanel.tsx:79:We have reviewed the submitted fact pattern containing **${factPattern.length} characters** and compiled the following legal chronology:
+src/components/LegalAnalysisPanel.tsx:91:The primary statutory framework governing this suit is the **${primaryAct}**, supplemented by the Specific Relief Act 1877 and the Limitation Act 1908.
+src/components/LegalAnalysisPanel.tsx:113:### 1. ORDER XXXIX (39) RULES 1 & 2 CPC TEMPORARY INJUNCTION STRATEGY
+src/components/LegalAnalysisPanel.tsx:115:- **Prima Facie Case**: Establish the plaintiffs' legal title or inheritance right (disowning instruments having zero legal force).
+src/components/LegalAnalysisPanel.tsx:117:- **Irreparable Loss**: Argue that the sale or construction on disputed property creates multi-party litigation.
+src/components/LegalAnalysisPanel.tsx:120:- **Fixed Partition Fee**: If the plaintiffs plead constructive joint possession, claim fixed court fees under Schedule II Article 17(vi).
+src/components/LegalAnalysisPanel.tsx:121:- **Ad Valorem Fee Mitigation**: Avoid pleading complete dispossession or ouster at the initial stage unless standalone recovery under Section 8 is mandatory.
+src/components/LegalAnalysisPanel.tsx:137:  factPattern: string;
+src/components/LegalAnalysisPanel.tsx:141:export default function LegalAnalysisPanel({ factPattern, analysisResult }: LegalAnalysisPanelProps) {
+src/components/LegalAnalysisPanel.tsx:158:      const memo = generateLegalMemo(factPattern, analysisResult);
+src/components/LegalAnalysisPanel.tsx:234:      title: "Injunction Prayer (O. 39 R. 1 & 2)",
+src/components/LegalAnalysisPanel.tsx:235:      text: `### PRAYER FOR TEMPORARY & AD-INTERIM INJUNCTION (ORDER XXXIX RULES 1 & 2 CPC)
+src/components/LegalAnalysisPanel.tsx:236:That an order of temporary injunction be passed restraining the Defendant(s), their agents, servants, assigns, and representatives from entering upon, changing the physical feature of, cutting trees from, creating third-party charges over, or alienating any portion of the suit schedule property till disposal of the suit.`,
+src/components/LegalAnalysisPanel.tsx:239:      title: "Cause of Action Accrual Clause",
+src/components/LegalAnalysisPanel.tsx:241:That the cause of action for this suit first arose on the date of execution of the initial instrument, and subsequently on every date when the Defendant(s) refused to perform their legal obligation and threatened wrongful dispossession/alienation, within the territorial jurisdiction of this Learned Court.`,
+src/components/LegalAnalysisPanel.tsx:244:      title: "Schedule of Suit Property",
+src/components/LegalAnalysisPanel.tsx:247:- CS Khatian No: [___], SA Khatian No: [___], RS Khatian No: [___]
+src/components/LegalAnalysisPanel.tsx:253:      title: "Verification & Affidavit Block",
+src/components/LegalAnalysisPanel.tsx:369:                  Synthesize a courtroom drafting memorandum tailored to Bangladesh civil procedure, complete with limitation checks, injunction strategies, and precedents. You can edit the text and export to Word (.docx) or PDF.
+src/components/LegalAnalysisPanel.tsx:438:                    title="Download Microsoft Word .docx file"
+src/components/LegalAnalysisPanel.tsx:448:                    title="Export formatted PDF"
+src/components/LegalAnalysisPanel.tsx:457:                    title="Copy draft to clipboard"
+src/components/LegalAnalysisPanel.tsx:466:                    title="Download as Markdown/Text"
+src/components/LegalAnalysisPanel.tsx:474:                    title="Reset edits to initial engine synthesis"
+src/components/LegalAnalysisPanel.tsx:495:                      {clause.title}
+src/components/LegalReliabilityStandardModal.tsx:15:    { step: 1, title: "Input Facts", desc: "Raw litigation dispute narrative or ingested legal documents (PDF/Text)", icon: BookOpen, type: "Input" },
+src/components/LegalReliabilityStandardModal.tsx:16:    { step: 2, title: "Fact Normalization", desc: "Deconstruct into immutable atomic propositions with temporal anchors", icon: Database, type: "Processing" },
+src/components/LegalReliabilityStandardModal.tsx:17:    { step: 3, title: "Integrity Validation", desc: "F0 Gate temporal, role, vital status, and document conflict checks", icon: ShieldCheck, type: "Gate" },
+src/components/LegalReliabilityStandardModal.tsx:18:    { step: 4, title: "Legal Classification", desc: "Domain identification (G1) and statutory mapping (G2)", icon: Layers, type: "Processing" },
+src/components/LegalReliabilityStandardModal.tsx:19:    { step: 5, title: "Authority Retrieval", desc: "Canonical registry lookup with cryptographic citation hashes", icon: Database, type: "Registry" },
+src/components/LegalReliabilityStandardModal.tsx:20:    { step: 6, title: "Deterministic Rule Evaluation", desc: "Versioned mathematical limitation, heirship shares & pecuniary rules", icon: Cpu, type: "Deterministic" },
+src/components/LegalReliabilityStandardModal.tsx:21:    { step: 7, title: "Conflict Detection", desc: "Two-sided contest modeling (G9) and equitable bars audit (G10)", icon: AlertTriangle, type: "Validation" },
+src/components/LegalReliabilityStandardModal.tsx:22:    { step: 8, title: "Relief Mapping", desc: "Rule-based decree formulation and Order XXI execution pathways", icon: Scale, type: "Synthesis" },
+src/components/LegalReliabilityStandardModal.tsx:23:    { step: 9, title: "Human-Review Output", desc: "Final legal memorandum, forensics audit trail & practitioner review", icon: Eye, type: "Human Review" },
+src/components/LegalReliabilityStandardModal.tsx:27:    { title: "Fact Extraction", desc: "Extracting chronological events, dates, monetary considerations, and named parties from pleadings." },
+src/components/LegalReliabilityStandardModal.tsx:28:    { title: "Semantic Classification", desc: "Clustering legal narratives into candidate procedural categories (e.g. partition, specific performance, declaration)." },
+src/components/LegalReliabilityStandardModal.tsx:29:    { title: "Candidate Statute Identification", desc: "Suggesting candidate legislative frameworks (e.g., Specific Relief Act 1877, Limitation Act 1908)." },
+src/components/LegalReliabilityStandardModal.tsx:30:    { title: "Candidate Precedent Retrieval", desc: "Querying canonical Supreme Court precedents index matching factual keywords." },
+src/components/LegalReliabilityStandardModal.tsx:31:    { title: "Issue Suggestions", desc: "Proposing framed issues of fact and law for Order XIV CPC consideration." },
+src/components/LegalReliabilityStandardModal.tsx:32:    { title: "Missing-Fact Detection", desc: "Identifying missing mutation khatians, CS/RS records, or date gaps in chain of title." },
+src/components/LegalReliabilityStandardModal.tsx:33:    { title: "Explanation Generation", desc: "Generating plain-language explanatory summaries for advocate review and drafting assistance." },
+src/components/LegalReliabilityStandardModal.tsx:37:    { title: "Maintainability Determination", desc: "Must be computed via statutory bars (e.g., s.42 SRA proviso, s.21A SRA registration requirement, Order VII Rule 11 CPC)." },
+src/components/LegalReliabilityStandardModal.tsx:38:    { title: "Limitation Expiry", desc: "Must be calculated using exact arithmetic on Limitation Act 1908 Schedule I Articles & Sections 3–28." },
+src/components/LegalReliabilityStandardModal.tsx:39:    { title: "Pecuniary & Territorial Jurisdiction", desc: "Must strictly apply Civil Courts Act 1887 limits (e.g. Assistant Judge vs. Senior Assistant vs. Joint District Judge) and Sections 15–20 CPC." },
+src/components/LegalReliabilityStandardModal.tsx:40:    { title: "Legal Heir Status & Fractional Shares", desc: "Must be computed deterministically using Hanafi Sunni / Muslim Personal Law Faraizi algorithms." },
+src/components/LegalReliabilityStandardModal.tsx:41:    { title: "Validity/Invalidity of Instruments", desc: "Must be tested against Registration Act 1908 s.17/49 and Evidence Act 1872 documentary rules." },
+src/components/LegalReliabilityStandardModal.tsx:42:    { title: "Authoritativeness of Precedents", desc: "Must be verified against the canonical Supreme Court registry with binding hierarchy (AD > HCD) and checksum validation." },
+src/components/LegalReliabilityStandardModal.tsx:43:    { title: "Final Relief & Litigation Outcome", desc: "Must never be hallucinated; decrees and dismissal risks derive from deterministic gateway logic." },
+src/components/LegalReliabilityStandardModal.tsx:177:                            {stage.title}
+src/components/LegalReliabilityStandardModal.tsx:204:                        <strong className="text-emerald-950 font-mono text-[11px] block">{p.title}</strong>
+src/components/LegalReliabilityStandardModal.tsx:220:                        <strong className="text-rose-950 font-mono text-[11px] block">{r.title}</strong>
+src/components/MissingEvidenceAlert.tsx:11:  title: string;
+src/components/MissingEvidenceAlert.tsx:31:      title: "Accrual Date of Cause of Action Unspecified",
+src/components/MissingEvidenceAlert.tsx:37:  // 2. Specific Performance Gatekeeping Checks
+src/components/MissingEvidenceAlert.tsx:43:        title: "Bainapatra Registration Status Unspecified",
+src/components/MissingEvidenceAlert.tsx:45:        impact: "Under Section 21A of the Specific Relief Act 1877, no suit for specific performance shall lie unless the contract is registered under the Registration Act 1908. An unregistered Bainapatra creates an absolute threshold bar."
+src/components/MissingEvidenceAlert.tsx:50:        title: "Statutory Defect: Bainapatra is Unregistered",
+src/components/MissingEvidenceAlert.tsx:52:        impact: "A suit based on an unregistered contract of sale is legally incompetent. Under Section 21A of the Specific Relief Act, courts are strictly prohibited from entertaining specific performance of an unregistered Bainapatra."
+src/components/MissingEvidenceAlert.tsx:60:        title: "Treasury Deposit of Balance Consideration Unspecified",
+src/components/MissingEvidenceAlert.tsx:62:        impact: "Section 21A of the Specific Relief Act 1877 mandates that the remaining consideration must be deposited in court at the time of filing the suit. Failing to prove this deposit will result in immediate threshold dismissal of the plaint."
+src/components/MissingEvidenceAlert.tsx:67:        title: "Statutory Defect: Remaining Balance Not Deposited",
+src/components/MissingEvidenceAlert.tsx:77:        title: "Defaulted Financial Valuation Applied",
+src/components/MissingEvidenceAlert.tsx:84:  // 3. Declaration & Possession Gatekeeping Checks
+src/components/MissingEvidenceAlert.tsx:85:  if (meta.category === "DECLARATION_AND_POSSESSION") {
+src/components/MissingEvidenceAlert.tsx:86:    // Title Documents
+src/components/MissingEvidenceAlert.tsx:87:    if (meta.plaintiffHasRegisteredTitle === "unspecified") {
+src/components/MissingEvidenceAlert.tsx:90:        title: "Registered Title Ownership Documents Unspecified",
+src/components/MissingEvidenceAlert.tsx:91:        description: "The narrative does not mention whether the Plaintiff holds registered deeds (registered Kabala, mutation khatian, or certified record-of-rights).",
+src/components/MissingEvidenceAlert.tsx:92:        impact: "A suit for declaration of title under Section 42 of the Specific Relief Act 1877 requires the Plaintiff to establish a present vested legal character or property right. In the absence of registered deeds, ownership claims cannot be declared and will fail."
+src/components/MissingEvidenceAlert.tsx:94:    } else if (meta.plaintiffHasRegisteredTitle === false) {
+src/components/MissingEvidenceAlert.tsx:97:        title: "Title Defect: Plaintiff Lacks Registered Title",
+src/components/MissingEvidenceAlert.tsx:98:        description: "The narrative indicates that the Plaintiff lacks registered ownership deeds or mutation records.",
+src/components/MissingEvidenceAlert.tsx:99:        impact: "Without a valid chain of registered ownership documents, the court cannot grant a declaratory decree of title. A verbal or unregistered claim is legally insufficient to defeat possession or establish ownership."
+src/components/MissingEvidenceAlert.tsx:103:    // Dispossession / Ouster
+src/components/MissingEvidenceAlert.tsx:104:    if (meta.dispossessionProven === "unspecified") {
+src/components/MissingEvidenceAlert.tsx:107:        title: "Physical Dispossession / Ouster Facts Unspecified",
+src/components/MissingEvidenceAlert.tsx:108:        description: "No specific details or timeline of actual physical dispossession (ouster) by the Defendant were found.",
+src/components/MissingEvidenceAlert.tsx:109:        impact: "This creates critical ambiguity for limitation. Recovery under Section 9 SRA must be filed within 6 months, and title-based recovery under Article 142/143 of the Limitation Act must be filed within 12 years of ouster. Without these details, the maintainability remains unverified."
+src/components/MissingEvidenceAlert.tsx:111:    } else if (meta.dispossessionProven === false) {
+src/components/MissingEvidenceAlert.tsx:114:        title: "Dispossession Status Unproven / Contested",
+src/components/MissingEvidenceAlert.tsx:115:        description: "The facts imply the Plaintiff was either not physically dispossessed or remains in shared/uninterrupted possession.",
+src/components/MissingEvidenceAlert.tsx:116:        impact: "Possession recovery suits under Section 8 or 9 SRA are incompetent if the Plaintiff was not actually dispossessed. If the Plaintiff is still in possession, the proper remedy is a suit for partition or simple perpetual injunction to restrain trespass."
+src/components/MissingEvidenceAlert.tsx:128:        title: "Succession Not Opened: Ancestor is Living",
+src/components/MissingEvidenceAlert.tsx:140:          title: "Exact Date of Demise/Death Unspecified",
+src/components/MissingEvidenceAlert.tsx:146:      // Check 2: Contested Mutation Details (Namjari)
+src/components/MissingEvidenceAlert.tsx:147:      const hasMutationContest = (analysis.stage0?.chronology ?? []).some(c => 
+src/components/MissingEvidenceAlert.tsx:148:        c.event.toLowerCase().includes("mutation") || 
+src/components/MissingEvidenceAlert.tsx:150:        c.event.toLowerCase().includes("khatian")
+src/components/MissingEvidenceAlert.tsx:152:      if (!hasMutationContest) {
+src/components/MissingEvidenceAlert.tsx:155:          title: "Contested Mutation/Namjari Records Not Mentioned",
+src/components/MissingEvidenceAlert.tsx:156:          description: "Your fact pattern does not mention if the wrongful exclusive mutation (namjari) of the property in the Land Office has been officially checked or challenged.",
+src/components/MissingEvidenceAlert.tsx:157:          impact: "In a partition suit, correction of wrongful mutation records (under S.143 State Acquisition and Tenancy Act) is a necessary consequential relief. Failing to challenge the wrongful mutation in the pleadings leaves a cloud on the title records."
+src/components/MissingEvidenceAlert.tsx:161:      // Check 3: Urgent Third-Party Sale Threat (Temporary Injunction under Order 39)
+src/components/MissingEvidenceAlert.tsx:162:      const hasInjunctionUrgency = (analysis.stage0?.chronology ?? []).some(c => 
+src/components/MissingEvidenceAlert.tsx:163:        c.event.toLowerCase().includes("injunction") || 
+src/components/MissingEvidenceAlert.tsx:167:      if (!hasInjunctionUrgency) {
+src/components/MissingEvidenceAlert.tsx:170:          title: "Urgent Temporary Injunction Pleadings Recommended",
+src/components/MissingEvidenceAlert.tsx:171:          description: "The narrative does not explicitly demand an injunction to restrain the defendant from selling or transferring undivided shares of the joint property.",
+src/components/MissingEvidenceAlert.tsx:172:          impact: "Failing to file an application under Order XXXIX Rules 1 & 2 CPC for a temporary injunction will allow the defendant to sell the property to third-party purchasers, creating multi-party litigation complexities and irreversible possession issues."
+src/components/MissingEvidenceAlert.tsx:191:              Excellent! All critical statutory parameters (such as explicit registration status, deposit variables, concrete calendar timelines, and title deeds) were identified directly in your fact pattern. The analytical findings below are derived from verified factual inputs rather than default estimates.
+src/components/MissingEvidenceAlert.tsx:218:          Critical statutory requirements under the Civil Procedure Code 1908 and Specific Relief Act 1877 must be met to establish a maintainable cause of action. The cascade engine detected that several findings rely on unverified assumptions or default values.
+src/components/MissingEvidenceAlert.tsx:237:                      <strong className="text-red-900 font-serif text-[13px]">{w.title}</strong>
+src/components/MissingEvidenceAlert.tsx:265:                      <strong className="text-amber-950 font-serif text-[13px]">{w.title}</strong>
+src/components/MissingEvidenceAlert.tsx:293:                      <strong className="text-blue-905 font-serif text-[13px]">{w.title}</strong>
+src/components/StageExplorer.tsx:21:    { num: 0, title: "Fact Matrix & Chronology", icon: Briefcase },
+src/components/StageExplorer.tsx:22:    { num: 1, title: "Domain Classification", icon: Layers },
+src/components/StageExplorer.tsx:23:    { num: 2, title: "Legislation Map & Precedents", icon: Scale },
+src/components/StageExplorer.tsx:24:    { num: 3, title: "Limitation Calculations", icon: Calendar },
+src/components/StageExplorer.tsx:25:    { num: 4, title: "Party Capacity & Joinders", icon: Users },
+src/components/StageExplorer.tsx:26:    { num: 5, title: "Jurisdiction (Territorial/Pecuniary)", icon: MapPin },
+src/components/StageExplorer.tsx:27:    { num: 6, title: "Pleadings & Plaint Checklist", icon: FileCheck },
+src/components/StageExplorer.tsx:28:    { num: 7, title: "Framer of Issues", icon: List },
+src/components/StageExplorer.tsx:29:    { num: 8, title: "Evidence Map & Presumptions", icon: Shield },
+src/components/StageExplorer.tsx:30:    { num: 9, title: "Two-Sided Trial Contest", icon: Eye },
+src/components/StageExplorer.tsx:31:    { num: 10, title: "Equitable Defences Check", icon: HelpCircle },
+src/components/StageExplorer.tsx:32:    { num: 11, title: "CPC Suit Lifecycle", icon: GitCommit },
+src/components/StageExplorer.tsx:33:    { num: 12, title: "Appeals & Revisions", icon: CornerRightDown },
+src/components/StageExplorer.tsx:34:    { num: 13, title: "Synthesis & Final Execution", icon: Scale },
+src/components/StageExplorer.tsx:191:                  {stage.title}
+src/components/StageExplorer.tsx:220:                {stagesList[activeStage].title}
+src/components/StageExplorer.tsx:486:                            {p.caseTitle && (
+src/components/StageExplorer.tsx:488:                                {p.caseTitle}
+src/components/StageExplorer.tsx:691:                          <span>Issue {iss.issueNo}: Is {iss.title}?</span>
+src/components/StageExplorer.tsx:759:                          Issue {det.issueNo}: {det.issueTitle}
+src/components/StageExplorer.tsx:829:                        <span>⚖️ Framed Temporary Injunction Application (Order XXXIX Rules 1 & 2)</span>
+src/components/StageExplorer.tsx:856:                            APPLICATION FOR TEMPORARY INJUNCTION UNDER ORDER XXXIX RULES 1 AND 2 READ WITH SECTION 151 OF THE CODE OF CIVIL PROCEDURE, 1908
+src/components/StageExplorer.tsx:864:                            That the Plaintiffs-Petitioners have filed the accompanying Partition Suit for declaration of heirship, specific fractional shares (2/5th each to Plaintiffs and 1/5th to Defendant) under Muslim Shariat law, and partition of the suit property left by the intestate demise of their father, Abdul Karim, on 15 January 2026.
+src/components/StageExplorer.tsx:867:                            That after the demise of the ancestor, the Defendant Fatema obtained an exclusive wrongful namjari mutation (No. 4502/2026) in her name at the Upazila Land Office by suppression of facts, thereby clouding the title of the Plaintiffs.
+src/components/StageExplorer.tsx:876:                            That the <strong>balance of convenience and inconvenience</strong> lies heavily in favor of granting the injunction. If the Defendant is permitted to sell or alter the physical state of the undivided suit land, it will introduce third-party interests, create multiple litigation nodes, and frustrate the partition decree.
+src/components/StageExplorer.tsx:887:                            a) Grant an order of <strong>Temporary Injunction</strong> restraining the Defendant, her agents, servants, or assigns from alienating, selling, or transferring the undivided suit land or creating any third-party encumbrances until the disposal of the suit; and/or
+src/components/StageExplorer.tsx:890:                            b) Pass an ad-interim order of <strong>Status Quo</strong> in respect of the possession and title records of the suit property;
+src/components/TimelineValidation.tsx:92:          {/* Ouster / Exclusive Mutation Date Card */}
+src/components/TimelineValidation.tsx:96:                2. Exclusive Mutation / Denial
+src/components/TimelineValidation.tsx:106:              Defendant Fatema obtained an exclusive namjari mutation and threatened to alienate undivided parts of the joint inheritance.
+src/engine/BCCAAEngine.deterministic.test.ts:24:  factPattern?: string;
+src/engine/BCCAAEngine.deterministic.test.ts:32:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:33:        overrides.factPattern ??
+src/engine/BCCAAEngine.deterministic.test.ts:34:        "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.",
+src/engine/BCCAAEngine.deterministic.test.ts:51:      dispossessionProven: (stage0 as any)?.factsMeta?.dispossessionProven,
+src/engine/BCCAAEngine.deterministic.test.ts:111:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:112:          "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.",
+src/engine/BCCAAEngine.deterministic.test.ts:120:        factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.",
+src/engine/BCCAAEngine.deterministic.test.ts:125:    it("Dispossession / adverse possession pattern — identical input produces identical snapshot", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:128:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:140:          factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.deterministic.test.ts:152:          factPattern: "Bainapatra executed on 01 July 2023. Refusal dated 15 August 2023.",
+src/engine/BCCAAEngine.deterministic.test.ts:165:          factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.deterministic.test.ts:178:          factPattern: "The plaintiff father died on 10 March 2020.",
+src/engine/BCCAAEngine.deterministic.test.ts:192:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:208:    it("Specific performance claim resolves to a known domain", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:212:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:213:            "Plaintiff seeks specific performance of an agreement to sell dated 01 January 2020. Defendant refused to register the deed.",
+src/engine/BCCAAEngine.deterministic.test.ts:224:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:233:    it("Specific performance triggers relevant legislation sections", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:237:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:238:            "Plaintiff filed for specific performance of a bainapatra. Defendant claims the agreement is void for uncertainty.",
+src/engine/BCCAAEngine.deterministic.test.ts:249:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:268:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:269:            "The plaintiff has been in possession for 12 years, made substantial improvements, and the defendant is estopped from denying the agreement by conduct.",
+src/engine/BCCAAEngine.deterministic.test.ts:283:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:297:          factPattern: "Agreement dated 15 July 2020. Suit filed 2024.",
+src/engine/BCCAAEngine.deterministic.test.ts:312:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:313:            "Plaintiff Abdul Karim sues defendant Rahim Miah for specific performance. Plaintiff is the purchaser. Defendant is the vendor.",
+src/engine/BCCAAEngine.deterministic.test.ts:324:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:340:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:341:            "The plaintiff filed a plaint for specific performance. The plaint does not mention the survey number. The defendant filed written statement denying execution.",
+src/engine/BCCAAEngine.deterministic.test.ts:352:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:353:          "The plaintiff claims specific performance. The defendant denies execution of bainapatra and pleads limitation.",
+src/engine/BCCAAEngine.deterministic.test.ts:370:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:371:            "The plaintiff relies on bainapatra, mutation certificate, and witness testimony. The defendant relies on registered deed and revenue records.",
+src/engine/BCCAAEngine.deterministic.test.ts:382:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:383:          "Plaintiff proved execution of bainapatra by attesting witness. Defendant failed to prove fraud. Court found plaintiff in continuous possession.",
+src/engine/BCCAAEngine.deterministic.test.ts:400:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:401:            "The suit is filed in the Court of Senior Assistant Judge, Dhaka, for recovery of possession of 15 decimals of land valued at Tk. 15,00,000.",
+src/engine/BCCAAEngine.deterministic.test.ts:413:          factPattern: "The suit was filed on 01 January 2024. Issues were framed on 15 February 2024. Evidence is ongoing.",
+src/engine/BCCAAEngine.deterministic.test.ts:424:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:441:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:461:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:474:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:491:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:509:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:522:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:533:      const req = makeRequest({ caseId: "P7-03", factPattern: "The plaintiff relied on an unregistered bainapatra." });
+src/engine/BCCAAEngine.deterministic.test.ts:541:      const rA = await engine.analyze(makeRequest({ caseId: "P7-03-A", factPattern: "Fact pattern A." }));
+src/engine/BCCAAEngine.deterministic.test.ts:542:      const rB = await engine.analyze(makeRequest({ caseId: "P7-03-B", factPattern: "Fact pattern B." }));
+src/engine/BCCAAEngine.deterministic.test.ts:551:      const req = makeRequest({ caseId: "P8-01", factPattern: "", submissionDate: "2024-01-15" });
+src/engine/BCCAAEngine.deterministic.test.ts:562:          factPattern: "The plaintiff deposited Tk. 5,00,000 as consideration.",
+src/engine/BCCAAEngine.deterministic.test.ts:574:        makeRequest({ caseId: "P8-03-U", factPattern: "unregistered bainapatra." })
+src/engine/BCCAAEngine.deterministic.test.ts:577:        makeRequest({ caseId: "P8-03-R", factPattern: "registered bainapatra." })
+src/engine/BCCAAEngine.deterministic.test.ts:580:        makeRequest({ caseId: "P8-03-N", factPattern: "The plaintiff has a document." })
+src/engine/BCCAAEngine.deterministic.test.ts:592:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:678:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:680:          "The defendant refused to execute the sale deed on 15 August 2023. " +
+src/engine/BCCAAEngine.phase1.test.ts:1:import { describe, it, expect } from "vitest"; import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine"; import { makeAnalyzeRequest as makeRequest } from "./testFixtures"; const engine = new BCCAAEngine({ licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) }, factValidationProvider: new NoOpFactValidationProvider() }); describe("P1-01: Semantic determinism", () => { it("SPECIFIC_PERFORMANCE identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01", factPattern: "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); it("death pattern identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01-SC", factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); }); describe("P1-02: Temporal determinism", () => { it("3-year limitation from 2020 refusal is TIME_BARRED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-02", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.", submissionDate: "2024-01-15" })); expect(r.stage3.isTimeBarred).toBe(true); expect(r.stage3.accrualDate).toBe("2020-08-20"); }); }); describe("P1-03: Fact extraction", () => { it("UNREGISTERED in atomicFacts", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-REG", factPattern: "The plaintiff relied on an unregistered bainapatra." })); const objs = (r.stage0?.atomicFacts ?? []).map((f: any) => f.object).filter(Boolean); expect(objs).toContain("UNREGISTERED"); }); it("death fact extracted as DECEASED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-DEATH", factPattern: "The plaintiff father died on 10 March 2020." })); const deathFacts = (r.stage0?.atomicFacts ?? []).filter((f: any) => f.predicate === "Vital Status" && f.object === "DECEASED"); expect(deathFacts.length).toBeGreaterThanOrEqual(1); expect(deathFacts[0].subject).toBe("Ancestor"); }); });
+src/engine/BCCAAEngine.phase1b.test.ts:15:      factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase1b.test.ts:28:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase1b.test.ts:40:      factPattern: "Bainapatra executed on 15 July 2020.",
+src/engine/BCCAAEngine.phase1b.test.ts:51:      factPattern: "The defendant refused to execute on 20 August 2020.",
+src/engine/BCCAAEngine.phase1b.test.ts:71:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2025.",
+src/engine/BCCAAEngine.phase1b.test.ts:88:      factPattern: "The weather was pleasant during the site visit.",
+src/engine/BCCAAEngine.phase1b.test.ts:97:      factPattern: "",
+src/engine/BCCAAEngine.phase1b.test.ts:107:      factPattern: "John went to the market and bought rice for his family.",
+src/engine/BCCAAEngine.phase1b.test.ts:122:      factPattern: "The bainapatra is registered. The bainapatra is unregistered.",
+src/engine/BCCAAEngine.phase1b.test.ts:135:      factPattern: "The plaintiff claims the property is 10 decimals. The defendant denies this and says it is 5 decimals.",
+src/engine/BCCAAEngine.phase1b.test.ts:152:      factPattern: "The plaintiff admitted the bainapatra was unregistered.",
+src/engine/BCCAAEngine.phase1b.test.ts:166:      factPattern: "The property might have been transferred to some third party.",
+src/engine/BCCAAEngine.phase1b.test.ts:180:      factPattern: "The land is 10 decimals. The land is 5 decimals. The land is 15 decimals.",
+src/engine/BCCAAEngine.phase1b.test.ts:231:      factPattern: "Bainapatra executed on 15 July 2020. Refusal on 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:11:describe("P1-17: Claim type detection — Specific Performance", () => {
+src/engine/BCCAAEngine.phase2.test.ts:15:      factPattern: "Plaintiff seeks specific performance of agreement to sell. Defendant refused to execute deed.",
+src/engine/BCCAAEngine.phase2.test.ts:21:describe("P1-18: Claim type detection — Declaration", () => {
+src/engine/BCCAAEngine.phase2.test.ts:22:  it("detects declaration suit from narrative", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:25:      factPattern: "Plaintiff filed suit for declaration of title and recovery of possession.",
+src/engine/BCCAAEngine.phase2.test.ts:35:  it("partition narrative resolves to DECLARATION_AND_POSSESSION domain", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:38:      factPattern: "Plaintiff seeks partition of joint family property. Defendant denies joint possession.",
+src/engine/BCCAAEngine.phase2.test.ts:40:    expect(r.claimType).toBe("DECLARATION_AND_POSSESSION");
+src/engine/BCCAAEngine.phase2.test.ts:41:    expect(r.domain).toBe("DECLARATION_AND_POSSESSION");
+src/engine/BCCAAEngine.phase2.test.ts:47:      factPattern: "The property is jointly owned by co-sharers. Plaintiff seeks partition.",
+src/engine/BCCAAEngine.phase2.test.ts:53:  it("partition with dispossession triggers possession element extraction", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:56:      factPattern: "Plaintiff was dispossessed from joint family property. Seeks partition and recovery of possession.",
+src/engine/BCCAAEngine.phase2.test.ts:58:    expect(r.stage1?.primaryDomain).toBe("DECLARATION_AND_POSSESSION");
+src/engine/BCCAAEngine.phase2.test.ts:60:    expect(facts.some((f: any) => f.predicate === "Possession Status")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:63:  it("mutation status is extracted when mentioned in partition context", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:66:      factPattern: "Property mutated in plaintiff's name. Co-sharers deny mutation. Plaintiff seeks partition.",
+src/engine/BCCAAEngine.phase2.test.ts:69:    expect(facts.some((f: any) => f.predicate === "Mutation Status")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:75:      factPattern: "Property consists of 5.5 decimals. Co-sharers seek partition by metes and bounds.",
+src/engine/BCCAAEngine.phase2.test.ts:81:  it("missing title facts in partition suit appear in element gate unknowns", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:84:      factPattern: "Plaintiff seeks partition.",
+src/engine/BCCAAEngine.phase2.test.ts:98:      factPattern: "Plaintiff filed suit. Defendant denied all allegations.",
+src/engine/BCCAAEngine.phase2.test.ts:107:      factPattern: "Bainapatra executed on 15 July 2020. Registered under Case No. 123/2020.",
+src/engine/BCCAAEngine.phase2.test.ts:117:      factPattern: "The plaintiff wants money.",
+src/engine/BCCAAEngine.phase2.test.ts:127:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:136:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:144:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:165:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:174:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:183:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:197:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:209:      factPattern: "Plaintiff seeks specific performance of agreement to sell dated 01 January 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:257:      factPattern: "The plaintiff father died on 10 March 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:261:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase2.test.ts:273:      makeRequest({ caseId: "P2-11-A", factPattern: "Registered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:274:      makeRequest({ caseId: "P2-11-B", factPattern: "Unregistered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:275:      makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:290:      makeRequest({ caseId: "P2-11-A", factPattern: "Registered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:291:      makeRequest({ caseId: "P2-11-B", factPattern: "Unregistered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:292:      makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:308:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase2.test.ts:334:describe("P2-15: Missing factPattern handling", () => {
+src/engine/BCCAAEngine.phase2.test.ts:335:  it("handles empty or missing factPattern gracefully", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:336:    const r = await engine.analyze(makeRequest({ caseId: "P2-15", factPattern: "" }));
+src/engine/BCCAAEngine.phase2.test.ts:348:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:377:      factPattern: "Bainapatra executed on 15 July 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:391:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:402:    const input = makeRequest({ caseId: "P2-20", factPattern: "Bainapatra executed." });
+src/engine/BCCAAEngine.phase2.test.ts:417:      factPattern: "",
+src/engine/BCCAAEngine.phase2.test.ts:427:      factPattern: "   \n\t  ",
+src/engine/BCCAAEngine.phase2.test.ts:437:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:448:      factPattern: longPattern,
+src/engine/BCCAAEngine.phase2.test.ts:458:      factPattern: "Claim <script>alert(1)</script> & \"quotes\" 'apostrophes' \\x00\\x01",
+src/engine/BCCAAEngine.phase2.test.ts:467:      factPattern: "Facts.",
+src/engine/BCCAAEngine.phase2.test.ts:481:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:492:      makeRequest({ caseId: "P1-STRESS-2A", factPattern: "The plaintiff father died on 10 March 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:493:      makeRequest({ caseId: "P1-STRESS-2B", factPattern: "The plaintiff relied on an unregistered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:494:      makeRequest({ caseId: "P1-STRESS-2C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:505:      factPattern: "Simple claim.",
+src/engine/BCCAAEngine.phase2.test.ts:515:      factPattern: "Simple claim.",
+src/engine/BCCAAEngine.phase2.test.ts:524:      factPattern: "Bainapatra executed on not-a-date. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:534:      factPattern: "Bainapatra executed on 15 July 2030. Refusal dated 20 August 2030.",
+src/engine/BCCAAEngine.phase2.test.ts:544:      factPattern: "Bainapatra executed on 20 August 2020. Refusal dated 15 July 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:17:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase3.test.ts:60:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:68:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:80:      factPattern: "Transfer of Property Act Section 54.",
+src/engine/BCCAAEngine.ts:153:  | "DECLARATION_AND_POSSESSION"
+src/engine/BCCAAEngine.ts:170:  | "POSSESSION"
+src/engine/BCCAAEngine.ts:171:  | "DISPOSSESSION"
+src/engine/BCCAAEngine.ts:523:  ["*|POSSESSION STATUS|*", "BOOLEAN_EXCLUSIVE"],
+src/engine/BCCAAEngine.ts:524:  ["*|TITLE STATUS|*", "ENUM_EXCLUSIVE"],
+src/engine/BCCAAEngine.ts:892:    if (claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:895:          ruleId: "DP-ELEMENT-TITLE",
+src/engine/BCCAAEngine.ts:906:              predicate: "Title Status",
+src/engine/BCCAAEngine.ts:918:          outcomeIfSatisfied: "TITLE_ELEMENT_SATISFIED",
+src/engine/BCCAAEngine.ts:919:          outcomeIfFailed: "TITLE_ELEMENT_FAILED",
+src/engine/BCCAAEngine.ts:920:          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+src/engine/BCCAAEngine.ts:924:          ruleId: "DP-ELEMENT-POSSESSION",
+src/engine/BCCAAEngine.ts:935:              predicate: "Possession Status",
+src/engine/BCCAAEngine.ts:947:          outcomeIfSatisfied: "DISPOSSESSION_ELEMENT_SATISFIED",
+src/engine/BCCAAEngine.ts:948:          outcomeIfFailed: "DISPOSSESSION_ELEMENT_FAILED",
+src/engine/BCCAAEngine.ts:949:          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
+src/engine/BCCAAEngine.ts:958:    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:960:        primaryAct: "Specific Relief Act 1877",
+src/engine/BCCAAEngine.ts:961:        relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Sections 8-12, 21A", purpose: "Claim-specific analysis" }],
+src/engine/BCCAAEngine.ts:1240:    request.input.factPattern = String(request.input.factPattern ?? "").trim();
+src/engine/BCCAAEngine.ts:1256:      if (!request.input?.factPattern) {
+src/engine/BCCAAEngine.ts:1257:        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+src/engine/BCCAAEngine.ts:1258:        return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
+src/engine/BCCAAEngine.ts:1260:      if ((request.input?.factPattern ?? "" ?? "").length > MAX_INPUT_LENGTH) {
+src/engine/BCCAAEngine.ts:1285:    const claimType = this.resolveClaimType(input.factPattern, input.focusDomain ?? "");
+src/engine/BCCAAEngine.ts:1288:    this.extractAtomicFacts(ctx, input.factPattern, claimType);
+src/engine/BCCAAEngine.ts:1318:      input.factPattern,
+src/engine/BCCAAEngine.ts:1355:    const standi = this.executePartyStandiRules(ctx, claimType, input.factPattern);
+src/engine/BCCAAEngine.ts:1356:    const pleading = this.executePleadingRules(elementGate, input.factPattern);
+src/engine/BCCAAEngine.ts:1357:    const issues = this.executeIssueFramingRules(ctx, elementGate, input.factPattern);
+src/engine/BCCAAEngine.ts:1601:    this.extractParties(clause, candidates);
+src/engine/BCCAAEngine.ts:1609:    this.extractPossessionFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1614:  private extractParties(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1651:      /(?:agreement|bainapatra|contract|sale\s+deed)[^\.]{0,80}?\b(?:executed|signed|dated|on)\b[^\.]{0,30}?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i
+src/engine/BCCAAEngine.ts:1658:    if (/\bregistered\s+(?:bainapatra|agreement|sale\s+deed)\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1661:      /\bunregistered\s+(?:bainapatra|agreement|sale\s*deed)\b/i.test(lower) ||
+src/engine/BCCAAEngine.ts:1662:      /(?:bainapatra|agreement|sale\s*deed)(?:\s+\w+){0,3}\s+(?:not\s+registered|without\s+registration)\b/i.test(lower)
+src/engine/BCCAAEngine.ts:1671:    // Section 17A
+src/engine/BCCAAEngine.ts:1673:      candidates.push({ subject: "Registration", predicate: "Statutory Basis", object: "Section 17A" });
+src/engine/BCCAAEngine.ts:1677:      candidates.push({ subject: "Specific Relief", predicate: "Statutory Basis", object: "Section 21A" });
+src/engine/BCCAAEngine.ts:1730:    // Mutation
+src/engine/BCCAAEngine.ts:1731:    if (/\bexclusive\s+(?:mutation|namjari)\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1732:      candidates.push({ subject: "Property", predicate: "Mutation Status", object: "EXCLUSIVE_MUTATION" });
+src/engine/BCCAAEngine.ts:1733:    } else if (/\b(?:mutation|namjari|khatian)\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1734:      candidates.push({ subject: "Property", predicate: "Mutation Status", object: "MUTATED" });
+src/engine/BCCAAEngine.ts:1749:    // Registered title
+src/engine/BCCAAEngine.ts:1750:    if (/\b(?:registered\s+(?:owner|title|kabala|sale\s+deed))\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1751:      candidates.push({ subject: "Plaintiff", predicate: "Title Status", object: "REGISTERED_OWNER" });
+src/engine/BCCAAEngine.ts:1819:    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1837:    if (/\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1846:      candidates.push({ subject: "Ancestor", predicate: "Disowning Declaration", object: "DECLARED" });
+src/engine/BCCAAEngine.ts:1850:  private extractPossessionFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1852:    // Dispossession
+src/engine/BCCAAEngine.ts:1857:        /\bexclusive\s+(?:ownership|possession|control)\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1858:      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "DISPOSSESSED" });
+src/engine/BCCAAEngine.ts:1859:      // Extract dispossession date if present
+src/engine/BCCAAEngine.ts:1863:        candidates.push({ subject: "Plaintiff", predicate: "Dispossession Date", object: date, eventDate: date });
+src/engine/BCCAAEngine.ts:1866:    if (/\b(?:in\s+(?:peaceful|continuous)\s+possession|possessing)\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1867:      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "IN_POSSESSION" });
+src/engine/BCCAAEngine.ts:1940:    if (/\b(?:document\s+shows|record\s+reveals|registered\s+deed|registered\s+sale\s+deed|kabala|pay\s+order|treasury\s+challan|bainapatra)\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1945:    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1978:    } else if (claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:1979:      requiredPairs.push(["Plaintiff", "Title Status"], ["Plaintiff", "Possession Status"]);
+src/engine/BCCAAEngine.ts:1981:      requiredPairs.push(["Ancestor", "Vital Status"], ["Ancestor", "Succession Type"], ["Property", "Ownership Structure"], ["Property", "Mutation Status"]);
+src/engine/BCCAAEngine.ts:2108:    if (fact.predicate === "Dispossession Date") return "DISPOSSESSION";
+src/engine/BCCAAEngine.ts:2110:    if (fact.predicate === "Possession Status" && fact.object === "DISPOSSESSED") return "DISPOSSESSION";
+src/engine/BCCAAEngine.ts:2112:    if (fact.predicate === "Mutation Status") return "AMENDMENT";
+src/engine/BCCAAEngine.ts:2189:  private resolveClaimType(factPattern: string, focusDomain: string): ClaimType {
+src/engine/BCCAAEngine.ts:2190:    const lower = factPattern.toLowerCase();
+src/engine/BCCAAEngine.ts:2193:      if (fd.includes("specific performance")) return "SPECIFIC_PERFORMANCE";
+src/engine/BCCAAEngine.ts:2194:      if (fd.includes("declaration") || fd.includes("possession")) return "DECLARATION_AND_POSSESSION";
+src/engine/BCCAAEngine.ts:2197:    if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
+src/engine/BCCAAEngine.ts:2198:    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+src/engine/BCCAAEngine.ts:2205:    if (claimType === "DECLARATION_AND_POSSESSION") return "DECLARATION_AND_POSSESSION";
+src/engine/BCCAAEngine.ts:2229:    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+src/engine/BCCAAEngine.ts:2271:    else if (claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:2272:      if (dispossessionDate) {
+src/engine/BCCAAEngine.ts:2273:        accrualDate = dispossessionDate;
+src/engine/BCCAAEngine.ts:2275:        calculationType = "dispossession_date";
+src/engine/BCCAAEngine.ts:2486:    if (elementGate.missingElements.includes("DP-ELEMENT-TITLE")) {
+src/engine/BCCAAEngine.ts:2487:      issues.push("Whether the plaintiff holds registered title");
+src/engine/BCCAAEngine.ts:2489:    if (elementGate.missingElements.includes("DP-ELEMENT-POSSESSION")) {
+src/engine/BCCAAEngine.ts:2851:          "Do not treat structural element satisfaction as proof of entitlement to relief.",
+src/engine/BCCAAEngine.ts:2858:     * substantive entitlement determination.
+src/engine/BCCAAEngine.ts:2868:          "Structural predicates alone do not establish substantive legal entitlement or litigation outcome.",
+src/engine/BCCAAEngine.ts:3286:    const rawInputHash = canonicalHash(request.input?.factPattern ?? "");
+src/engine/CitationValidator.ts:14:  caseTitle: string;
+src/engine/CitationValidator.ts:32:  caseTitle: string;
+src/engine/CitationValidator.ts:52:function computePrecedentValidationHash(citation: string, title: string, year: number, reporter: string, vol: number, page: number): string {
+src/engine/CitationValidator.ts:53:  const payload = `${citation}::${title}::${year}::${reporter}::${vol}::${page}::BANGLADESH_MINISTRY_OF_LAW`;
+src/engine/CitationValidator.ts:72:    caseTitle: "Mvi. Md. Abdul Jalil and others v. Md. Abul Hossain and others",
+src/engine/CitationValidator.ts:88:    ratioDecidendi: "Under Islamic Law of Inheritance, succession opens immediately and automatically upon the death of the propositus/ancestor. The shares of lawful heirs vest instantaneously without requiring any probate, letter of administration, or mutation. An ante-mortem disowning declaration has zero legal effect.",
+src/engine/CitationValidator.ts:99:    caseTitle: "Md. Mofizul Islam and others v. Md. Nurul Islam and others",
+src/engine/CitationValidator.ts:108:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:112:      "Section 42, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:114:    ratioDecidendi: "A unilateral declaration, affidavit, or newspaper notice 'disowning' a child is unknown to Muslim law and Bangladesh civil jurisprudence. It cannot disinherit a legal heir or divest lawful proprietary rights.",
+src/engine/CitationValidator.ts:115:    summaryOfHolding: "Unilateral disowning affidavits or newspaper declarations have zero legal standing to alter Muslim law of succession.",
+src/engine/CitationValidator.ts:125:    caseTitle: "Sona Mia and others v. Abdul Jabbar and others",
+src/engine/CitationValidator.ts:134:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:138:      "Section 42, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:140:    ratioDecidendi: "Mutation of names (namjari khatian) in the revenue records and rent receipts are maintained strictly for fiscal collection purposes; they neither create title in favour of the recorded person nor extinguish the lawful title of other co-sharers.",
+src/engine/CitationValidator.ts:141:    summaryOfHolding: "Revenue mutation entries do not create or divest proprietary title in immovable property.",
+src/engine/CitationValidator.ts:142:    factualContextTag: ["mutation", "namjari", "khatian", "exclusive_mutation", "co-sharers"],
+src/engine/CitationValidator.ts:151:    caseTitle: "Mst. Amena Khatun v. Mst. Sabira Khatun",
+src/engine/CitationValidator.ts:160:      "Specific Relief Act 1877",
+src/engine/CitationValidator.ts:164:      "Section 42, Specific Relief Act 1877",
+src/engine/CitationValidator.ts:169:    factualContextTag: ["living_parent", "spes_successionis", "premature_suit", "lifetime_declaration"],
+src/engine/CitationValidator.ts:174:  // ─── SPECIFIC PERFORMANCE (BAINAPATRA) ───
+src/engine/CitationValidator.ts:179:    caseTitle: "Md. Arfan Ali and others v. Md. Abdul Barek and others",
+src/engine/CitationValidator.ts:187:      "Specific Relief Act 1877",
+src/engine/CitationValidator.ts:188:      "Registration Act 1908",
+src/engine/CitationValidator.ts:189:      "Transfer of Property Act 1882"
+src/engine/CitationValidator.ts:192:      "Section 21A, Specific Relief Act 1877 (2004 Amendment)",
+src/engine/CitationValidator.ts:193:      "Section 17A, Registration Act 1908",
+src/engine/CitationValidator.ts:194:      "Section 54, Transfer of Property Act 1882"
+src/engine/CitationValidator.ts:196:    ratioDecidendi: "Registration of the contract for sale (Bainapatra) under Section 17A of the Registration Act 1908 and deposit of the remaining consideration in court via treasury challan are mandatory statutory prerequisites under Section 21A SRA. Non-compliance renders the suit incompetent ab initio.",
+src/engine/CitationValidator.ts:207:    caseTitle: "Al-Haj Md. Serajul Islam v. Md. Abdul Khalique and others",
+src/engine/CitationValidator.ts:215:      "Specific Relief Act 1877",
+src/engine/CitationValidator.ts:219:      "Section 12 & 24(b), Specific Relief Act 1877",
+src/engine/CitationValidator.ts:222:    ratioDecidendi: "In a suit for specific performance, the purchaser must aver and prove continuous readiness and willingness to perform his part of the contract. The statutory deposit of the balance consideration into court conclusively satisfies this requirement.",
+src/engine/CitationValidator.ts:223:    summaryOfHolding: "Tendering and depositing balance consideration establishes readiness and willingness in specific performance.",
+src/engine/CitationValidator.ts:229:  // ─── DECLARATION OF TITLE, POSSESSION & REGISTRATION ───
+src/engine/CitationValidator.ts:234:    caseTitle: "Abdul Gafur and others v. Secretary, Ministry of Land and others",
+src/engine/CitationValidator.ts:242:      "Transfer of Property Act 1882",
+src/engine/CitationValidator.ts:243:      "Registration Act 1908",
+src/engine/CitationValidator.ts:244:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:247:      "Section 54, Transfer of Property Act 1882",
+src/engine/CitationValidator.ts:248:      "Section 17 & 49, Registration Act 1908",
+src/engine/CitationValidator.ts:249:      "Section 8, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:251:    ratioDecidendi: "An unregistered contract or sale agreement conveys no proprietary title or interest in immovable property. A duly registered conveyance (Kabala) supported by valid chain of deeds and possession must prevail over unregistered claims.",
+src/engine/CitationValidator.ts:252:    summaryOfHolding: "Registered sale deed with mutation and possession prevails over any unregistered claim or agreement.",
+src/engine/CitationValidator.ts:253:    factualContextTag: ["registered_title", "unregistered_contract", "kabala", "ownership_priority", "possession"],
+src/engine/CitationValidator.ts:262:    caseTitle: "Abdur Rashid and others v. Md. Nurul Islam and others",
+src/engine/CitationValidator.ts:272:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:278:    ratioDecidendi: "Continuous entries in record-of-rights (Khatian) coupled with payment of land development tax receipts (Dakhila) establish presumption of possession in favour of the recorded owner against third-party trespassers.",
+src/engine/CitationValidator.ts:279:    summaryOfHolding: "Mutation khatian and tax receipts constitute strong corroborative evidence of continuous possession.",
+src/engine/CitationValidator.ts:280:    factualContextTag: ["possession_corroboration", "dakhila", "khatian_presumption", "trespass"],
+src/engine/CitationValidator.ts:290:    caseTitle: "Moniruddin and others v. Soleman Ali and others",
+src/engine/CitationValidator.ts:316:    caseTitle: "Amena Khatun and others v. Serajuddin and others",
+src/engine/CitationValidator.ts:329:    ratioDecidendi: "The burden of proof in civil litigation lies firmly upon the party who substantiates the affirmative of the issue. A plaintiff must succeed on the strength of his own title and cannot rely on the weakness of the defendant's case.",
+src/engine/CitationValidator.ts:330:    summaryOfHolding: "Plaintiff must succeed on the strength of their own evidence and title, not defendant's weaknesses.",
+src/engine/CitationValidator.ts:340:    caseTitle: "Md. Ali and others v. Md. Hanif and others",
+src/engine/CitationValidator.ts:366:    caseTitle: "Shamsuddin Ahmed v. General Manager, Bangladesh Railway",
+src/engine/CitationValidator.ts:374:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:377:      "Proviso to Section 42, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:379:    ratioDecidendi: "A suit for mere declaration of title is barred under the Proviso to Section 42 of the Specific Relief Act 1877 if the plaintiff, being out of physical possession, omits to pray for consequential relief of recovery of possession.",
+src/engine/CitationValidator.ts:380:    summaryOfHolding: "Declaratory suit without prayer for recovery of possession is barred under Section 42 SRA proviso when plaintiff is out of possession.",
+src/engine/CitationValidator.ts:381:    factualContextTag: ["declaration_proviso", "consequential_relief", "section_42_proviso", "possession_recovery"],
+src/engine/CitationValidator.ts:421:        caseTitle: "UNVERIFIED PRECEDENT (Rejected by BCCAA Validation Layer)",
+src/engine/CitationValidator.ts:440:      caseTitle: match.caseTitle,
+src/engine/CitationValidator.ts:463:    category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION",
+src/engine/CitationValidator.ts:479:          "Strict statutory bar on maintainability of suits based on unregistered Bainapatras or where treasury deposit of the balance consideration is lacking (Section 21A SRA & Section 17A Registration Act)."
+src/engine/CitationValidator.ts:490:    } else if (category === "DECLARATION_AND_POSSESSION") {
+src/engine/CitationValidator.ts:494:          "Supports Plaintiff's absolute title over conflicting unregistered agreements of the Defendant (Section 54 Transfer of Property Act)."
+src/engine/CitationValidator.ts:498:          "Corroborates Plaintiff's continuous possession chain through mutation khatian entries and Dakhila tax receipts."
+src/engine/CitationValidator.ts:502:          "Mandates that when a plaintiff is out of possession, a declaratory prayer under Section 42 SRA must be coupled with consequential relief of recovery of possession under Section 8 SRA."
+src/engine/CitationValidator.ts:519:            "Confirms that exclusive mutation of the suit property by one co-sharer is purely for revenue collection and does not divest other heirs of their lawful inherited title."
+src/engine/CitationValidator.ts:531:            "Establishes that children have no vested right or justiciable cause of action to challenge a living parent's declarations during his lifetime (spes successionis)."
+src/engine/CitationValidator.ts:535:            "Confirms that the father's disowning affidavit is a legal nullity in Shariat, but no cause of action exists to seek declaration until succession opens upon death."
+src/engine/FactConsistencyGate.ts:135:        /\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/gi,
+src/engine/FactConsistencyGate.ts:227:    // D. Dispossession / Possession status
+src/engine/FactConsistencyGate.ts:236:        proposition: "Physical ouster / dispossession from suit land",
+src/engine/FactConsistencyGate.ts:237:        value: { dispossessionAsserted: true },
+src/engine/FactConsistencyGate.ts:278:    const textHasAlive = /\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(
+src/engine/FactConsistencyGate.ts:389:      lower.includes("bainapatra") || lower.includes("specific performance");
+src/engine/FactConsistencyGate.ts:415:          "Substantive Doctrine Clash: Narrative conflates Contractual Specific Performance (SRA Section 12/21A) with Intestate Inheritance Partition (Muslim Law / Partition Act 1893) without pleading in the alternative.",
+src/engine/FactConsistencyGate.ts:490:          "Proof of Sub-Registry Registration Endorsement (Section 17A Registration Act)",
+src/engine/FactConsistencyGate.ts:499:          "Treasury Deposit Challan for Balance Consideration (Section 21A Specific Relief Act)",
+src/engine/FactConsistencyGate.ts:511:          "Certified Death Registration Certificate (Births and Deaths Registration Act 2004)",
+src/engine/testFixtures.ts:34:  factPattern?: string;
+src/engine/testFixtures.ts:39:    factPattern: overrides.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
+src/types/types.ts:8:  factPattern: string;
+src/types/types.ts:87:  | "DECLARATION_AND_POSSESSION"
+src/types/types.ts:377:  title: string;
+src/types/types.ts:381:  factPattern: string;
+src/types/types.ts:435:      category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION";
+src/types/types.ts:438:      plaintiffHasRegisteredTitle: boolean | "unspecified";
+src/types/types.ts:439:      dispossessionProven: boolean | "unspecified";
+src/types/types.ts:470:      caseTitle?: string;
+src/types/types.ts:568:      title: string;
+src/types/types.ts:601:      issueTitle: string;
+src/utils/crypto.security.test.ts:67:    const stored = hashPassword("CorrectPassword123!");
+src/utils/crypto.security.test.ts:70:      verifyPassword("CorrectPassword123!", stored),
+src/utils/docxGenerator.ts:28:  factPattern: string,
+src/utils/docxGenerator.ts:148:        createCell("Citation & Title", { bold: true, bg: "1E252B", color: "FFFFFF", widthPercent: 25 }),
+src/utils/docxGenerator.ts:165:      if (p.caseTitle) {
+src/utils/docxGenerator.ts:169:              new TextRun({ text: p.caseTitle, italics: true, size: 18, font: "Calibri", color: "4B5563" }),
+src/utils/docxGenerator.ts:253:    title: `BCCAA Litigation Brief - ${analysis.stage2.primaryAct}`,
+src/utils/docxGenerator.ts:298:          // Title
+src/utils/docxGenerator.ts:549:                    text: `${issue.title} [Burden: ${issue.burden}]`,
+src/utils/docxGenerator.ts:639:  title: string,
+src/utils/docxGenerator.ts:653:  // Title Banner
+src/utils/docxGenerator.ts:659:          text: title || "LEGAL MEMORANDUM & COURTROOM DRAFT",
+src/utils/docxGenerator.ts:783:    title: title || "Legal Draft",
+src/utils/pdfGeneratorSecure.ts:12:  factPattern: string,
+src/utils/pdfGeneratorSecure.ts:53:      .pdf-title {
+src/utils/pdfGeneratorSecure.ts:62:      .pdf-subtitle {
+src/utils/pdfGeneratorSecure.ts:95:      .card-title {
+src/utils/pdfGeneratorSecure.ts:189:      <p class="pdf-subtitle">Jurisdiction of Bangladesh &bull; Ministry of Law Framework</p>
+src/utils/pdfGeneratorSecure.ts:190:      <h1 class="pdf-title">Bangladesh Civil Case Analysis Architecture</h1>
+src/utils/pdfGeneratorSecure.ts:206:        <div class="card-title">Jurisdictional Overview</div>
+src/utils/pdfGeneratorSecure.ts:213:        <div class="card-title">Limitation & Maintainability</div>
+src/utils/pdfGeneratorSecure.ts:235:      <div class="fact-box">${factPattern}</div>
+src/utils/pdfGeneratorSecure.ts:238:          <div class="card-title">Factual Audit Attributes</div>
+src/utils/pdfGeneratorSecure.ts:241:            <div><strong>Registered Title:</strong> ${analysis.stage0.factsMeta.plaintiffHasRegisteredTitle ? 'Confirmed' : 'Unconfirmed/Defective'}</div>
+src/utils/pdfGeneratorSecure.ts:242:            <div><strong>Dispossession Alleged:</strong> ${analysis.stage0.factsMeta.dispossessionProven ? 'Yes' : 'No / Constructive Possession'}</div>
+src/utils/pdfGeneratorSecure.ts:308:              <th style="width: 22%;">Citation & Title</th>
+src/utils/pdfGeneratorSecure.ts:319:                  ${p.caseTitle ? `<div style="font-size: 8.5px; color: #374151; font-style: italic; margin-top: 2px;">${p.caseTitle}</div>` : ''}
+src/utils/pdfGeneratorSecure.ts:358:          <div class="card-title">Plaintiffs (${analysis.stage4.plaintiffs.length})</div>
+src/utils/pdfGeneratorSecure.ts:368:          <div class="card-title">Defendants (${analysis.stage4.defendants.length})</div>
+src/utils/pdfGeneratorSecure.ts:414:          <div class="card-title">Order VII Plaint Requirements</div>
+src/utils/pdfGeneratorSecure.ts:420:          <div class="card-title">Order VII Rule 11 Rejection Audit</div>
+src/utils/pdfGeneratorSecure.ts:449:              <td>${iss.issueTitle}</td>
+src/utils/pdfGeneratorSecure.ts:484:          <div class="card-title">Statutory Presumptions Triggered</div>
+src/utils/pdfGeneratorSecure.ts:597:  title: string,
+src/utils/pdfGeneratorSecure.ts:658:        ${title || "LEGAL MEMORANDUM & COURTROOM DRAFT"}
+src/utils/pdfGeneratorSecure.ts:713:    const cleanTitle = (title || "Legal_Draft").replace(/[^a-zA-Z0-9]/g, "_");
+src/utils/pdfGeneratorSecure.ts:714:    pdf.save(`${cleanTitle}_${"0"}.pdf`);
+src/utils/pdfGeneratorSecure.ts:735:        <title>BCCAA Litigation Brief</title>
+server/auth/password-reset.ts:160:export async function resetPasswordWithToken(
+server/auth/totp.ts:153:export function createOtpAuthUri(
+server/auth/totp.ts:160:    `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}` +
+server/routes/auth.ts:15:  resetPasswordWithToken,
+server/routes/auth.ts:152:    const result = await resetPasswordWithToken(

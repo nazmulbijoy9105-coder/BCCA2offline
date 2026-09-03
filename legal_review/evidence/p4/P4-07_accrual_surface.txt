@@ -1,0 +1,696 @@
+484-  stepId: string;
+485-  layer: TraceLayer;
+486-  description: string;
+487-  dependsOnFacts: string[];
+488-  dependsOnRules: string[];
+489-  result: string;
+490-}
+491-
+492-interface ExecutionContext {
+493-  factRegistry: Map<string, AtomicFact>;
+494-  propositionRegistry: Map<string, Proposition>;
+495-  assertionRegistry: Map<string, Assertion>;
+496-  contradictionGraph: ContradictionEdge[];
+497-  eventTimeline: LegalEvent[];
+498-  executionTrace: ExecutionTraceStep[];
+499-  warnings: string[];
+500-  factCounter: number;
+501-  propositionCounter: number;
+502-  assertionCounter: number;
+503-  predicateConflictModes: Map<string, PredicateConflictMode>;
+504:  referenceDate?: number;
+505-}
+506-
+507-interface StageExecutionResult {
+508-  stageName: string;
+509-  status: RuleExecutionStatus;
+510-  details: string;
+511-  ruleResults?: RuleExecutionResult[];
+512-  data?: unknown;
+513-}
+514-
+515-// ============================================================================
+516-// PREDICATE CONFLICT MODE DEFAULTS
+517-// ============================================================================
+518-
+519-const DEFAULT_CONFLICT_MODES: Array<[string, PredicateConflictMode]> = [
+520-  ["*|VITAL STATUS|*", "BOOLEAN_EXCLUSIVE"],
+521-  ["*|REGISTRATION STATUS|*", "ENUM_EXCLUSIVE"],
+522-  ["*|PAYMENT STATUS|*", "ENUM_EXCLUSIVE"],
+523-  ["*|POSSESSION STATUS|*", "BOOLEAN_EXCLUSIVE"],
+524-  ["*|TITLE STATUS|*", "ENUM_EXCLUSIVE"],
+525-  ["*|LOCATION|*", "MULTI_VALUED"],
+526-  ["*|AMOUNT|*", "NUMERIC_EQUALITY"],
+527-  ["*|DATE|*", "NON_CONTRADICTORY"],
+528-];
+529-
+530-function getConflictMode(
+531-  ctx: ExecutionContext,
+532-  subject: string,
+533-  predicate: string,
+534-): PredicateConflictMode {
+535-  const key = `${subject.toUpperCase()}|${predicate.toUpperCase()}|*`;
+536-  if (ctx.predicateConflictModes.has(key)) {
+537-    return ctx.predicateConflictModes.get(key)!;
+538-  }
+539-  const predKey = `*|${predicate.toUpperCase()}|*`;
+540-  if (ctx.predicateConflictModes.has(predKey)) {
+541-    return ctx.predicateConflictModes.get(predKey)!;
+542-  }
+543-  return "NON_CONTRADICTORY";
+544-}
+545-
+546-// ============================================================================
+547-// CONTEXT / TRACE HELPERS
+548-// ============================================================================
+549-
+--
+1221-    const caseId = request?.caseId?.toString()?.trim()
+1222-      || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
+1223-
+1224-    // Must be declared before any early-return path below can reference it.
+1225-    const ctx = newContext();
+1226-
+1227-    // P0 FIX: fail-closed null guard. Never silently invent empty input.
+1228-    if (!request.input) {
+1229-      recordTrace(ctx, {
+1230-        layer: "P0_INPUT_VALIDATION",
+1231-        description: "EMPTY_INPUT: request.input is missing.",
+1232-        dependsOnFacts: [],
+1233-        dependsOnRules: [],
+1234-        result: "REJECTED",
+1235-      });
+1236-      return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "request.input is required.");
+1237-    }
+1238-
+1239-    // Normalize without mutating caller's original object (already cloned above)
+1240-    request.input.factPattern = String(request.input.factPattern ?? "").trim();
+1241:    // Fail-closed: missing submissionDate is left unset (falsy). Downstream,
+1242:    // ctx.referenceDate resolves to 0 when submissionDate is absent, which
+1243-    // correctly keeps isTimeBarred at null rather than computing off the
+1244-    // runtime clock. Do NOT reintroduce a `|| new Date()` default here.
+1245-    // ────────────────────────────────────────────────────────────────────
+1246-
+1247-    try {
+1248-      const license = await this.licenseValidator.validate(
+1249-        request.user ?? { id: "anonymous", userId: "anonymous", email: "", name: "Anonymous", role: "GUEST", chamberId: "" },
+1250-        request.license ?? { licenseId: "UNLICENSED", issuedTo: "anonymous" }
+1251-      );
+1252-      if (!license.valid) {
+1253-        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `LICENSE_DENIED: ${license.reason ?? "unspecified"}`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+1254-        return this.buildPreF0HaltResponse(ctx, caseId, "LICENSE_DENIED", license.reason ?? "unspecified");
+1255-      }
+1256-      if (!request.input?.factPattern) {
+1257-        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+1258-        return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
+1259-      }
+1260-      if ((request.input?.factPattern ?? "" ?? "").length > MAX_INPUT_LENGTH) {
+1261-        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+1262-        return this.buildPreF0HaltResponse(ctx, caseId, "INPUT_TOO_LARGE", `maximum ${MAX_INPUT_LENGTH} characters.`);
+1263-      }
+1264-      return await this.runPipeline(ctx, request, caseId, startTime);
+1265-    } catch (err) {
+1266-      const message = err instanceof Error ? err.message : String(err);
+1267-      recordTrace(ctx, { layer: "SYSTEM_ERROR", description: "Uncaught execution error.", dependsOnFacts: [], dependsOnRules: [], result: message });
+1268-      const response = this.buildPreF0HaltResponse(ctx, caseId, "SYSTEM_ERROR", message);
+1269-      await this.persistAudit(ctx, request, caseId, startTime, "ERROR", this.computeOutputHash(response, caseId)).catch(() => undefined);
+1270-      return response;
+1271-    }
+1272-  }
+1273-
+1274-  // =======================================================================
+1275-  // PIPELINE ORCHESTRATION
+1276-  // =======================================================================
+1277-
+1278-  private async runPipeline(
+1279-    ctx: ExecutionContext,
+1280-    request: AnalyzeRequest,
+1281-    caseId: string,
+1282-    startTime: number,
+1283-  ): Promise<CaseAnalysisResponse> {
+1284-    const { input } = request;
+1285-    const claimType = this.resolveClaimType(input.factPattern, input.focusDomain ?? "");
+1286:    ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : 0;
+1287-
+1288-    this.extractAtomicFacts(ctx, input.factPattern, claimType);
+1289-    await this.applyFactValidation(ctx);
+1290-    this.buildContradictionGraph(ctx);
+1291-    this.buildEventTimeline(ctx);
+1292-    this.logCriticalConflicts(ctx);
+1293-
+1294-    const ancestorResult = claimType === "INHERITANCE_CONSULTATION"
+1295-      ? this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", { requireVerified: true })
+1296-      : ({ status: Tristate.UNKNOWN, supportingFactIds: [], conflictDetected: false, sameFamilyConflictingFacts: [] } as FactEvaluationResult);
+1297-
+1298-    const chronology = ctx.eventTimeline.map((e) => ({
+1299-      date: e.date ?? "UNKNOWN",
+1300-      event: e.type,
+1301-      partiesInvolved: "",
+1302-      factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
+1303-      conflictInfo: ctx.contradictionGraph.length > 0
+1304-        ? {
+1305-            total: ctx.contradictionGraph.length,
+1306-            critical: ctx.contradictionGraph.filter((edge) => edge.status === "CRITICAL").length,
+1307-            edges: ctx.contradictionGraph.map((edge) => ({
+1308-              propositionKey: edge.propositionKey,
+1309-              leftFactId: edge.leftFactId,
+1310-              rightFactId: edge.rightFactId,
+1311-              status: edge.status,
+1312-            })),
+1313-          }
+1314-        : undefined,
+1315-    }));
+1316-
+1317-    const f0Gate = FactConsistencyGate.evaluate(
+1318-      input.factPattern,
+1319-      chronology,
+1320-      claimType,
+1321-      ancestorResult,
+1322-      Array.from(ctx.factRegistry.values()).map((f) => ({
+1323-        factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object,
+1324-        truth: f.truth, eventDate: f.eventDate, proposition: f.proposition,
+1325-      })),
+1326-      ctx.contradictionGraph.map((e) => ({
+1327-        propositionKey: e.propositionKey, leftFactId: e.leftFactId, rightFactId: e.rightFactId, status: e.status,
+1328-      })),
+1329-    );
+1330-
+1331-    recordTrace(ctx, {
+--
+1635-      }
+1636-    }
+1637-    // Role assignment: "X is purchaser", "Y is vendor"
+1638-    const roleMatch = clause.match(/([A-Z][a-zA-Z\s\.]+?)\s+is\s+(?:the\s+)?(purchaser|vendor|seller|buyer|owner|heir|co-sharer)/i);
+1639-    if (roleMatch) {
+1640-      const name = roleMatch[1].trim();
+1641-      const role = roleMatch[2].toUpperCase();
+1642-      candidates.push({ subject: name, predicate: "Capacity", object: role });
+1643-    }
+1644-  }
+1645-
+1646-  // P0-3: Agreement/registration facts
+1647-  private extractAgreementFacts(clause: string, candidates: FactCandidate[]): void {
+1648-    const lower = clause.toLowerCase();
+1649-    // Execution date
+1650-    const execMatch = clause.match(
+1651-      /(?:agreement|bainapatra|contract|sale\s+deed)[^\.]{0,80}?\b(?:executed|signed|dated|on)\b[^\.]{0,30}?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i
+1652-    );
+1653-    if (execMatch) {
+1654-      const date = execMatch[1].trim();
+1655:      candidates.push({ subject: "Bainapatra", predicate: "Execution Date", object: date, eventDate: date });
+1656-    }
+1657-    // Registration status — tri-state, explicit only
+1658-    if (/\bregistered\s+(?:bainapatra|agreement|sale\s+deed)\b/i.test(lower)) {
+1659-      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "REGISTERED" });
+1660-    } else if (
+1661-      /\bunregistered\s+(?:bainapatra|agreement|sale\s*deed)\b/i.test(lower) ||
+1662-      /(?:bainapatra|agreement|sale\s*deed)(?:\s+\w+){0,3}\s+(?:not\s+registered|without\s+registration)\b/i.test(lower)
+1663-    ) {
+1664-      candidates.push({ subject: "Bainapatra", predicate: "Registration Status", object: "UNREGISTERED" });
+1665-    }
+1666-    // Registration case number
+1667-    const regCaseMatch = clause.match(/(?:registration\s+case\s+no\.?|reg\.?\s*case)\s+([A-Z0-9\-]+)/i);
+1668-    if (regCaseMatch) {
+1669-      candidates.push({ subject: "Registration", predicate: "Case Number", object: regCaseMatch[1].trim() });
+1670-    }
+1671-    // Section 17A
+1672-    if (/\bsection\s+17A\b/i.test(clause)) {
+1673-      candidates.push({ subject: "Registration", predicate: "Statutory Basis", object: "Section 17A" });
+1674-    }
+1675-    // Section 21A
+1676-    if (/\bsection\s+21A\b/i.test(clause)) {
+1677-      candidates.push({ subject: "Specific Relief", predicate: "Statutory Basis", object: "Section 21A" });
+1678-    }
+1679-  }
+1680-
+1681-  // P0-2: Semantic monetary classification
+1682-  private extractMonetaryFacts(clause: string, candidates: FactCandidate[]): void {
+1683-    const patterns: Array<{ regex: RegExp; subject: string; predicate: string }> = [
+1684-      { regex: /(?:total\s+consideration|total\s+price)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Contract", predicate: "Total Consideration" },
+1685-      { regex: /(?:advance|earnest\s+money|earnest)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Advance", predicate: "Amount Paid" },
+1686-      { regex: /(?:balance\s+consideration|balance\s+amount|balance)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Balance", predicate: "Consideration" },
+1687-      { regex: /(?:deposited|deposit)(?:\s+\w+){0,3}\s+(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Court", predicate: "Deposit" },
+1688-      { regex: /(?:alternative\s+claim|alternative\s+money)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Alternative Claim", predicate: "Money Claim" },
+1689-      { regex: /(?:interest|interest\s+claim)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Interest", predicate: "Claim Amount" },
+1690-      { regex: /(?:damages|compensation)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Damages", predicate: "Claim Amount" },
+1691-      { regex: /(?:suit\s+valuation|valuation)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Suit", predicate: "Valuation" },
+1692-      { regex: /(?:court\s+fee|court\s+fees)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Court Fee", predicate: "Value" },
+1693-      { regex: /(?:jurisdictional\s+value|jurisdiction)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Jurisdiction", predicate: "Value" },
+1694-    ];
+1695-
+1696-    for (const p of patterns) {
+1697-      const m = clause.match(p.regex);
+1698-      if (m) {
+1699-        const val = parseMoney(m[1]);
+1700-        if (val !== null) {
+--
+1741-    if (/\b(?:treasury\s+challan|deposit|deposited|pay\s+order)\b/i.test(lower)) {
+1742-      candidates.push({ subject: "Treasury Deposit", predicate: "Payment Status", object: "DEPOSITED" });
+1743-      // Extract challan number
+1744-      const challanMatch = clause.match(/(?:challan\s+no\.?|treasury\s+challan)\s+([A-Z0-9\-]+)/i);
+1745-      if (challanMatch) {
+1746-        candidates.push({ subject: "Treasury Deposit", predicate: "Challan Number", object: challanMatch[1].trim() });
+1747-      }
+1748-    }
+1749-    // Registered title
+1750-    if (/\b(?:registered\s+(?:owner|title|kabala|sale\s+deed))\b/i.test(lower)) {
+1751-      candidates.push({ subject: "Plaintiff", predicate: "Title Status", object: "REGISTERED_OWNER" });
+1752-    }
+1753-  }
+1754-
+1755-  // P0-4: Temporal / chronology facts
+1756-  private extractTemporalFacts(clause: string, candidates: FactCandidate[]): void {
+1757-    // Refusal date
+1758-    const refusalMatch = clause.match(/\b(?:refused|refusal)\b[^\.]{0,80}?(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1759-    if (refusalMatch) {
+1760-      const date = refusalMatch[1].trim();
+1761:      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: date, eventDate: date });
+1762-    } else if (/\b(?:refused|refusal)\b/i.test(clause.toLowerCase())) {
+1763:      candidates.push({ subject: "Defendant", predicate: "Refusal Date", object: null });
+1764-    }
+1765-
+1766-    // Demand / legal notice date
+1767-    const demandMatch = clause.match(/\b(?:demanded|demand|legal\s+notice)\b[^\.]{0,80}?\bon\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1768-    if (demandMatch) {
+1769-      const date = demandMatch[1].trim();
+1770:      candidates.push({ subject: "Plaintiff", predicate: "Demand Date", object: date, eventDate: date });
+1771-    }
+1772-
+1773-    // Performance deadline
+1774-    const deadlineMatch = clause.match(/\b(?:within|before|on\s+or\s+before|deadline|period\s+of)\b[^\.]{0,80}?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1775-    if (deadlineMatch) {
+1776-      const date = deadlineMatch[1].trim();
+1777:      candidates.push({ subject: "Contract", predicate: "Performance Deadline", object: date, eventDate: date });
+1778-    }
+1779-
+1780-    // Disowning affidavit date
+1781-    if (/\b(?:disowning affidavit|affidavit of disown)\b/i.test(clause.toLowerCase())) {
+1782-      const affDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1783-      if (affDate) {
+1784-        const date = affDate[1].trim();
+1785-        candidates.push({ subject: "Ancestor", predicate: "Disowning Date", object: date, eventDate: date });
+1786-      }
+1787-    }
+1788-
+1789-    // Newspaper publication date
+1790-    if (/\b(?:newspaper publication|published in|daily ittefaq)\b/i.test(clause.toLowerCase())) {
+1791-      const pubDate = clause.match(/(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1792-      if (pubDate) {
+1793-        const date = pubDate[1].trim();
+1794-        candidates.push({ subject: "Media", predicate: "Publication Date", object: date, eventDate: date });
+1795-      }
+1796-    }
+1797-
+1798-    // Warisan sanad date
+1799-    if (/\b(?:warisan sanad|heirship certificate|legal heirship)\b/i.test(clause.toLowerCase())) {
+1800-      const wsDate = clause.match(/(?:dated|on)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1801-      if (wsDate) {
+1802-        const date = wsDate[1].trim();
+1803-        candidates.push({ subject: "Heirship", predicate: "Certificate Date", object: date, eventDate: date });
+1804-      }
+1805-    }
+1806-
+1807-    // Predeceased date
+1808-    if (/\b(?:predeceased|pre-deceased|died before)\b/i.test(clause.toLowerCase())) {
+1809-      const preDate = clause.match(/(?:in|on)\s+([0-9]{4}|[0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+1810-      if (preDate) {
+1811-        const date = preDate[1].trim();
+1812-        candidates.push({ subject: "Spouse", predicate: "Predeceased Date", object: date, eventDate: date });
+1813-      }
+1814-    }
+1815-  }
+1816-
+1817-  private extractDocumentFacts(clause: string, candidates: FactCandidate[]): void {
+1818-    // Document type detection for provenance
+1819-    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+1820-      // These are handled by detectAssertionContext for assertion typing
+1821-    }
+1822-  }
+1823-
+1824-  private extractSuccessionFacts(clause: string, candidates: FactCandidate[]): void {
+1825-    const lower = clause.toLowerCase();
+1826:    // Death
+1827-    if (/\b(?:died|passed away|demise|death of)\b/i.test(clause)) {
+1828-      const dm = clause.match(/(?:died|passed away|demise|death of)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1829-      if (dm) {
+1830-        const date = dm[1].trim();
+1831-        candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: date });
+1832-      } else {
+1833-        candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED" });
+1834-      }
+1835-    }
+1836-    // Living assertions
+1837-    if (/\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(lower)) {
+1838-      candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "ALIVE" });
+1839-    }
+1840-    // Intestate
+1841-    if (/\bintestate\b/i.test(lower)) {
+1842-      candidates.push({ subject: "Ancestor", predicate: "Succession Type", object: "INTESTATE" });
+1843-    }
+1844-    // Disowning
+1845-    if (/\b(?:disown|disowned|disowning)\b/i.test(lower)) {
+1846-      candidates.push({ subject: "Ancestor", predicate: "Disowning Declaration", object: "DECLARED" });
+1847-    }
+1848-  }
+1849-
+1850-  private extractPossessionFacts(clause: string, candidates: FactCandidate[]): void {
+1851-    const lower = clause.toLowerCase();
+1852-    // Dispossession
+1853-    if (/\b(?:dispossessed|ousted|ouster)\b/i.test(lower) ||
+1854-        /\bdenied\s+.*\baccess\b/i.test(lower) ||
+1855-        /\bprevented\s+.*\b(?:from\s+)?entering\b/i.test(lower) ||
+1856-        /\benclos(?:ing|ed)?\s+.*\b(?:portion|area|property)\b/i.test(lower) ||
+1857-        /\bexclusive\s+(?:ownership|possession|control)\b/i.test(lower)) {
+1858-      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "DISPOSSESSED" });
+1859-      // Extract dispossession date if present
+1860-      const dispDate = clause.match(/(?:on|since|from)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1861-      if (dispDate) {
+1862-        const date = dispDate[1].trim();
+1863:        candidates.push({ subject: "Plaintiff", predicate: "Dispossession Date", object: date, eventDate: date });
+1864-      }
+1865-    }
+1866-    if (/\b(?:in\s+(?:peaceful|continuous)\s+possession|possessing)\b/i.test(lower)) {
+1867-      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "IN_POSSESSION" });
+1868-    }
+1869-    // Unauthorized construction
+1870-    if (/\b(?:unauthorized\s+construction|constructing\s+without)\b/i.test(lower)) {
+1871-      candidates.push({ subject: "Defendant", predicate: "Construction Status", object: "UNAUTHORIZED" });
+1872-    }
+1873-  }
+1874-
+1875-  // =======================================================================
+1876-  // P0-5: ASSERTION CONTEXT DETECTION
+1877-  // =======================================================================
+1878-
+1879-  private detectAssertionContext(
+1880-    clause: string,
+1881-  ): { type: AssertionType; polarity: AssertionPolarity; assertedBy?: string; documentType?: string; documentDate?: string } {
+1882-    const lower = clause.toLowerCase();
+1883-
+1884-    // P0-5: Document-specific detection first (highest priority for provenance)
+1885-    // Defendant reply dated 10 February 2024
+1886-    const replyMatch = clause.match(/\b(?:defendant|respondent)\b[^.!?]{0,60}\b(?:reply|replied|written\s+statement|ws)\b[^.!?]{0,60}(?:dated\s+)?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+1887-    if (replyMatch) {
+1888-      return {
+1889-        type: AssertionType.DOCUMENTARY_FACT,
+1890-        polarity: AssertionPolarity.POSITIVE,
+1891-        assertedBy: "DEFENDANT",
+1892-        documentType: "DEFENDANT_REPLY",
+1893-        documentDate: replyMatch[1]?.trim(),
+1894-      };
+1895-    }
+1896-
+1897-    // Plaintiff's case / allegation
+1898-    if (
+1899-      /\b(?:it is the|this is the)\s+(?:plaintiff's|defendant's)\s+case\b/i.test(clause) ||
+1900-      /\b(?:plaintiff|defendant)\b[^.!?]{0,60}\b(?:case\s+is|contends?|submits?|claims?|alleges?)\b/i.test(clause)
+1901-    ) {
+1902-      const isPlaintiff = /\bplaintiff\b/i.test(clause) && !/\bdefendant\b[^.!?]{0,40}\b(?:contends?|submits?|claims?|denies?)\b/i.test(clause);
+1903-      const isDefendant = /\bdefendant\b/i.test(clause) && !/\bplaintiff\b[^.!?]{0,40}\b(?:contends?|submits?|claims?|alleges?)\b/i.test(clause);
+1904-      return {
+1905-        type: AssertionType.ASSERTED,
+1906-        polarity: AssertionPolarity.POSITIVE,
+1907-        assertedBy: isPlaintiff ? "PLAINTIFF" : isDefendant ? "DEFENDANT" : undefined,
+1908-      };
+--
+1957-
+1958-    const defendantMatch = clause.match(
+1959-      /\b(?:defendant|respondent|opponent)\b[^.!?]{0,40}\b(?:states?|says?|submits?|contends?|denies?)\b/i,
+1960-    );
+1961-    if (defendantMatch) return "DEFENDANT";
+1962-
+1963-    if (/\b(?:plaintiff|petitioner|claimant)\b/i.test(clause)) return "PLAINTIFF";
+1964-    if (/\b(?:defendant|respondent|opponent)\b/i.test(clause)) return "DEFENDANT";
+1965-
+1966-    return null;
+1967-  }
+1968-
+1969-  // =======================================================================
+1970-  // P0 HELPERS: ENSURE CLAIM-RELEVANT UNKNOWNS
+1971-  // =======================================================================
+1972-
+1973-  private ensureClaimRelevantUnknowns(ctx: ExecutionContext, claimType: ClaimType): void {
+1974-    const existingKeys = new Set(Array.from(ctx.factRegistry.values()).map((f) => `${f.subject}|${f.predicate}`.toUpperCase()));
+1975-    const requiredPairs: Array<[string, string]> = [];
+1976-    if (claimType === "SPECIFIC_PERFORMANCE") {
+1977:      requiredPairs.push(["Bainapatra", "Registration Status"], ["Treasury Deposit", "Payment Status"], ["Bainapatra", "Execution Date"]);
+1978-    } else if (claimType === "DECLARATION_AND_POSSESSION") {
+1979-      requiredPairs.push(["Plaintiff", "Title Status"], ["Plaintiff", "Possession Status"]);
+1980-    } else if (claimType === "INHERITANCE_CONSULTATION") {
+1981-      requiredPairs.push(["Ancestor", "Vital Status"], ["Ancestor", "Succession Type"], ["Property", "Ownership Structure"], ["Property", "Mutation Status"]);
+1982-    }
+1983-    for (const [subject, predicate] of requiredPairs) {
+1984-      const key = `${subject}|${predicate}`.toUpperCase();
+1985-      if (!existingKeys.has(key)) {
+1986-        const propositionId = this.ensureProposition(ctx, subject, predicate, null, `[SYSTEM-GENERATED] No facts extracted for ${subject} ${predicate}`);
+1987-        const assertionId = shortId("A", ctx.assertionCounter++);
+1988-        const factId = shortId("F", ctx.factCounter++);
+1989-        ctx.assertionRegistry.set(assertionId, { assertionId, propositionId, assertionType: AssertionType.INFERRED, polarity: AssertionPolarity.UNKNOWN, sourceSpan: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" } });
+1990-        ctx.factRegistry.set(factId, { factId, propositionId, assertionId, proposition: `[AUTO] ${subject} ${predicate} — not mentioned in input`, subject, predicate, object: null, truth: Tristate.UNKNOWN, polarity: AssertionPolarity.UNKNOWN, source: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" }, assertionType: AssertionType.INFERRED, validationStatus: ValidationStatus.UNVERIFIED, confidence: FactConfidence.CANDIDATE, validation: { extractionStatus: ExtractionStatus.NOT_EXECUTED, sourceStatus: SourceStatus.UNRESOLVED, authenticationStatus: AuthenticationStatus.NOT_EXECUTED, corroborationStatus: CorroborationStatus.NOT_EXECUTED, humanValidationStatus: HumanValidationStatus.NOT_EXECUTED } });
+1991-      }
+1992-    }
+1993-  }
+1994-
+1995-  private buildContradictionGraph(ctx: ExecutionContext): void {
+1996-    const facts = Array.from(ctx.factRegistry.values());
+1997-    const familyMap = new Map<string, AtomicFact[]>();
+1998-    for (const fact of facts) {
+1999-      const familyKey = `${fact.subject}|${fact.predicate}`.toUpperCase();
+2000-      if (!familyMap.has(familyKey)) familyMap.set(familyKey, []);
+2001-      familyMap.get(familyKey)!.push(fact);
+2002-    }
+2003-    let edgeCounter = 1;
+2004-    for (const [familyKey, familyFacts] of familyMap) {
+2005-      if (familyFacts.length < 2) continue;
+2006-      const mode = getConflictMode(ctx, familyFacts[0].subject, familyFacts[0].predicate);
+2007-      if (mode === "NON_CONTRADICTORY" || mode === "MULTI_VALUED" || mode === "NUMERIC_RANGE") continue;
+2008-      for (let i = 0; i < familyFacts.length; i++) {
+2009-        for (let j = i + 1; j < familyFacts.length; j++) {
+2010-          const left = familyFacts[i];
+2011-          const right = familyFacts[j];
+2012-          let isConflict = false;
+2013-          if (mode === "BOOLEAN_EXCLUSIVE") {
+2014-            isConflict =
+2015-              (left.truth === Tristate.TRUE && right.truth === Tristate.FALSE) ||
+2016-              (left.truth === Tristate.FALSE && right.truth === Tristate.TRUE);
+2017-          } else if (mode === "ENUM_EXCLUSIVE") {
+2018-            isConflict =
+2019-              left.object !== right.object &&
+2020-              left.truth === Tristate.TRUE &&
+2021-              right.truth === Tristate.TRUE;
+2022-          } else if (mode === "NUMERIC_EQUALITY") {
+--
+2081-        type: eventType,
+2082-        date: dateStr,
+2083-        datePrecision: isAmbiguousDate(fact.eventDate!) ? "AMBIGUOUS" : "EXACT",
+2084-        sourceFactIds: [fact.factId],
+2085-      });
+2086-    }
+2087-    if (ctx.eventTimeline.length === 0) {
+2088-      ctx.eventTimeline.push({
+2089-        eventId: "EVT-00001",
+2090-        type: "OTHER",
+2091-        date: null,
+2092-        datePrecision: "UNKNOWN",
+2093-        sourceFactIds: [],
+2094-      });
+2095-    }
+2096-  }
+2097-
+2098-  // P0-4: Explicit event type mapping
+2099-  private inferEventType(fact: AtomicFact): LegalEventType {
+2100-    if (fact.predicate === "Vital Status" && fact.object === "DECEASED") return "ANCESTOR_DEATH";
+2101:    if (fact.predicate === "Execution Date") return "AGREEMENT_EXECUTION";
+2102-    if (fact.predicate === "Registration Status" && fact.object === "REGISTERED") return "AGREEMENT_REGISTERED";
+2103-    if (fact.predicate === "Amount Paid" && fact.subject === "Advance") return "ADVANCE_PAID";
+2104-    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED" && fact.subject === "Treasury Deposit") return "BALANCE_DEPOSIT";
+2105:    if (fact.predicate === "Performance Deadline") return "PERFORMANCE_DEADLINE";
+2106:    if (fact.predicate === "Demand Date") return "LEGAL_NOTICE";
+2107:    if (fact.predicate === "Refusal Date") return "REFUSAL";
+2108:    if (fact.predicate === "Dispossession Date") return "DISPOSSESSION";
+2109-    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED") return "PAYMENT";
+2110-    if (fact.predicate === "Possession Status" && fact.object === "DISPOSSESSED") return "DISPOSSESSION";
+2111-    if (fact.predicate === "Registration Status") return "REGISTRATION";
+2112-    if (fact.predicate === "Mutation Status") return "AMENDMENT";
+2113-    if (fact.predicate === "Construction Status" && fact.object === "UNAUTHORIZED") return "ENCROACHMENT";
+2114-    if (fact.predicate === "Ownership Structure" && fact.object === "JOINT") return "OTHER";
+2115-    return "OTHER";
+2116-  }
+2117-
+2118-  private evaluateFact(
+2119-    ctx: ExecutionContext,
+2120-    subject: string,
+2121-    predicate: string,
+2122-    object: string | null,
+2123-    options: {
+2124-      requireVerified?: boolean;
+2125-      validationRequirements?: ValidationRequirements;
+2126-      objectFilter?: string | null;
+2127-    } = {},
+2128-  ): FactEvaluationResult {
+2129-    const subjectUpper = subject.toUpperCase();
+2130-    const predicateUpper = predicate.toUpperCase();
+2131-    const objectFilter = options.objectFilter ?? object;
+2132-    const familyFacts = Array.from(ctx.factRegistry.values()).filter(
+2133-      (f) => f.subject?.toUpperCase() === subjectUpper && f.predicate?.toUpperCase() === predicateUpper,
+2134-    );
+2135-    const sameFamilyConflictingFacts = familyFacts
+2136-      .filter((f) => f.truth === Tristate.TRUE)
+2137-      .map((f) => ({ factId: f.factId, object: f.object, truth: f.truth }));
+2138-    const conflictDetected = sameFamilyConflictingFacts.length > 1 && new Set(sameFamilyConflictingFacts.map((f) => f.object)).size > 1;
+2139-    const matchingFacts = objectFilter
+2140-      ? familyFacts.filter((f) => f.object?.toUpperCase() === objectFilter.toUpperCase())
+2141-      : familyFacts;
+2142-    let bestStatus = Tristate.UNKNOWN;
+2143-    const supportingFactIds: string[] = [];
+2144-    let validationDetails: FactEvaluationResult["validationDetails"] = undefined;
+2145-    for (const fact of matchingFacts) {
+2146-      let passesValidation = true;
+2147-      if (options.validationRequirements) {
+2148-        passesValidation = meetsValidationRequirements(fact, options.validationRequirements);
+2149-      } else if (options.requireVerified) {
+2150-        passesValidation = fact.validationStatus === ValidationStatus.VERIFIED;
+2151-      }
+2152-      if (!passesValidation) continue;
+2153-      if (fact.truth === Tristate.TRUE) {
+--
+2208-  }
+2209-
+2210-  private mapLegislation(_ctx: ExecutionContext, claimType: ClaimType) {
+2211-    return this.ruleRegistry.getLegislationMapping(claimType);
+2212-  }
+2213-
+2214-  // =======================================================================
+2215-  // LIMITATION ENGINE
+2216-  // =======================================================================
+2217-
+2218-  private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
+2219-    isTimeBarred: boolean | null;
+2220-    accrualDate: string | null;
+2221-    limitationPeriodYears: number | null;
+2222-    calculationType: string;
+2223-    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[]; calculationType?: string }
+2224-    preliminaryAnalysis?: string;
+2225-  } {
+2226-    const facts = Array.from(ctx.factRegistry.values());
+2227-    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
+2228:    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+2229:    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+2230:    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
+2231-    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+2232:    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
+2233-    let accrualDate: string | null = null;
+2234-    let limitationPeriodYears: number | null = null;
+2235-    let calculationType = "other_category";
+2236-
+2237-    if (claimType === "SPECIFIC_PERFORMANCE") {
+2238-      // P1-04 FAIL-CLOSED:
+2239-      // A refusal date alone cannot establish the legally operative
+2240-      // accrual trigger. Execution/agreement context must independently
+2241-      // exist and the dates must be temporally distinct.
+2242-      //
+2243-      // IMPORTANT:
+2244-      // refusalDate may be a human-readable extracted value
+2245-      // ("20 August 2025"). Never expose that representation as the
+2246-      // authoritative accrualDate. Normalize it through the existing
+2247-      // strict date parser before assigning it to stage3.
+2248-      if (refusalDate && executionDate) {
+2249-        const refusalTs = strictDateTimestamp(refusalDate);
+2250-        const executionTs = strictDateTimestamp(executionDate);
+2251-
+2252-        if (
+2253-          refusalTs !== null &&
+2254-          executionTs !== null &&
+2255-          refusalTs !== executionTs
+2256-        ) {
+2257-          accrualDate = toISODate(refusalDate);
+2258-          limitationPeriodYears = 3;
+2259-          calculationType = "refusal_date";
+2260-        } else {
+2261-          accrualDate = "NOT_EXTRACTED";
+2262-          limitationPeriodYears = null;
+2263-          calculationType = "missing_dates";
+2264-        }
+2265-      } else {
+2266-        accrualDate = "NOT_EXTRACTED";
+2267-        limitationPeriodYears = null;
+2268-        calculationType = "missing_dates";
+2269-      }
+2270-    }
+2271-    else if (claimType === "DECLARATION_AND_POSSESSION") {
+2272-      if (dispossessionDate) {
+2273-        accrualDate = dispossessionDate;
+2274-        limitationPeriodYears = 12;
+2275-        calculationType = "dispossession_date";
+2276-      } else {
+2277-        accrualDate = "NOT_EXTRACTED";
+--
+2289-        calculationType = "missing_dates";
+2290-      }
+2291-    } else {
+2292-      // P1-04 FAIL-CLOSED:
+2293-      // Unknown/general claim categories have no legally established
+2294-      // accrual trigger in this engine. Never promote an arbitrary
+2295-      // chronological event into an authoritative accrual date.
+2296-      accrualDate = "NOT_EXTRACTED";
+2297-      limitationPeriodYears = null;
+2298-      calculationType = "missing_dates";
+2299-    }
+2300-    // FAIL-CLOSED: limitation must never silently become "not barred"
+2301-    // when the accrual trigger, limitation period, or reference date is
+2302-    // unavailable. "false" is reserved for a computable non-barred result.
+2303-    let isTimeBarred: boolean | null = null;
+2304-
+2305-    if (
+2306-      accrualDate &&
+2307-      accrualDate !== "NOT_EXTRACTED" &&
+2308-      limitationPeriodYears !== null &&
+2309:      ctx.referenceDate
+2310-    ) {
+2311-      const accrualTs = strictDateTimestamp(accrualDate);
+2312:      const refTs = ctx.referenceDate;
+2313-      const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
+2314-      isTimeBarred = refTs > accrualTs + periodMs;
+2315-    }
+2316-    return {
+2317-      isTimeBarred,
+2318-      accrualDate,
+2319-      limitationPeriodYears,
+2320-      calculationType,
+2321-      timelineValidation: { isValid: true, errors: [], warnings: [], calculationType },
+2322-      preliminaryAnalysis:
+2323-        isTimeBarred === null
+2324-          ? "Limitation cannot be computed — legally sufficient accrual trigger, limitation period, or reference date is unavailable"
+2325-          : `Limitation analysis based on ${calculationType}`,
+2326-    };
+2327-  }
+2328-
+2329-  // =======================================================================
+2330-  // ELEMENT COMPLETENESS GATE
+2331-  // =======================================================================
+2332-
+2333-  private executeElementCompletenessGate(ctx: ExecutionContext, claimType: ClaimType): ElementGateResult {
+2334-    const rules = this.ruleRegistry.getClaimElements(claimType, "Bangladesh");
+2335-    const results: RuleExecutionResult[] = [];
+2336-    let allSatisfied = true;
+2337-    const missingElements: string[] = [];
+2338-    const unknownElements: string[] = [];
+2339-    const fatalFailures: string[] = [];
+2340-    for (const rule of rules) {
+2341-      const predicateResults: PredicateExecutionResult[] = [];
+2342-      let ruleSatisfied = true;
+2343-      for (const pred of rule.predicates) {
+2344-        const evalResult = this.evaluateFact(ctx, pred.subject, pred.predicate, pred.object ?? null, {
+2345-          validationRequirements: pred.validationRequirements,
+2346-          requireVerified: pred.requireVerified,
+2347-        });
+2348-        const status = evalResult.status === Tristate.TRUE ? "TRUE" : evalResult.status === Tristate.FALSE ? "FALSE" : "UNKNOWN";
+2349-        predicateResults.push({
+2350-          predicateSubject: pred.subject,
+2351-          predicateId: pred.predicateId,
+2352-          status,
+2353-          factIds: evalResult.supportingFactIds,
+2354-          conflictDetected: evalResult.conflictDetected,
+2355-          sameFamilyConflictingFacts: evalResult.sameFamilyConflictingFacts,
+2356-        });
+2357-        if (evalResult.status !== Tristate.TRUE) ruleSatisfied = false;

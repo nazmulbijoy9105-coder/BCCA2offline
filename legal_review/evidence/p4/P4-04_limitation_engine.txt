@@ -1,0 +1,226 @@
+      }
+    }
+    return { status: bestStatus, supportingFactIds, conflictDetected, sameFamilyConflictingFacts, validationDetails };
+  }
+
+  // =======================================================================
+  // DOMAIN & LEGISLATION
+  // =======================================================================
+
+  private resolveClaimType(factPattern: string, focusDomain: string): ClaimType {
+    const lower = factPattern.toLowerCase();
+    if (focusDomain) {
+      const fd = focusDomain.toLowerCase();
+      if (fd.includes("specific performance")) return "SPECIFIC_PERFORMANCE";
+      if (fd.includes("declaration") || fd.includes("possession")) return "DECLARATION_AND_POSSESSION";
+      if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
+    }
+    if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
+    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+    if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
+    return "GENERAL_CIVIL";
+  }
+
+  private classifyDomain(_ctx: ExecutionContext, claimType: ClaimType): string {
+    if (claimType === "SPECIFIC_PERFORMANCE") return "SPECIFIC_PERFORMANCE";
+    if (claimType === "DECLARATION_AND_POSSESSION") return "DECLARATION_AND_POSSESSION";
+    if (claimType === "INHERITANCE_CONSULTATION") return "INHERITANCE_CONSULTATION";
+    return "GENERAL_CIVIL";
+  }
+
+  private mapLegislation(_ctx: ExecutionContext, claimType: ClaimType) {
+    return this.ruleRegistry.getLegislationMapping(claimType);
+  }
+
+  // =======================================================================
+  // LIMITATION ENGINE
+  // =======================================================================
+
+  private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
+    isTimeBarred: boolean | null;
+    accrualDate: string | null;
+    limitationPeriodYears: number | null;
+    calculationType: string;
+    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[]; calculationType?: string }
+    preliminaryAnalysis?: string;
+  } {
+    const facts = Array.from(ctx.factRegistry.values());
+    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
+    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
+    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
+    let accrualDate: string | null = null;
+    let limitationPeriodYears: number | null = null;
+    let calculationType = "other_category";
+
+    if (claimType === "SPECIFIC_PERFORMANCE") {
+      // P1-04 FAIL-CLOSED:
+      // A refusal date alone cannot establish the legally operative
+      // accrual trigger. Execution/agreement context must independently
+      // exist and the dates must be temporally distinct.
+      //
+      // IMPORTANT:
+      // refusalDate may be a human-readable extracted value
+      // ("20 August 2025"). Never expose that representation as the
+      // authoritative accrualDate. Normalize it through the existing
+      // strict date parser before assigning it to stage3.
+      if (refusalDate && executionDate) {
+        const refusalTs = strictDateTimestamp(refusalDate);
+        const executionTs = strictDateTimestamp(executionDate);
+
+        if (
+          refusalTs !== null &&
+          executionTs !== null &&
+          refusalTs !== executionTs
+        ) {
+          accrualDate = toISODate(refusalDate);
+          limitationPeriodYears = 3;
+          calculationType = "refusal_date";
+        } else {
+          accrualDate = "NOT_EXTRACTED";
+          limitationPeriodYears = null;
+          calculationType = "missing_dates";
+        }
+      } else {
+        accrualDate = "NOT_EXTRACTED";
+        limitationPeriodYears = null;
+        calculationType = "missing_dates";
+      }
+    }
+    else if (claimType === "DECLARATION_AND_POSSESSION") {
+      if (dispossessionDate) {
+        accrualDate = dispossessionDate;
+        limitationPeriodYears = 12;
+        calculationType = "dispossession_date";
+      } else {
+        accrualDate = "NOT_EXTRACTED";
+        limitationPeriodYears = null;
+        calculationType = "missing_dates";
+      }
+    } else if (claimType === "INHERITANCE_CONSULTATION") {
+      if (deathDate) {
+        accrualDate = deathDate;
+        limitationPeriodYears = 12;
+        calculationType = "death_date";
+      } else {
+        accrualDate = "NOT_EXTRACTED";
+        limitationPeriodYears = null;
+        calculationType = "missing_dates";
+      }
+    } else {
+      // P1-04 FAIL-CLOSED:
+      // Unknown/general claim categories have no legally established
+      // accrual trigger in this engine. Never promote an arbitrary
+      // chronological event into an authoritative accrual date.
+      accrualDate = "NOT_EXTRACTED";
+      limitationPeriodYears = null;
+      calculationType = "missing_dates";
+    }
+    // FAIL-CLOSED: limitation must never silently become "not barred"
+    // when the accrual trigger, limitation period, or reference date is
+    // unavailable. "false" is reserved for a computable non-barred result.
+    let isTimeBarred: boolean | null = null;
+
+    if (
+      accrualDate &&
+      accrualDate !== "NOT_EXTRACTED" &&
+      limitationPeriodYears !== null &&
+      ctx.referenceDate
+    ) {
+      const accrualTs = strictDateTimestamp(accrualDate);
+      const refTs = ctx.referenceDate;
+      const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
+      isTimeBarred = refTs > accrualTs + periodMs;
+    }
+    return {
+      isTimeBarred,
+      accrualDate,
+      limitationPeriodYears,
+      calculationType,
+      timelineValidation: { isValid: true, errors: [], warnings: [], calculationType },
+      preliminaryAnalysis:
+        isTimeBarred === null
+          ? "Limitation cannot be computed — legally sufficient accrual trigger, limitation period, or reference date is unavailable"
+          : `Limitation analysis based on ${calculationType}`,
+    };
+  }
+
+  // =======================================================================
+  // ELEMENT COMPLETENESS GATE
+  // =======================================================================
+
+  private executeElementCompletenessGate(ctx: ExecutionContext, claimType: ClaimType): ElementGateResult {
+    const rules = this.ruleRegistry.getClaimElements(claimType, "Bangladesh");
+    const results: RuleExecutionResult[] = [];
+    let allSatisfied = true;
+    const missingElements: string[] = [];
+    const unknownElements: string[] = [];
+    const fatalFailures: string[] = [];
+    for (const rule of rules) {
+      const predicateResults: PredicateExecutionResult[] = [];
+      let ruleSatisfied = true;
+      for (const pred of rule.predicates) {
+        const evalResult = this.evaluateFact(ctx, pred.subject, pred.predicate, pred.object ?? null, {
+          validationRequirements: pred.validationRequirements,
+          requireVerified: pred.requireVerified,
+        });
+        const status = evalResult.status === Tristate.TRUE ? "TRUE" : evalResult.status === Tristate.FALSE ? "FALSE" : "UNKNOWN";
+        predicateResults.push({
+          predicateSubject: pred.subject,
+          predicateId: pred.predicateId,
+          status,
+          factIds: evalResult.supportingFactIds,
+          conflictDetected: evalResult.conflictDetected,
+          sameFamilyConflictingFacts: evalResult.sameFamilyConflictingFacts,
+        });
+        if (evalResult.status !== Tristate.TRUE) ruleSatisfied = false;
+      }
+      const ruleResult: RuleExecutionResult = {
+        ruleId: rule.ruleId,
+        status: ruleSatisfied ? "SATISFIED" : "UNKNOWN",
+        predicateResults,
+        authorityIds: [rule.authority.act],
+        burden: rule.burden,
+        legalEffect: rule.legalEffect,
+        explanationCode: ruleSatisfied ? "ALL_PREDICATES_TRUE" : "PREDICATE_NOT_TRUE",
+        authorityStatus: this.authorityStatus,
+      };
+      results.push(ruleResult);
+      if (ruleSatisfied) continue;
+      allSatisfied = false;
+      if (rule.ruleType === "ELEMENT") {
+        if (predicateResults.some((pr) => pr.status === "UNKNOWN")) {
+          unknownElements.push(rule.ruleId);
+        } else {
+          missingElements.push(rule.ruleId);
+        }
+      } else if (rule.ruleType === "BAR") {
+        fatalFailures.push(rule.ruleId);
+      }
+    }
+    const status = fatalFailures.length > 0 ? GateStatus.HALT : allSatisfied ? GateStatus.PASS : GateStatus.INDETERMINATE;
+    return { status, allSatisfied, missingElements, unknownElements, fatalFailures, ruleExecutionResults: results };
+  }
+
+  // =======================================================================
+  // P0-9: PARTY STANDI — consumes fact graph, not raw text
+  // =======================================================================
+
+  private executePartyStandiRules(
+    ctx: ExecutionContext,
+    _claimType: ClaimType,
+    _rawText: string,
+  ): {
+    plaintiffs: string[];
+    defendants: string[];
+    joinderIssues: string;
+    locusStandiSummary: string;
+  } {
+    // P0-1: Consume Stage 0 atomic facts for party identity
+    const partyFacts = Array.from(ctx.factRegistry.values()).filter(
+      (f) => f.predicate === "Party Identity" || f.predicate === "Party Role",
+    );
+
+    // Extract plaintiff names from Party Identity facts with subject "Plaintiff"

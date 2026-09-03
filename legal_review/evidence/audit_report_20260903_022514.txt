@@ -1,0 +1,58 @@
+############################################################
+PHASE 0: TRUST BOUNDARY
+############################################################
+--- P0-1: corpusMode / production gating ---
+45:  corpusMode: "DEVELOPMENT" as "DEVELOPMENT" | "VALIDATED_PRODUCTION",
+619:  corpusMode: string;
+1174:  private readonly corpusMode: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
+1181:    corpusMode?: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
+1183:    this.corpusMode = deps?.corpusMode ?? ENGINE_MANIFEST.corpusMode;
+1189:      (this.corpusMode === "DEVELOPMENT"
+1195:    if (this.corpusMode === "VALIDATED_PRODUCTION") {
+2940:      executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+2943:      corpusMode: this.corpusMode,
+3069:      executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+3072:      corpusMode: this.corpusMode,
+3154:      executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
+3157:      corpusMode: this.corpusMode,
+3271:      corpusMode: this.corpusMode,
+45:  corpusMode: "DEVELOPMENT" as "DEVELOPMENT" | "VALIDATED_PRODUCTION",
+375:  authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
+412:  authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
+794:  authorityStatus = "DEVELOPMENT_FIXTURE" as const;
+1173:  private readonly authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
+1174:  private readonly corpusMode: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
+1181:    corpusMode?: "DEVELOPMENT" | "VALIDATED_PRODUCTION";
+1193:      deps?.ruleRegistry?.authorityStatus ?? this.ruleRegistry.authorityStatus ?? "DEVELOPMENT_FIXTURE";
+1195:    if (this.corpusMode === "VALIDATED_PRODUCTION") {
+1196:      if (this.authorityStatus !== "VALIDATED_PRODUCTION") {
+1197:        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires ruleRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.");
+1201:        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a ValidatedAuditSink.");
+1204:        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
+
+--- P0-2: dependency vulnerabilities ---
+npm warn config production Use `--omit=dev` instead.
+# npm audit report
+
+qs  2.2.5 - 6.15.3
+Severity: moderate
+qs array-limit bypass via bracket-key comma parsing - https://github.com/advisories/GHSA-x5fp-wj9c-mxmx
+qs: Denial of Service via Attacker Controlled isBuffer - https://github.com/advisories/GHSA-4mjr-xmp4-gh2g
+fix available via `npm audit fix`
+node_modules/qs
+  body-parser  1.20.5 - 1.20.6
+  Depends on vulnerable versions of qs
+  node_modules/body-parser
+  express  4.22.2
+  Depends on vulnerable versions of body-parser
+  Depends on vulnerable versions of qs
+  node_modules/express
+
+3 moderate severity vulnerabilities
+
+To address all issues, run:
+  npm audit fix
+
+--- P0-3: hardcoded watermark/integrity claims ---
+
+--- P0-4: NLP/AI marketing claims vs actual regex extraction ---

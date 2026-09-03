@@ -1,0 +1,92 @@
+src/engine/BCCAAEngine.deterministic.test.ts:74:      accrualDate: stage3?.accrualDate,
+src/engine/BCCAAEngine.deterministic.test.ts:76:      limitationArticle: stage3?.limitationArticle,
+src/engine/BCCAAEngine.deterministic.test.ts:108:    it("SPECIFIC_PERFORMANCE pattern — identical input produces identical snapshot", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:136:    it("3-year limitation from August 2020 refusal is TIME_BARRED in 2024", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:145:      expect(r.stage3.accrualDate).toBe("2020-08-20");
+src/engine/BCCAAEngine.deterministic.test.ts:290:      expect(r.stage3.accrualDate).toBe("2020-08-20");
+src/engine/BCCAAEngine.phase1.test.ts:1:import { describe, it, expect } from "vitest"; import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine"; import { makeAnalyzeRequest as makeRequest } from "./testFixtures"; const engine = new BCCAAEngine({ licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) }, factValidationProvider: new NoOpFactValidationProvider() }); describe("P1-01: Semantic determinism", () => { it("SPECIFIC_PERFORMANCE identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01", factPattern: "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); it("death pattern identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01-SC", factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); }); describe("P1-02: Temporal determinism", () => { it("3-year limitation from 2020 refusal is TIME_BARRED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-02", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.", submissionDate: "2024-01-15" })); expect(r.stage3.isTimeBarred).toBe(true); expect(r.stage3.accrualDate).toBe("2020-08-20"); }); }); describe("P1-03: Fact extraction", () => { it("UNREGISTERED in atomicFacts", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-REG", factPattern: "The plaintiff relied on an unregistered bainapatra." })); const objs = (r.stage0?.atomicFacts ?? []).map((f: any) => f.object).filter(Boolean); expect(objs).toContain("UNREGISTERED"); }); it("death fact extracted as DECEASED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-DEATH", factPattern: "The plaintiff father died on 10 March 2020." })); const deathFacts = (r.stage0?.atomicFacts ?? []).filter((f: any) => f.predicate === "Vital Status" && f.object === "DECEASED"); expect(deathFacts.length).toBeGreaterThanOrEqual(1); expect(deathFacts[0].subject).toBe("Ancestor"); }); });
+src/engine/BCCAAEngine.phase1b.test.ts:25:  it("no dates provided → accrualDate is NOT_EXTRACTED", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:30:    expect(r.stage3.accrualDate).toBe("NOT_EXTRACTED");
+src/engine/BCCAAEngine.phase1b.test.ts:31:    expect(r.stage3.limitationPeriodYears).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:62:    expect(r.stage3.accrualDate).toBe("NOT_EXTRACTED");
+src/engine/BCCAAEngine.phase1b.test.ts:63:    expect(r.stage3.limitationPeriodYears).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:74:    expect(r.stage3.accrualDate).toBe("2025-08-20");
+src/engine/BCCAAEngine.phase1b.test.ts:75:    expect(r.stage3.limitationPeriodYears).toBe(3);
+src/engine/BCCAAEngine.phase2.test.ts:12:  it("detects SPECIFIC_PERFORMANCE from narrative", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:35:  it("partition narrative resolves to DECLARATION_AND_POSSESSION domain", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:40:    expect(r.claimType).toBe("DECLARATION_AND_POSSESSION");
+src/engine/BCCAAEngine.phase2.test.ts:41:    expect(r.domain).toBe("DECLARATION_AND_POSSESSION");
+src/engine/BCCAAEngine.phase2.test.ts:58:    expect(r.stage1?.primaryDomain).toBe("DECLARATION_AND_POSSESSION");
+src/engine/BCCAAEngine.phase2.test.ts:528:    expect(r.stage3.accrualDate === "NOT_EXTRACTED" || r.stage3.accrualDate === "2020-08-20").toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:548:    expect(r.stage3.accrualDate).toBeDefined();  // Engine extracts dates; temporal ordering validation is future work
+src/engine/BCCAAEngine.phase3.test.ts:63:    expect(r.stage3.accrualDate).toBe("2020-08-20");
+src/engine/BCCAAEngine.phase3.test.ts:72:    expect(r.stage3.accrualDate).toBe(r2.stage3.accrualDate);
+src/engine/BCCAAEngine.phase3.test.ts:145:    expect(r.stage3.accrualDate).toBeDefined();
+src/engine/BCCAAEngine.ts:152:  | "SPECIFIC_PERFORMANCE"
+src/engine/BCCAAEngine.ts:153:  | "DECLARATION_AND_POSSESSION"
+src/engine/BCCAAEngine.ts:154:  | "INHERITANCE_CONSULTATION"
+src/engine/BCCAAEngine.ts:797:    if (claimType === "SPECIFIC_PERFORMANCE") {
+src/engine/BCCAAEngine.ts:859:    if (claimType === "INHERITANCE_CONSULTATION") {
+src/engine/BCCAAEngine.ts:892:    if (claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:958:    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:964:    if (claimType === "INHERITANCE_CONSULTATION")
+src/engine/BCCAAEngine.ts:1294:    const ancestorResult = claimType === "INHERITANCE_CONSULTATION"
+src/engine/BCCAAEngine.ts:1976:    if (claimType === "SPECIFIC_PERFORMANCE") {
+src/engine/BCCAAEngine.ts:1978:    } else if (claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:1980:    } else if (claimType === "INHERITANCE_CONSULTATION") {
+src/engine/BCCAAEngine.ts:2193:      if (fd.includes("specific performance")) return "SPECIFIC_PERFORMANCE";
+src/engine/BCCAAEngine.ts:2194:      if (fd.includes("declaration") || fd.includes("possession")) return "DECLARATION_AND_POSSESSION";
+src/engine/BCCAAEngine.ts:2195:      if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
+src/engine/BCCAAEngine.ts:2197:    if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
+src/engine/BCCAAEngine.ts:2198:    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+src/engine/BCCAAEngine.ts:2199:    if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
+src/engine/BCCAAEngine.ts:2204:    if (claimType === "SPECIFIC_PERFORMANCE") return "SPECIFIC_PERFORMANCE";
+src/engine/BCCAAEngine.ts:2205:    if (claimType === "DECLARATION_AND_POSSESSION") return "DECLARATION_AND_POSSESSION";
+src/engine/BCCAAEngine.ts:2206:    if (claimType === "INHERITANCE_CONSULTATION") return "INHERITANCE_CONSULTATION";
+src/engine/BCCAAEngine.ts:2220:    accrualDate: string | null;
+src/engine/BCCAAEngine.ts:2221:    limitationPeriodYears: number | null;
+src/engine/BCCAAEngine.ts:2233:    let accrualDate: string | null = null;
+src/engine/BCCAAEngine.ts:2234:    let limitationPeriodYears: number | null = null;
+src/engine/BCCAAEngine.ts:2237:    if (claimType === "SPECIFIC_PERFORMANCE") {
+src/engine/BCCAAEngine.ts:2246:      // authoritative accrualDate. Normalize it through the existing
+src/engine/BCCAAEngine.ts:2257:          accrualDate = toISODate(refusalDate);
+src/engine/BCCAAEngine.ts:2258:          limitationPeriodYears = 3;
+src/engine/BCCAAEngine.ts:2261:          accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2262:          limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2266:        accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2267:        limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2271:    else if (claimType === "DECLARATION_AND_POSSESSION") {
+src/engine/BCCAAEngine.ts:2273:        accrualDate = dispossessionDate;
+src/engine/BCCAAEngine.ts:2274:        limitationPeriodYears = 12;
+src/engine/BCCAAEngine.ts:2277:        accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2278:        limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2281:    } else if (claimType === "INHERITANCE_CONSULTATION") {
+src/engine/BCCAAEngine.ts:2283:        accrualDate = deathDate;
+src/engine/BCCAAEngine.ts:2284:        limitationPeriodYears = 12;
+src/engine/BCCAAEngine.ts:2287:        accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2288:        limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2296:      accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2297:      limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2306:      accrualDate &&
+src/engine/BCCAAEngine.ts:2307:      accrualDate !== "NOT_EXTRACTED" &&
+src/engine/BCCAAEngine.ts:2308:      limitationPeriodYears !== null &&
+src/engine/BCCAAEngine.ts:2311:      const accrualTs = strictDateTimestamp(accrualDate);
+src/engine/BCCAAEngine.ts:2313:      const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
+src/engine/BCCAAEngine.ts:2318:      accrualDate,
+src/engine/BCCAAEngine.ts:2319:      limitationPeriodYears,
+src/engine/BCCAAEngine.ts:2985:        accrualDate: deps.limitation.accrualDate,
+src/engine/BCCAAEngine.ts:2986:        limitationPeriodYears: deps.limitation.limitationPeriodYears,
+src/engine/BCCAAEngine.ts:3104:      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+src/engine/BCCAAEngine.ts:3194:      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+src/engine/CitationValidator.ts:198:    factualContextTag: ["specific_performance", "bainapatra", "section_21a", "registration_17a", "treasury_deposit"],
+src/engine/CitationValidator.ts:224:    factualContextTag: ["readiness_willingness", "specific_performance", "balance_deposit", "contract_breach"],
+src/engine/CitationValidator.ts:307:    factualContextTag: ["limitation", "section_3", "time_barred", "mandatory_dismissal", "rejection_of_plaint"],
+src/engine/CitationValidator.ts:463:    category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION",
+src/engine/CitationValidator.ts:474:    if (category === "SPECIFIC_PERFORMANCE") {
+src/engine/CitationValidator.ts:490:    } else if (category === "DECLARATION_AND_POSSESSION") {
+src/engine/CitationValidator.ts:505:    } else if (category === "INHERITANCE_CONSULTATION") {
+src/engine/FactConsistencyGate.ts:284:      (textHasDeath && textHasAlive && category === "INHERITANCE_CONSULTATION")
+src/engine/FactConsistencyGate.ts:405:      const left = { claimType: "SPECIFIC_PERFORMANCE" };
+src/engine/FactConsistencyGate.ts:406:      const right = { claimType: "INHERITANCE_CONSULTATION" };
+src/engine/FactConsistencyGate.ts:484:    if (category === "SPECIFIC_PERFORMANCE") {
+src/engine/FactConsistencyGate.ts:503:      category === "INHERITANCE_CONSULTATION" &&

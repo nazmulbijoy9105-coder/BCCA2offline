@@ -1,0 +1,330 @@
+911-                sourceRequired: SourceStatus.SOURCE_VERIFIED,
+912-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+913-                corroborationRequired: CorroborationStatus.CORROBORATED,
+914-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+915-              },
+916-            },
+917-          ],
+918-          outcomeIfSatisfied: "TITLE_ELEMENT_SATISFIED",
+919-          outcomeIfFailed: "TITLE_ELEMENT_FAILED",
+920-          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+921-          priority: 1,
+922-        },
+923-        {
+924-          ruleId: "DP-ELEMENT-POSSESSION",
+925-          ruleVersion: "1.0.0",
+926-          jurisdiction,
+927-          effectiveFrom: "1908-01-01",
+928-          claimTypes: [claimType],
+929-          ruleType: "ELEMENT",
+930-          logicalOperator: "ALL",
+931-          predicates: [
+932-            {
+933-              predicateId: "DP-P2",
+934-              subject: "Plaintiff",
+935-              predicate: "Possession Status",
+936:              object: "DISPOSSESSED",
+937-              requiredTruth: Tristate.TRUE,
+938-              validationRequirements: {
+939-                extractionRequired: true,
+940-                sourceRequired: SourceStatus.IDENTIFIED,
+941-                authenticationRequired: AuthenticationStatus.UNAUTHENTICATED,
+942-                corroborationRequired: CorroborationStatus.UNCORROBORATED,
+943-                humanValidationRequired: HumanValidationStatus.NOT_VALIDATED,
+944-              },
+945-            },
+946-          ],
+947-          outcomeIfSatisfied: "DISPOSSESSION_ELEMENT_SATISFIED",
+948-          outcomeIfFailed: "DISPOSSESSION_ELEMENT_FAILED",
+949-          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
+950-          priority: 2,
+951-        },
+952-      ];
+953-    }
+954-    return [];
+955-  }
+956-
+957-  getLegislationMapping(claimType: ClaimType) {
+958-    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
+959-      return {
+960-        primaryAct: "Specific Relief Act 1877",
+961-        relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Sections 8-12, 21A", purpose: "Claim-specific analysis" }],
+962-      };
+963-    }
+964-    if (claimType === "INHERITANCE_CONSULTATION")
+965-      return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
+966-    return { primaryAct: null, relevantSections: [] };
+967-  }
+968-}
+969-
+970-export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
+971-  constructor() { super(); }
+972-}
+973-
+974-// P0 FIX: DefaultAuditSink.append() — remove unreachable code after return
+975-export class DefaultAuditSink implements AuditSink {
+976-  readonly isProductionReady = false;
+977-  private lastRecord: AuditRecord | null = null;
+978-  async append(payload: AuditRecordPayload): Promise<AuditRecord> {
+979-    const previousHash = this.lastRecord?.recordHash ?? null;
+980-    const recordHash = canonicalHash({ payload, previousHash });
+981-    const record = { ...payload, previousHash, recordHash };
+--
+1828-      const dm = clause.match(/(?:died|passed away|demise|death of)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1829-      if (dm) {
+1830-        const date = dm[1].trim();
+1831-        candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: date });
+1832-      } else {
+1833-        candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED" });
+1834-      }
+1835-    }
+1836-    // Living assertions
+1837-    if (/\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(lower)) {
+1838-      candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "ALIVE" });
+1839-    }
+1840-    // Intestate
+1841-    if (/\bintestate\b/i.test(lower)) {
+1842-      candidates.push({ subject: "Ancestor", predicate: "Succession Type", object: "INTESTATE" });
+1843-    }
+1844-    // Disowning
+1845-    if (/\b(?:disown|disowned|disowning)\b/i.test(lower)) {
+1846-      candidates.push({ subject: "Ancestor", predicate: "Disowning Declaration", object: "DECLARED" });
+1847-    }
+1848-  }
+1849-
+1850-  private extractPossessionFacts(clause: string, candidates: FactCandidate[]): void {
+1851-    const lower = clause.toLowerCase();
+1852-    // Dispossession
+1853:    if (/\b(?:dispossessed|ousted|ouster)\b/i.test(lower) ||
+1854:        /\bdenied\s+.*\baccess\b/i.test(lower) ||
+1855:        /\bprevented\s+.*\b(?:from\s+)?entering\b/i.test(lower) ||
+1856:        /\benclos(?:ing|ed)?\s+.*\b(?:portion|area|property)\b/i.test(lower) ||
+1857-        /\bexclusive\s+(?:ownership|possession|control)\b/i.test(lower)) {
+1858:      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "DISPOSSESSED" });
+1859-      // Extract dispossession date if present
+1860-      const dispDate = clause.match(/(?:on|since|from)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+1861-      if (dispDate) {
+1862-        const date = dispDate[1].trim();
+1863:        candidates.push({ subject: "Plaintiff", predicate: "Dispossession Date", object: date, eventDate: date });
+1864-      }
+1865-    }
+1866-    if (/\b(?:in\s+(?:peaceful|continuous)\s+possession|possessing)\b/i.test(lower)) {
+1867-      candidates.push({ subject: "Plaintiff", predicate: "Possession Status", object: "IN_POSSESSION" });
+1868-    }
+1869-    // Unauthorized construction
+1870-    if (/\b(?:unauthorized\s+construction|constructing\s+without)\b/i.test(lower)) {
+1871-      candidates.push({ subject: "Defendant", predicate: "Construction Status", object: "UNAUTHORIZED" });
+1872-    }
+1873-  }
+1874-
+1875-  // =======================================================================
+1876-  // P0-5: ASSERTION CONTEXT DETECTION
+1877-  // =======================================================================
+1878-
+1879-  private detectAssertionContext(
+1880-    clause: string,
+1881-  ): { type: AssertionType; polarity: AssertionPolarity; assertedBy?: string; documentType?: string; documentDate?: string } {
+1882-    const lower = clause.toLowerCase();
+1883-
+1884-    // P0-5: Document-specific detection first (highest priority for provenance)
+1885-    // Defendant reply dated 10 February 2024
+1886-    const replyMatch = clause.match(/\b(?:defendant|respondent)\b[^.!?]{0,60}\b(?:reply|replied|written\s+statement|ws)\b[^.!?]{0,60}(?:dated\s+)?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4})/i);
+1887-    if (replyMatch) {
+1888-      return {
+1889-        type: AssertionType.DOCUMENTARY_FACT,
+1890-        polarity: AssertionPolarity.POSITIVE,
+1891-        assertedBy: "DEFENDANT",
+1892-        documentType: "DEFENDANT_REPLY",
+1893-        documentDate: replyMatch[1]?.trim(),
+1894-      };
+1895-    }
+1896-
+1897-    // Plaintiff's case / allegation
+1898-    if (
+1899-      /\b(?:it is the|this is the)\s+(?:plaintiff's|defendant's)\s+case\b/i.test(clause) ||
+1900-      /\b(?:plaintiff|defendant)\b[^.!?]{0,60}\b(?:case\s+is|contends?|submits?|claims?|alleges?)\b/i.test(clause)
+1901-    ) {
+1902-      const isPlaintiff = /\bplaintiff\b/i.test(clause) && !/\bdefendant\b[^.!?]{0,40}\b(?:contends?|submits?|claims?|denies?)\b/i.test(clause);
+1903-      const isDefendant = /\bdefendant\b/i.test(clause) && !/\bplaintiff\b[^.!?]{0,40}\b(?:contends?|submits?|claims?|alleges?)\b/i.test(clause);
+1904-      return {
+1905-        type: AssertionType.ASSERTED,
+1906-        polarity: AssertionPolarity.POSITIVE,
+1907-        assertedBy: isPlaintiff ? "PLAINTIFF" : isDefendant ? "DEFENDANT" : undefined,
+1908-      };
+--
+2083-        datePrecision: isAmbiguousDate(fact.eventDate!) ? "AMBIGUOUS" : "EXACT",
+2084-        sourceFactIds: [fact.factId],
+2085-      });
+2086-    }
+2087-    if (ctx.eventTimeline.length === 0) {
+2088-      ctx.eventTimeline.push({
+2089-        eventId: "EVT-00001",
+2090-        type: "OTHER",
+2091-        date: null,
+2092-        datePrecision: "UNKNOWN",
+2093-        sourceFactIds: [],
+2094-      });
+2095-    }
+2096-  }
+2097-
+2098-  // P0-4: Explicit event type mapping
+2099-  private inferEventType(fact: AtomicFact): LegalEventType {
+2100-    if (fact.predicate === "Vital Status" && fact.object === "DECEASED") return "ANCESTOR_DEATH";
+2101-    if (fact.predicate === "Execution Date") return "AGREEMENT_EXECUTION";
+2102-    if (fact.predicate === "Registration Status" && fact.object === "REGISTERED") return "AGREEMENT_REGISTERED";
+2103-    if (fact.predicate === "Amount Paid" && fact.subject === "Advance") return "ADVANCE_PAID";
+2104-    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED" && fact.subject === "Treasury Deposit") return "BALANCE_DEPOSIT";
+2105-    if (fact.predicate === "Performance Deadline") return "PERFORMANCE_DEADLINE";
+2106-    if (fact.predicate === "Demand Date") return "LEGAL_NOTICE";
+2107-    if (fact.predicate === "Refusal Date") return "REFUSAL";
+2108:    if (fact.predicate === "Dispossession Date") return "DISPOSSESSION";
+2109-    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED") return "PAYMENT";
+2110:    if (fact.predicate === "Possession Status" && fact.object === "DISPOSSESSED") return "DISPOSSESSION";
+2111-    if (fact.predicate === "Registration Status") return "REGISTRATION";
+2112-    if (fact.predicate === "Mutation Status") return "AMENDMENT";
+2113-    if (fact.predicate === "Construction Status" && fact.object === "UNAUTHORIZED") return "ENCROACHMENT";
+2114-    if (fact.predicate === "Ownership Structure" && fact.object === "JOINT") return "OTHER";
+2115-    return "OTHER";
+2116-  }
+2117-
+2118-  private evaluateFact(
+2119-    ctx: ExecutionContext,
+2120-    subject: string,
+2121-    predicate: string,
+2122-    object: string | null,
+2123-    options: {
+2124-      requireVerified?: boolean;
+2125-      validationRequirements?: ValidationRequirements;
+2126-      objectFilter?: string | null;
+2127-    } = {},
+2128-  ): FactEvaluationResult {
+2129-    const subjectUpper = subject.toUpperCase();
+2130-    const predicateUpper = predicate.toUpperCase();
+2131-    const objectFilter = options.objectFilter ?? object;
+2132-    const familyFacts = Array.from(ctx.factRegistry.values()).filter(
+2133-      (f) => f.subject?.toUpperCase() === subjectUpper && f.predicate?.toUpperCase() === predicateUpper,
+2134-    );
+2135-    const sameFamilyConflictingFacts = familyFacts
+2136-      .filter((f) => f.truth === Tristate.TRUE)
+2137-      .map((f) => ({ factId: f.factId, object: f.object, truth: f.truth }));
+2138-    const conflictDetected = sameFamilyConflictingFacts.length > 1 && new Set(sameFamilyConflictingFacts.map((f) => f.object)).size > 1;
+2139-    const matchingFacts = objectFilter
+2140-      ? familyFacts.filter((f) => f.object?.toUpperCase() === objectFilter.toUpperCase())
+2141-      : familyFacts;
+2142-    let bestStatus = Tristate.UNKNOWN;
+2143-    const supportingFactIds: string[] = [];
+2144-    let validationDetails: FactEvaluationResult["validationDetails"] = undefined;
+2145-    for (const fact of matchingFacts) {
+2146-      let passesValidation = true;
+2147-      if (options.validationRequirements) {
+2148-        passesValidation = meetsValidationRequirements(fact, options.validationRequirements);
+2149-      } else if (options.requireVerified) {
+2150-        passesValidation = fact.validationStatus === ValidationStatus.VERIFIED;
+2151-      }
+2152-      if (!passesValidation) continue;
+2153-      if (fact.truth === Tristate.TRUE) {
+2154-        bestStatus = Tristate.TRUE;
+2155-        supportingFactIds.push(fact.factId);
+--
+2173-        supportingFactIds.push(fact.factId);
+2174-        validationDetails = {
+2175-          sourceStatus: fact.validation.sourceStatus,
+2176-          authenticationStatus: fact.validation.authenticationStatus,
+2177-          corroborationStatus: fact.validation.corroborationStatus,
+2178-          humanValidationStatus: fact.validation.humanValidationStatus,
+2179-        };
+2180-      }
+2181-    }
+2182-    return { status: bestStatus, supportingFactIds, conflictDetected, sameFamilyConflictingFacts, validationDetails };
+2183-  }
+2184-
+2185-  // =======================================================================
+2186-  // DOMAIN & LEGISLATION
+2187-  // =======================================================================
+2188-
+2189-  private resolveClaimType(factPattern: string, focusDomain: string): ClaimType {
+2190-    const lower = factPattern.toLowerCase();
+2191-    if (focusDomain) {
+2192-      const fd = focusDomain.toLowerCase();
+2193-      if (fd.includes("specific performance")) return "SPECIFIC_PERFORMANCE";
+2194-      if (fd.includes("declaration") || fd.includes("possession")) return "DECLARATION_AND_POSSESSION";
+2195-      if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
+2196-    }
+2197-    if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
+2198:    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+2199-    if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
+2200-    return "GENERAL_CIVIL";
+2201-  }
+2202-
+2203-  private classifyDomain(_ctx: ExecutionContext, claimType: ClaimType): string {
+2204-    if (claimType === "SPECIFIC_PERFORMANCE") return "SPECIFIC_PERFORMANCE";
+2205-    if (claimType === "DECLARATION_AND_POSSESSION") return "DECLARATION_AND_POSSESSION";
+2206-    if (claimType === "INHERITANCE_CONSULTATION") return "INHERITANCE_CONSULTATION";
+2207-    return "GENERAL_CIVIL";
+2208-  }
+2209-
+2210-  private mapLegislation(_ctx: ExecutionContext, claimType: ClaimType) {
+2211-    return this.ruleRegistry.getLegislationMapping(claimType);
+2212-  }
+2213-
+2214-  // =======================================================================
+2215-  // LIMITATION ENGINE
+2216-  // =======================================================================
+2217-
+2218-  private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
+2219-    isTimeBarred: boolean | null;
+2220-    accrualDate: string | null;
+2221-    limitationPeriodYears: number | null;
+2222-    calculationType: string;
+2223-    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[]; calculationType?: string }
+2224-    preliminaryAnalysis?: string;
+2225-  } {
+2226-    const facts = Array.from(ctx.factRegistry.values());
+2227-    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
+2228-    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+2229:    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+2230-    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
+2231-    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+2232-    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
+2233-    let accrualDate: string | null = null;
+2234-    let limitationPeriodYears: number | null = null;
+2235-    let calculationType = "other_category";
+2236-
+2237-    if (claimType === "SPECIFIC_PERFORMANCE") {
+2238-      // P1-04 FAIL-CLOSED:
+2239-      // A refusal date alone cannot establish the legally operative
+2240-      // accrual trigger. Execution/agreement context must independently
+2241-      // exist and the dates must be temporally distinct.
+2242-      //
+2243-      // IMPORTANT:
+2244-      // refusalDate may be a human-readable extracted value
+2245-      // ("20 August 2025"). Never expose that representation as the
+2246-      // authoritative accrualDate. Normalize it through the existing
+2247-      // strict date parser before assigning it to stage3.
+2248-      if (refusalDate && executionDate) {
+2249-        const refusalTs = strictDateTimestamp(refusalDate);
+2250-        const executionTs = strictDateTimestamp(executionDate);
+2251-
+2252-        if (
+2253-          refusalTs !== null &&
+2254-          executionTs !== null &&
+2255-          refusalTs !== executionTs
+2256-        ) {
+2257-          accrualDate = toISODate(refusalDate);
+2258-          limitationPeriodYears = 3;
+2259-          calculationType = "refusal_date";
+2260-        } else {
+2261-          accrualDate = "NOT_EXTRACTED";
+2262-          limitationPeriodYears = null;
+2263-          calculationType = "missing_dates";
+2264-        }
+2265-      } else {
+2266-        accrualDate = "NOT_EXTRACTED";
+2267-        limitationPeriodYears = null;
+2268-        calculationType = "missing_dates";
+2269-      }
+2270-    }
+2271-    else if (claimType === "DECLARATION_AND_POSSESSION") {
+2272-      if (dispossessionDate) {
+2273-        accrualDate = dispossessionDate;
+2274-        limitationPeriodYears = 12;

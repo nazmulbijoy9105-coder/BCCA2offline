@@ -1,4 +1,9 @@
 import { AuthUser, LicenseData } from "./auth.types";
+export { Tristate } from "../engine/rules/RuleContracts";
+import type {
+  Tristate,
+  RuleGraphIdentity,
+} from "../engine/rules/RuleContracts";
 
 // ============================================================================
 // 4.4.0-HARDENED CORE TYPES  (widened for 4.5.2-P0 compatibility)
@@ -9,8 +14,6 @@ export interface EngineInput {
   focusDomain?: string;
   submissionDate?: string;
 }
-
-export enum Tristate { TRUE = "TRUE", FALSE = "FALSE", UNKNOWN = "UNKNOWN" }
 
 export enum AssertionType {
   ASSERTED = "ASSERTED",
@@ -70,8 +73,6 @@ export enum HumanValidationStatus {
 
 export enum FactConfidence { CANDIDATE = "CANDIDATE", SUPPORTED = "SUPPORTED", VERIFIED = "VERIFIED" }
 export enum GateStatus { PASS = "PASS", FAIL = "FAIL", INDETERMINATE = "INDETERMINATE", HALT = "HALT" }
-
-export type RuleExecutionStatus = "NOT_EXECUTED" | "BLOCKED" | "UNKNOWN" | "FAILED" | "SATISFIED";
 
 export type CitationState =
   | "NOT_EXECUTED"
@@ -172,88 +173,23 @@ export interface ContradictionEdge {
 // ============================================================================
 // AUTHORITY / RULE GRAPH (P2)
 // ============================================================================
+//
+// P5-14:
+// Canonical rule contracts live in ../engine/rules/RuleContracts.ts.
+// These re-exports preserve the existing types.ts public API.
+//
 
-export interface AuthorityRef {
-  authorityId?: string;
-  act: string;
-  section: string;
-  citation?: string;
-}
-
-export interface RulePredicate {
-  predicateId: string;
-  subject: string;
-  predicate: string;
-  object?: string;
-  requiredTruth: Tristate;
-  requireVerified: boolean;
-  authorityIds?: string[];
-}
-
-export interface LegalRule {
-  ruleId: string;
-  ruleVersion: string;
-  jurisdiction: string;
-  effectiveFrom: string;
-  effectiveTo?: string;
-  claimTypes: ClaimType[];
-  ruleType:
-    | "ELEMENT" | "BAR" | "EXCEPTION" | "BURDEN" | "PRESUMPTION"
-    | "LIMITATION" | "JURISDICTION" | "PROCEDURE" | "RELIEF";
-  predicates: RulePredicate[];
-  logicalOperator: "ALL" | "ANY" | "AT_LEAST_N";
-  atLeastN?: number;
-  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
-  outcomeIfSatisfied: string;
-  outcomeIfFailed: string;
-  legalEffect?: string;
-  authority: AuthorityRef;
-  authorityIds?: string[];
-  supersedes?: string[];
-  exceptions?: string[];
-  priority?: number;
-}
-
-export interface RuleGraphIdentity {
-  corpusId: string;
-  corpusVersion: string;
-  corpusDigest: string;
-  authorityRegistryVersion: string;
-  authorityRegistryDigest: string;
-  ruleGraphVersion: string;
-  ruleGraphDigest: string;
-}
-
-export interface RuleRegistry {
-  version: string;
-  identity: RuleGraphIdentity;
-  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
-  getLegislationMapping(claimType: ClaimType): {
-    primaryAct: string | null;
-    relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }>;
-  };
-}
-
-// ============================================================================
-// EXECUTION RESULTS
-// ============================================================================
-
-export interface PredicateExecutionResult {
-  predicateSubject: string;
-  predicateId: string;
-  status: "TRUE" | "FALSE" | "UNKNOWN";
-  factIds: string[];
-}
-
-export interface RuleExecutionResult {
-  ruleId: string;
-  status: RuleExecutionStatus;
-  predicateResults: PredicateExecutionResult[];
-  authorityIds: string[];
-  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
-  legalEffect?: string;
-  explanationCode: string;
-}
+export type {
+  AuthorityRef,
+  ValidationRequirements,
+  RulePredicate,
+  LegalRule,
+  RuleGraphIdentity,
+  RuleRegistry,
+  PredicateExecutionResult,
+  RuleExecutionResult,
+  RuleExecutionStatus,
+} from "../engine/rules/RuleContracts";
 
 export interface CitationValidationAudit {
   totalCitations: number;

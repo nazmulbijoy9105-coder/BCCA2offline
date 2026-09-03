@@ -1,0 +1,8 @@
+src/engine/BCCAAEngine.ts:803:          effectiveFrom: "1872-09-01",
+src/engine/BCCAAEngine.ts:832:          effectiveFrom: "1872-09-01",
+src/engine/BCCAAEngine.ts:865:          effectiveFrom: "1925-01-01",
+src/engine/BCCAAEngine.ts:898:          effectiveFrom: "1877-01-01",
+src/engine/BCCAAEngine.ts:927:          effectiveFrom: "1908-01-01",
+src/engine/BCCAAEngine.ts:2258:          limitationPeriodYears = 3;
+src/engine/BCCAAEngine.ts:2274:        limitationPeriodYears = 12;
+src/engine/BCCAAEngine.ts:2284:        limitationPeriodYears = 12;

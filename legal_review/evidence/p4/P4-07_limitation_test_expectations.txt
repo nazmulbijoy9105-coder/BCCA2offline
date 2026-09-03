@@ -1,0 +1,57 @@
+src/engine/BCCAAEngine.deterministic.test.ts:25:  submissionDate?: string;
+src/engine/BCCAAEngine.deterministic.test.ts:35:      submissionDate: overrides.submissionDate ?? "2024-01-15",
+src/engine/BCCAAEngine.deterministic.test.ts:51:      dispossessionProven: (stage0 as any)?.factsMeta?.dispossessionProven,
+src/engine/BCCAAEngine.deterministic.test.ts:125:    it("Dispossession / adverse possession pattern — identical input produces identical snapshot", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:136:    it("3-year limitation from August 2020 refusal is TIME_BARRED in 2024", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:140:          factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.deterministic.test.ts:141:          submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.deterministic.test.ts:148:    it("1-year limitation (heuristic) from July 2023 refusal is NOT time-barred in 2024", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:152:          factPattern: "Bainapatra executed on 01 July 2023. Refusal dated 15 August 2023.",
+src/engine/BCCAAEngine.deterministic.test.ts:153:          submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.deterministic.test.ts:269:            "The plaintiff has been in possession for 12 years, made substantial improvements, and the defendant is estopped from denying the agreement by conduct.",
+src/engine/BCCAAEngine.deterministic.test.ts:279:    it("Real refusal date extracted → timelineValidation is present and deterministic", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:284:            "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020. Suit filed 2024.",
+src/engine/BCCAAEngine.deterministic.test.ts:285:          submissionDate: "2024-03-01",
+src/engine/BCCAAEngine.deterministic.test.ts:293:    it("Missing refusal date → falls back to heuristic or missing_dates category", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:298:          submissionDate: "2024-03-01",
+src/engine/BCCAAEngine.deterministic.test.ts:551:      const req = makeRequest({ caseId: "P8-01", factPattern: "", submissionDate: "2024-01-15" });
+src/engine/BCCAAEngine.deterministic.test.ts:683:        submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase1.test.ts:1:import { describe, it, expect } from "vitest"; import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine"; import { makeAnalyzeRequest as makeRequest } from "./testFixtures"; const engine = new BCCAAEngine({ licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) }, factValidationProvider: new NoOpFactValidationProvider() }); describe("P1-01: Semantic determinism", () => { it("SPECIFIC_PERFORMANCE identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01", factPattern: "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); it("death pattern identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01-SC", factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); }); describe("P1-02: Temporal determinism", () => { it("3-year limitation from 2020 refusal is TIME_BARRED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-02", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.", submissionDate: "2024-01-15" })); expect(r.stage3.isTimeBarred).toBe(true); expect(r.stage3.accrualDate).toBe("2020-08-20"); }); }); describe("P1-03: Fact extraction", () => { it("UNREGISTERED in atomicFacts", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-REG", factPattern: "The plaintiff relied on an unregistered bainapatra." })); const objs = (r.stage0?.atomicFacts ?? []).map((f: any) => f.object).filter(Boolean); expect(objs).toContain("UNREGISTERED"); }); it("death fact extracted as DECEASED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-DEATH", factPattern: "The plaintiff father died on 10 March 2020." })); const deathFacts = (r.stage0?.atomicFacts ?? []).filter((f: any) => f.predicate === "Vital Status" && f.object === "DECEASED"); expect(deathFacts.length).toBeGreaterThanOrEqual(1); expect(deathFacts[0].subject).toBe("Ancestor"); }); });
+src/engine/BCCAAEngine.phase1b.test.ts:16:      submissionDate: o.submissionDate,
+src/engine/BCCAAEngine.phase1b.test.ts:37:  it("only agreement date, no refusal → heuristic or missing flagged", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:47:  it("only refusal date without agreement → falls back to NOT_EXTRACTED", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:48:    // Engine requires both agreement and refusal dates to establish limitation context
+src/engine/BCCAAEngine.phase1b.test.ts:54:      "P1-04 refusal-only stage3:",
+src/engine/BCCAAEngine.phase1b.test.ts:58:      "P1-04 refusal-only facts:",
+src/engine/BCCAAEngine.phase1b.test.ts:68:  it("future refusal date → not time barred relative to submission", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:71:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2025.",
+src/engine/BCCAAEngine.phase1b.test.ts:72:      submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase1b.test.ts:76:    expect(r.stage3.calculationType).toBe("refusal_date");
+src/engine/BCCAAEngine.phase1b.test.ts:231:      factPattern: "Bainapatra executed on 15 July 2020. Refusal on 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:53:  it("partition with dispossession triggers possession element extraction", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:144:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:174:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:275:      makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:292:      makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:348:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:434:  it("missing optional submissionDate does not break limitation engine", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:437:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:438:      submissionDate: undefined,
+src/engine/BCCAAEngine.phase2.test.ts:481:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:482:      submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase2.test.ts:494:      makeRequest({ caseId: "P1-STRESS-2C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:499:    expect(results[2].stage3.isTimeBarred).toBe(null);  // P0: missing submissionDate -> fail-closed, cannot compute limitation
+src/engine/BCCAAEngine.phase2.test.ts:506:      submissionDate: null,
+src/engine/BCCAAEngine.phase2.test.ts:516:      submissionDate: undefined,
+src/engine/BCCAAEngine.phase2.test.ts:524:      factPattern: "Bainapatra executed on not-a-date. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:525:      submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase2.test.ts:534:      factPattern: "Bainapatra executed on 15 July 2030. Refusal dated 20 August 2030.",
+src/engine/BCCAAEngine.phase2.test.ts:535:      submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase2.test.ts:541:  it("impossible chronology (refusal before execution) blocks computation", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:544:      factPattern: "Bainapatra executed on 20 August 2020. Refusal dated 15 July 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:545:      submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase3.test.ts:56:  it("temporal reasoning anchored to submissionDate, not wall-clock", async () => {
+src/engine/BCCAAEngine.phase3.test.ts:60:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:61:      submissionDate: "2024-01-15",
+src/engine/BCCAAEngine.phase3.test.ts:68:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:69:      submissionDate: "2024-01-15",

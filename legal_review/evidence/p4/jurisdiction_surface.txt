@@ -1,0 +1,140 @@
+src/App.tsx:54:        courtLevel: analysis.stage5?.pecuniary?.courtLevel ?? null,
+src/App.tsx:75:    "Stage 1: Determining Civil Jurisdictional Domain...",
+src/App.tsx:79:    "Stage 5: Determining Competent Suit Forums...",
+src/App.tsx:437:                      <p className="mt-0.5 text-[11px]">Calculates limitations, court tiers, court fees, and jurisdiction metrics mathematically according to statutory CPC standards.</p>
+src/App.tsx:556:                     Court: <strong>{analysisResult.stage5?.pecuniary?.courtLevel ?? "Not determined"}</strong>
+src/components/DocumentUploader.tsx:239:FILE NO: REG-BD-2024-8892 | JURISDICTION: DHAKA JOINT DISTRICT JUDGE COURT
+src/components/DocumentUploader.tsx:273:FILE NO: SUIT-PRT-2024-104 | JURISDICTION: KHULNA SENIOR JUDGE COURT
+src/components/LegalAnalysisPanel.tsx:35:  const courtLevel = result.stage5?.pecuniary?.courtLevel;
+src/components/LegalAnalysisPanel.tsx:36:  const courtFeesNotes = result.stage5?.pecuniary?.suitsValuationActNotes;
+src/components/LegalAnalysisPanel.tsx:49:1. **Section 42 (Declaration of Title)**: Plaintiff must sue for declaration of legal character or title. If dispossessed, plaintiff must couple this with a consequential relief of recovery of possession under Section 7(iv)(c) of the Court Fees Act 1870, or a standalone Section 8 / 9 action.
+src/components/LegalAnalysisPanel.tsx:108:| **Competent Forum** | **${courtLevel}** |
+src/components/LegalAnalysisPanel.tsx:109:| **Court Fees Strategy** | ${courtFeesNotes} |
+src/components/LegalAnalysisPanel.tsx:111:## TACTICAL COURTROOM STRATEGY & COURT FEES ACT OPTIMIZATION
+src/components/LegalAnalysisPanel.tsx:119:### 2. COURT FEES ACT 1870 OPTIMIZATION
+src/components/LegalAnalysisPanel.tsx:120:- **Fixed Partition Fee**: If the plaintiffs plead constructive joint possession, claim fixed court fees under Schedule II Article 17(vi).
+src/components/LegalAnalysisPanel.tsx:132:- Correctly values the suit according to the Suits Valuation Act 1887.
+src/components/LegalAnalysisPanel.tsx:241:That the cause of action for this suit first arose on the date of execution of the initial instrument, and subsequently on every date when the Defendant(s) refused to perform their legal obligation and threatened wrongful dispossession/alienation, within the territorial jurisdiction of this Learned Court.`,
+src/components/LegalReliabilityStandardModal.tsx:20:    { step: 6, title: "Deterministic Rule Evaluation", desc: "Versioned mathematical limitation, heirship shares & pecuniary rules", icon: Cpu, type: "Deterministic" },
+src/components/LegalReliabilityStandardModal.tsx:39:    { title: "Pecuniary & Territorial Jurisdiction", desc: "Must strictly apply Civil Courts Act 1887 limits (e.g. Assistant Judge vs. Senior Assistant vs. Joint District Judge) and Sections 15–20 CPC." },
+src/components/LegalReliabilityStandardModal.tsx:113:                  In Bangladesh civil law, high-stakes judicial determinations—such as limitation expiration, court jurisdiction, and Shariat inheritance fractional shares—cannot be left to stochastic language model generation. The BCCAA enforces a strict pipeline separation between dynamic fact ingestion and deterministic statutory rule engines.
+src/components/LegalReliabilityStandardModal.tsx:123:                  <code>Input Facts → Fact Normalization → Integrity Validation → Legal Classification → Authority Retrieval → Deterministic Rule Evaluation → Conflict Detection → Relief Mapping → Human-Review Output</code>
+src/components/LegalReliabilityStandardModal.tsx:150:                    <li>• Pecuniary/territorial jurisdiction assignment (Civil Courts Act 1887)</li>
+src/components/LegalReliabilityStandardModal.tsx:162:                The 9-phase BCCAA pipeline guarantees mathematical repeatability, forensic auditability, and fail-closed safety for all civil litigation evaluations:
+src/components/MissingEvidenceAlert.tsx:73:    // Default Valuation Amounts
+src/components/MissingEvidenceAlert.tsx:77:        title: "Defaulted Financial Valuation Applied",
+src/components/MissingEvidenceAlert.tsx:78:        description: "No specific financial amounts (e.g., 'Tk. 15,00,000') were parsed from the narrative. The engine has applied a default valuation of BDT 12 Lakh total with BDT 5 Lakh advance payment.",
+src/components/MissingEvidenceAlert.tsx:79:        impact: "Pecuniary jurisdiction, the competent trial forum, and the required ad valorem court fees (under the Court Fees Act 1870) are estimates based on standard defaults. Provide actual monetary amounts to get definitive calculations."
+src/components/StageExplorer.tsx:26:    { num: 5, title: "Jurisdiction (Territorial/Pecuniary)", icon: MapPin },
+src/components/StageExplorer.tsx:593:                          <div className="text-neutral-500">Locus: {p.causeOfActionAccess}</div>
+src/components/StageExplorer.tsx:627:                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Territorial</h5>
+src/components/StageExplorer.tsx:628:                      <p className="text-[11px]">{analysis.stage5?.territorial?.rule ?? ""}</p>
+src/components/StageExplorer.tsx:629:                      <span className="text-[9px] font-mono text-[#C5A059] block mt-1">Section: {analysis.stage5?.territorial?.governingSection ?? ""}</span>
+src/components/StageExplorer.tsx:632:                      <h5 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-1">Pecuniary</h5>
+src/components/StageExplorer.tsx:633:                      <p className="text-[11px]">Valuation: {analysis.stage5?.pecuniary?.valuation ?? ""}</p>
+src/components/StageExplorer.tsx:634:                      <p className="text-[11px] font-bold text-[#C5A059]">{analysis.stage5?.pecuniary?.courtLevel ?? "Not determined"}</p>
+src/components/StageExplorer.tsx:638:                      <p className="text-[11px]">Forum: {analysis.stage5?.subjectMatter?.forum ?? ""}</p>
+src/components/StageExplorer.tsx:639:                      <span className="text-[9px] font-mono text-neutral-500 block mt-1">Statute: {analysis.stage5?.subjectMatter?.governingStatute ?? ""}</span>
+src/engine/BCCAAEngine.deterministic.test.ts:89:      territorial: stage5?.territorial,
+src/engine/BCCAAEngine.deterministic.test.ts:90:      pecuniary: stage5?.pecuniary,
+src/engine/BCCAAEngine.deterministic.test.ts:91:      subjectMatter: stage5?.subjectMatter,
+src/engine/BCCAAEngine.deterministic.test.ts:396:    it("Territorial, pecuniary, and subject-matter jurisdiction are deterministic", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:404:      expect(r.stage5.territorial).toBeDefined();
+src/engine/BCCAAEngine.deterministic.test.ts:405:      expect(r.stage5.pecuniary).toBeDefined();
+src/engine/BCCAAEngine.deterministic.test.ts:406:      expect(r.stage5.subjectMatter).toBeDefined();
+src/engine/BCCAAEngine.ts:149:  | "JURISDICTION_VALID";
+src/engine/BCCAAEngine.ts:335:  jurisdiction: string;
+src/engine/BCCAAEngine.ts:346:    | "JURISDICTION"
+src/engine/BCCAAEngine.ts:376:  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
+src/engine/BCCAAEngine.ts:415:export interface FactEvaluationResult {
+src/engine/BCCAAEngine.ts:478:  | "P1_VALUATION"
+src/engine/BCCAAEngine.ts:796:  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[] {
+src/engine/BCCAAEngine.ts:802:          jurisdiction,
+src/engine/BCCAAEngine.ts:831:          jurisdiction,
+src/engine/BCCAAEngine.ts:864:          jurisdiction,
+src/engine/BCCAAEngine.ts:897:          jurisdiction,
+src/engine/BCCAAEngine.ts:926:          jurisdiction,
+src/engine/BCCAAEngine.ts:1296:      : ({ status: Tristate.UNKNOWN, supportingFactIds: [], conflictDetected: false, sameFamilyConflictingFacts: [] } as FactEvaluationResult);
+src/engine/BCCAAEngine.ts:1691:      { regex: /(?:suit\s+valuation|valuation)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Suit", predicate: "Valuation" },
+src/engine/BCCAAEngine.ts:1693:      { regex: /(?:jurisdictional\s+value|jurisdiction)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Jurisdiction", predicate: "Value" },
+src/engine/BCCAAEngine.ts:2128:  ): FactEvaluationResult {
+src/engine/BCCAAEngine.ts:2144:    let validationDetails: FactEvaluationResult["validationDetails"] = undefined;
+src/engine/BCCAAEngine.ts:2969:        quantumFacts: atomicFacts.filter((f) => f.predicate.toLowerCase().includes("amount") || f.predicate.toLowerCase().includes("consideration") || f.predicate.toLowerCase().includes("deposit") || f.predicate.toLowerCase().includes("valuation")).map((f) => `${f.predicate}: ${f.object ?? "N/A"}`),
+src/engine/BCCAAEngine.ts:2996:          causeOfActionAccess: "yes",
+src/engine/BCCAAEngine.ts:3008:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3009:        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+src/engine/BCCAAEngine.ts:3010:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3107:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3108:        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+src/engine/BCCAAEngine.ts:3109:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3130:        meritAssessment: "Analysis halted before merit evaluation.",
+src/engine/BCCAAEngine.ts:3147:        appealDeterminationReason: "Appealability was not determined because execution halted before appellate-rule evaluation.",
+src/engine/BCCAAEngine.ts:3197:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3198:        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+src/engine/BCCAAEngine.ts:3199:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3220:        meritAssessment: "Analysis halted before merit evaluation.",
+src/engine/BCCAAEngine.ts:3233:        appealDeterminationReason: "Appealability was not determined because execution halted before appellate-rule evaluation.",
+src/engine/CitationValidator.ts:16:  courtForum: "Appellate Division" | "High Court Division" | "Supreme Court of Bangladesh";
+src/engine/CitationValidator.ts:74:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:101:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:127:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:153:    courtForum: "Supreme Court of Bangladesh",
+src/engine/CitationValidator.ts:181:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:209:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:236:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:264:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:292:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:305:    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+src/engine/CitationValidator.ts:318:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:342:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:368:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:422:        court: "Unverified Forum",
+src/engine/CitationValidator.ts:441:      court: match.courtForum,
+src/engine/FactConsistencyGate.ts:17: * FIX #6: Rich ancestor evaluation result instead of boolean collapse.
+src/engine/FactConsistencyGate.ts:18: * The gate now receives the full fact evaluation state, not just true/false.
+src/engine/FactConsistencyGate.ts:20:export interface AncestorEvaluationInput {
+src/engine/FactConsistencyGate.ts:61:   *         `ancestorEvaluation: AncestorEvaluationInput | null`.
+src/engine/FactConsistencyGate.ts:62:   * The gate can now make nuanced decisions based on evaluation confidence,
+src/engine/FactConsistencyGate.ts:89:    ancestorEvaluation: AncestorEvaluationInput | null,
+src/engine/FactConsistencyGate.ts:249:    // FIX #6: Use rich ancestorEvaluation instead of boolean
+src/engine/FactConsistencyGate.ts:250:    const isAncestorDeceased = ancestorEvaluation?.status === "TRUE";
+src/engine/FactConsistencyGate.ts:251:    const ancestorHasConflicts = ancestorEvaluation?.conflictDetected === true;
+src/engine/FactConsistencyGate.ts:261:    // FIX #8: Use engine facts / ancestor evaluation as primary source.
+src/types/types.ts:83:  | "JURISDICTION_VALID";
+src/types/types.ts:196:  jurisdiction: string;
+src/types/types.ts:202:    | "LIMITATION" | "JURISDICTION" | "PROCEDURE" | "RELIEF";
+src/types/types.ts:230:  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
+src/types/types.ts:379:  courtLevel: string | null;
+src/types/types.ts:525:      causeOfActionAccess: string;
+src/types/types.ts:537:    territorial?: {
+src/types/types.ts:540:      jurisdictionalFacts: string | null;
+src/types/types.ts:542:    pecuniary?: {
+src/types/types.ts:543:      valuation: string | null;
+src/types/types.ts:544:      courtLevel: string | null;
+src/types/types.ts:545:      pecuniaryLimits: string | null;
+src/types/types.ts:546:      suitsValuationActNotes: string | null;
+src/types/types.ts:548:    subjectMatter?: {
+src/types/types.ts:550:      forum: string | null;
+src/utils/docxGenerator.ts:149:        createCell("Forum & Year", { bold: true, bg: "1E252B", color: "FFFFFF", widthPercent: 15 }),
+src/utils/docxGenerator.ts:237:          createCell("Competent Court Forum"),
+src/utils/docxGenerator.ts:238:          createCell(analysis.stage5?.pecuniary?.courtLevel ?? "", { bold: true }),
+src/utils/docxGenerator.ts:243:          createCell("Court Fees & Valuation Strategy"),
+src/utils/docxGenerator.ts:244:          createCell(analysis.stage5?.pecuniary?.suitsValuationActNotes || "As per Court Fees Act 1870"),
+src/utils/docxGenerator.ts:348:                text: `  SUIT STATUS: ${limitationStatus}  |  FORUM: ${analysis.stage5?.pecuniary?.courtLevel ?? ""}  `,
+src/utils/pdfGeneratorSecure.ts:189:      <p class="pdf-subtitle">Jurisdiction of Bangladesh &bull; Ministry of Law Framework</p>
+src/utils/pdfGeneratorSecure.ts:206:        <div class="card-title">Jurisdictional Overview</div>
+src/utils/pdfGeneratorSecure.ts:209:        <div><strong>Competent Forum:</strong> ${analysis.stage5?.pecuniary?.courtLevel ?? ""}</div>
+src/utils/pdfGeneratorSecure.ts:210:        <div><strong>Pecuniary Valuation:</strong> ${analysis.stage5?.pecuniary?.valuation ?? ""}</div>
+src/utils/pdfGeneratorSecure.ts:363:              <div><strong>Standing Access:</strong> ${p.causeOfActionAccess}</div>
+src/utils/pdfGeneratorSecure.ts:379:        <p style="margin: 0 0 4px 0;"><strong>Joinder Evaluation:</strong> ${analysis.stage4.joinderIssues}</p>
+src/utils/pdfGeneratorSecure.ts:384:    <!-- SECTION VI: STAGE 5 JURISDICTION & COURT FEES -->
+src/utils/pdfGeneratorSecure.ts:386:      <div class="section-heading">Section VI: Tri-Partite Jurisdiction & Valuation (Stage 5)</div>
+src/utils/pdfGeneratorSecure.ts:390:            <td style="width: 25%;"><strong>Pecuniary Jurisdiction</strong></td>
+src/utils/pdfGeneratorSecure.ts:391:            <td>Valuation: <strong>${analysis.stage5?.pecuniary?.valuation ?? ""}</strong> &bull; Competent Court: <strong>${analysis.stage5?.pecuniary?.courtLevel ?? ""}</strong><br><em>Notes:</em> ${analysis.stage5?.pecuniary?.suitsValuationActNotes ?? ""}</td>
+src/utils/pdfGeneratorSecure.ts:394:            <td><strong>Territorial Jurisdiction</strong></td>
+src/utils/pdfGeneratorSecure.ts:395:            <td>Rule: ${analysis.stage5?.territorial?.rule ?? ""} (${analysis.stage5?.territorial?.governingSection ?? ""})<br><em>Facts:</em> ${analysis.stage5?.territorial?.jurisdictionalFacts ?? ""}</td>
+src/utils/pdfGeneratorSecure.ts:398:            <td><strong>Subject Matter Jurisdiction</strong></td>
+src/utils/pdfGeneratorSecure.ts:399:            <td>Forum: ${analysis.stage5?.subjectMatter?.forum ?? ""} (${analysis.stage5?.subjectMatter?.governingStatute ?? ""}) &bull; Excluded: ${analysis.stage5?.subjectMatter?.isExcluded ? 'YES' : 'NO'}</td>
+src/utils/pdfGeneratorSecure.ts:402:            <td><strong>Jurisdictional Defense</strong></td>
+src/utils/pdfGeneratorSecure.ts:501:            <th style="width: 20%;">Appellate Forum</th>
+src/utils/pdfGeneratorSecure.ts:661:        Synthesized: ${formattedDate} | Jurisdiction: Bangladesh Civil Judicature

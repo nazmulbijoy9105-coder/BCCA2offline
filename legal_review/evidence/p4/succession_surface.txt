@@ -1,0 +1,135 @@
+src/components/DocumentUploader.tsx:275:FACT PATTERN & INHERITANCE RECORD:
+src/components/DocumentUploader.tsx:276:1. Ancestor late Hazi Karim Box died intestate on March 14, 2018, leaving behind 2 sons (Plaintiff Kamrul & Defendant Rahim) and 1 daughter (Defendant Fatema), along with 30 Decimals of ancestral land in Mouza Rupsha, Khatian 102.
+src/components/DocumentUploader.tsx:277:2. Under Muslim Personal Law (Shariat) Application Act 1937, the 2 sons inherit 2/5th share each (12 Decimals each) and the daughter inherits 1/5th share (6 Decimals).
+src/components/DocumentUploader.tsx:278:3. On November 10, 2023, Defendant Rahim produced a notarized "Tejya Putro Affidavit" executed by late Hazi Karim Box in 2015, purporting to disown Plaintiff Kamrul from all inheritance.
+src/components/DocumentUploader.tsx:284:        fileName: "Sample_Partition_Inheritance_CaseFile.txt",
+src/components/LegalAnalysisPanel.tsx:39:  if (category === "INHERITANCE_CONSULTATION") {
+src/components/LegalAnalysisPanel.tsx:40:    customNarrative = `### MUSLIM PERSONAL LAW (SHARIAT) ANALYSIS
+src/components/LegalAnalysisPanel.tsx:41:1. **Nullity of Disowning (Tejya Putro)**: Under the Muslim Personal Law (Shariat) Application Act, 1937, inheritance is a vested right that accrues immediately upon the death of the ancestor. A disowning affidavit has zero legal validity or force under Sunni Hanafi jurisprudence. The disowned heirs remain full legal sharers.
+src/components/LegalAnalysisPanel.tsx:54:2. **Substantive Title**: The plaintiff's standing is predicated on valid deeds or inheritance.`;
+src/components/LegalAnalysisPanel.tsx:65:    : `- **75 DLR 142 (HCD)**: Held that a disowning affidavit has zero recognition under Muslim Personal Law (Shariat) Application Act 1937.\n- **56 DLR 215 (AD)**: Held that possession of one co-sharer is the possession of all co-sharers unless ouster is established.`;
+src/components/LegalAnalysisPanel.tsx:115:- **Prima Facie Case**: Establish the plaintiffs' legal title or inheritance right (disowning instruments having zero legal force).
+src/components/LegalAnalysisPanel.tsx:236:That an order of temporary injunction be passed restraining the Defendant(s), their agents, servants, assigns, and representatives from entering upon, changing the physical feature of, cutting trees from, creating third-party charges over, or alienating any portion of the suit schedule property till disposal of the suit.`,
+src/components/LegalAnalysisPanel.tsx:241:That the cause of action for this suit first arose on the date of execution of the initial instrument, and subsequently on every date when the Defendant(s) refused to perform their legal obligation and threatened wrongful dispossession/alienation, within the territorial jurisdiction of this Learned Court.`,
+src/components/LegalReliabilityStandardModal.tsx:20:    { step: 6, title: "Deterministic Rule Evaluation", desc: "Versioned mathematical limitation, heirship shares & pecuniary rules", icon: Cpu, type: "Deterministic" },
+src/components/LegalReliabilityStandardModal.tsx:40:    { title: "Legal Heir Status & Fractional Shares", desc: "Must be computed deterministically using Hanafi Sunni / Muslim Personal Law Faraizi algorithms." },
+src/components/LegalReliabilityStandardModal.tsx:113:                  In Bangladesh civil law, high-stakes judicial determinations—such as limitation expiration, court jurisdiction, and Shariat inheritance fractional shares—cannot be left to stochastic language model generation. The BCCAA enforces a strict pipeline separation between dynamic fact ingestion and deterministic statutory rule engines.
+src/components/LegalReliabilityStandardModal.tsx:151:                    <li>• Quranic fractional inheritance shares (Faraizi tables)</li>
+src/components/MissingEvidenceAlert.tsx:121:  // 4. Inheritance & Succession Gatekeeping Checks
+src/components/MissingEvidenceAlert.tsx:122:  if (meta.category === "INHERITANCE_CONSULTATION") {
+src/components/MissingEvidenceAlert.tsx:123:    const isDeceased = analysis.stage1.primaryDomain === "Partition & Succession Suit";
+src/components/MissingEvidenceAlert.tsx:128:        title: "Succession Not Opened: Ancestor is Living",
+src/components/MissingEvidenceAlert.tsx:129:        description: "The dispute pattern centers on a living parent (father) disowning his children or threatening inheritance rights.",
+src/components/MissingEvidenceAlert.tsx:130:        impact: "Under Muslim Personal Law (Shariat) Application Act 1937, inheritance only opens upon the death of the owner. A living person's child holds a mere expectation of succession (spes successionis), which carries no vested interest. This suit has zero justiciable cause of action under Section 9 CPC and will be rejected."
+src/components/MissingEvidenceAlert.tsx:136:      const hasExplicitDeathDate = analysis.stage3.accrualDate && !analysis.stage3.accrualDate.includes("First recorded");
+src/components/MissingEvidenceAlert.tsx:137:      if (!hasExplicitDeathDate) {
+src/components/MissingEvidenceAlert.tsx:142:          impact: "To prove that succession has opened and compute the exact limitation period under Article 123/144 of the Limitation Act, the exact date of death of the ancestor must be pleaded in the Plaint. Lacking this creates room for the defense to argue limitation bars or dispute the opening of succession."
+src/components/StageExplorer.tsx:823:                  {analysis.stage1.primaryDomain === "Partition & Succession Suit" && (
+src/components/StageExplorer.tsx:864:                            That the Plaintiffs-Petitioners have filed the accompanying Partition Suit for declaration of heirship, specific fractional shares (2/5th each to Plaintiffs and 1/5th to Defendant) under Muslim Shariat law, and partition of the suit property left by the intestate demise of their father, Abdul Karim, on 15 January 2026.
+src/components/StageExplorer.tsx:873:                            That the Plaintiffs have a clear <strong>prima facie case</strong> and high probability of success in the partition suit as succession opens automatically upon death under Shariat law, vesting immediate legal ownership in the co-heirs.
+src/components/TimelineValidation.tsx:23:  const isInheritance = category === "INHERITANCE_CONSULTATION" || calculationType === "other_category" && accrualDate.toLowerCase().includes("demise") || accrualDate.toLowerCase().includes("karim");
+src/components/TimelineValidation.tsx:50:  if (isInheritance) {
+src/components/TimelineValidation.tsx:61:              Succession & Partition Timeline Verification
+src/components/TimelineValidation.tsx:88:              Ancestor died intestate, triggering the immediate and automatic vesting of Shariat-mandated fractional shares in the Class I heirs.
+src/components/TimelineValidation.tsx:106:              Defendant Fatema obtained an exclusive namjari mutation and threatened to alienate undivided parts of the joint inheritance.
+src/components/TimelineValidation.tsx:114:            📅 Succession Chronology & Limitation Run
+src/components/TimelineValidation.tsx:141:                  <span className="text-[11px] font-bold text-[#1E252B]">Succession Vesting</span>
+src/components/TimelineValidation.tsx:181:            <span>Succession & Partition Limitation Rules:</span>
+src/components/TimelineValidation.tsx:189:            Succession vests automatically at death. The 12-year partition limitation clock (Article 123/144) is squarely triggered by the demise of the ancestor, making the suit completely within time and fully justiciable. No pre-death parent-son disowning notice can affect or bar this vested right.
+src/engine/BCCAAEngine.deterministic.test.ts:117:    it("Death / inheritance pattern — identical input produces identical snapshot", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:220:    it("Inheritance claim resolves to SUCCESSION domain", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:225:            "The plaintiff's father died intestate on 10 March 2020 leaving 20 decimals of agricultural land.",
+src/engine/BCCAAEngine.deterministic.test.ts:228:      expect(r.stage1.primaryDomain).toMatch(/SUCCESSION|INHERITANCE|PROPERTY/i);
+src/engine/BCCAAEngine.ts:154:  | "INHERITANCE_CONSULTATION"
+src/engine/BCCAAEngine.ts:859:    if (claimType === "INHERITANCE_CONSULTATION") {
+src/engine/BCCAAEngine.ts:862:          ruleId: "SUCCESSION-DEATH-ELEMENT",
+src/engine/BCCAAEngine.ts:885:          outcomeIfSatisfied: "SUCCESSION_OPENED",
+src/engine/BCCAAEngine.ts:886:          outcomeIfFailed: "SUCCESSION_NOT_ESTABLISHED",
+src/engine/BCCAAEngine.ts:887:          authority: { act: "Applicable succession law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:964:    if (claimType === "INHERITANCE_CONSULTATION")
+src/engine/BCCAAEngine.ts:965:      return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
+src/engine/BCCAAEngine.ts:1294:    const ancestorResult = claimType === "INHERITANCE_CONSULTATION"
+src/engine/BCCAAEngine.ts:1608:    this.extractSuccessionFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1638:    const roleMatch = clause.match(/([A-Z][a-zA-Z\s\.]+?)\s+is\s+(?:the\s+)?(purchaser|vendor|seller|buyer|owner|heir|co-sharer)/i);
+src/engine/BCCAAEngine.ts:1799:    if (/\b(?:warisan sanad|heirship certificate|legal heirship)\b/i.test(clause.toLowerCase())) {
+src/engine/BCCAAEngine.ts:1803:        candidates.push({ subject: "Heirship", predicate: "Certificate Date", object: date, eventDate: date });
+src/engine/BCCAAEngine.ts:1819:    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1824:  private extractSuccessionFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1840:    // Intestate
+src/engine/BCCAAEngine.ts:1841:    if (/\bintestate\b/i.test(lower)) {
+src/engine/BCCAAEngine.ts:1842:      candidates.push({ subject: "Ancestor", predicate: "Succession Type", object: "INTESTATE" });
+src/engine/BCCAAEngine.ts:1945:    if (/\b(?:death\s+certificate|warisan\s+sanad|heirship\s+certificate|mutation\s+case|khatian|cs\s+record|sa\s+record|rs\s+record|dakhila)\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1980:    } else if (claimType === "INHERITANCE_CONSULTATION") {
+src/engine/BCCAAEngine.ts:1981:      requiredPairs.push(["Ancestor", "Vital Status"], ["Ancestor", "Succession Type"], ["Property", "Ownership Structure"], ["Property", "Mutation Status"]);
+src/engine/BCCAAEngine.ts:2195:      if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
+src/engine/BCCAAEngine.ts:2199:    if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
+src/engine/BCCAAEngine.ts:2206:    if (claimType === "INHERITANCE_CONSULTATION") return "INHERITANCE_CONSULTATION";
+src/engine/BCCAAEngine.ts:2231:    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+src/engine/BCCAAEngine.ts:2281:    } else if (claimType === "INHERITANCE_CONSULTATION") {
+src/engine/BCCAAEngine.ts:2282:      if (deathDate) {
+src/engine/BCCAAEngine.ts:2283:        accrualDate = deathDate;
+src/engine/BCCAAEngine.ts:2483:    if (elementGate.missingElements.includes("SUCCESSION-DEATH-ELEMENT")) {
+src/engine/CitationValidator.ts:67:  // ─── INHERITANCE & SUCCESSION ───
+src/engine/CitationValidator.ts:80:      "Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:85:      "Section 2, Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:88:    ratioDecidendi: "Under Islamic Law of Inheritance, succession opens immediately and automatically upon the death of the propositus/ancestor. The shares of lawful heirs vest instantaneously without requiring any probate, letter of administration, or mutation. An ante-mortem disowning declaration has zero legal effect.",
+src/engine/CitationValidator.ts:89:    summaryOfHolding: "Succession opens instantaneously on the death of the ancestor. Estate vests in the lawful heirs automatically by operation of Shariat law.",
+src/engine/CitationValidator.ts:90:    factualContextTag: ["inheritance", "succession", "disown", "partition", "co-sharer", "deceased_ancestor"],
+src/engine/CitationValidator.ts:107:      "Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:111:      "Section 2, Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:114:    ratioDecidendi: "A unilateral declaration, affidavit, or newspaper notice 'disowning' a child is unknown to Muslim law and Bangladesh civil jurisprudence. It cannot disinherit a legal heir or divest lawful proprietary rights.",
+src/engine/CitationValidator.ts:115:    summaryOfHolding: "Unilateral disowning affidavits or newspaper declarations have zero legal standing to alter Muslim law of succession.",
+src/engine/CitationValidator.ts:116:    factualContextTag: ["disowning_affidavit", "inheritance", "newspaper_notice", "heir_rights"],
+src/engine/CitationValidator.ts:159:      "Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:167:    ratioDecidendi: "During the lifetime of an ancestor, no descendant h as unknown vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
+src/engine/CitationValidator.ts:168:    summaryOfHolding: "No child acquires any legal interest in a parent's property during the parent's lifetime; inheritance rights do not exist prior to death.",
+src/engine/CitationValidator.ts:169:    factualContextTag: ["living_parent", "spes_successionis", "premature_suit", "lifetime_declaration"],
+src/engine/CitationValidator.ts:330:    summaryOfHolding: "Plaintiff must succeed on the strength of their own evidence and title, not defendant's weaknesses.",
+src/engine/CitationValidator.ts:355:    ratioDecidendi: "In a suit for partition of joint ancestral property, all co-sharers are necessary parties. Non-joinder of any surviving legal heir is a fatal defect that vitiates the partition proceedings and renders the decree defective.",
+src/engine/CitationValidator.ts:356:    summaryOfHolding: "All co-heirs are necessary parties in partition suits; non-joinder is fatal.",
+src/engine/CitationValidator.ts:357:    factualContextTag: ["partition", "necessary_parties", "order_1_rule_9", "co_heirs_joinder"],
+src/engine/CitationValidator.ts:463:    category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION",
+src/engine/CitationValidator.ts:505:    } else if (category === "INHERITANCE_CONSULTATION") {
+src/engine/CitationValidator.ts:507:        // Ancestor explicitly evaluated as deceased — load partition/succession precedents
+src/engine/CitationValidator.ts:511:            "Establishes that the legal heirs immediately and automatically become vested co-owners of their respective shares at the moment of death, which cannot be impaired by any pre-death disowning affidavit."
+src/engine/CitationValidator.ts:515:            "Confirms that the father's unilateral disowning affidavit or newspaper notice has zero legal standing in Muslim law to alter the Shariat-mandated lines of inheritance."
+src/engine/CitationValidator.ts:519:            "Confirms that exclusive mutation of the suit property by one co-sharer is purely for revenue collection and does not divest other heirs of their lawful inherited title."
+src/engine/CitationValidator.ts:523:            "Mandates that all surviving co-heirs are indispensable necessary parties in the partition suit under Order XX Rule 18 CPC."
+src/engine/CitationValidator.ts:527:        // Ancestor explicitly evaluated as living — spes successionis bar applies
+src/engine/CitationValidator.ts:531:            "Establishes that children have no vested right or justiciable cause of action to challenge a living parent's declarations during his lifetime (spes successionis)."
+src/engine/CitationValidator.ts:535:            "Confirms that the father's disowning affidavit is a legal nullity in Shariat, but no cause of action exists to seek declaration until succession opens upon death."
+src/engine/CitationValidator.ts:544:            "Unilateral disowning affidavits are a legal nullity in Shariat regardless of whether the ancestor is living or deceased. However, the justiciability of partition claims depends on succession having opened."
+src/engine/FactConsistencyGate.ts:274:    const textHasDeath = /\b(?:died|demise|passed away|deceased|death of|succession opened)\b/i.test(
+src/engine/FactConsistencyGate.ts:284:      (textHasDeath && textHasAlive && category === "INHERITANCE_CONSULTATION")
+src/engine/FactConsistencyGate.ts:304:          "Direct temporal contradiction: The record simultaneously asserts that the ancestor is deceased (opening statutory inheritance) AND that the ancestor is currently living (holding absolute lifetime ownership without cause of action).",
+src/engine/FactConsistencyGate.ts:307:          "Must file certified Municipal / Union Parishad Death Certificate or confirm living status before limitation or heirship shares can be calculated.",
+src/engine/FactConsistencyGate.ts:328:    const extractedDeathDates: string[] = [];
+src/engine/FactConsistencyGate.ts:329:    deathMatches.forEach((m) => extractedDeathDates.push(m[1].trim()));
+src/engine/FactConsistencyGate.ts:336:    deathChronos.forEach((dc) => extractedDeathDates.push(dc.date.trim()));
+src/engine/FactConsistencyGate.ts:355:    const normalizedDates = extractedDeathDates.map(normalizeDateForDedup);
+src/engine/FactConsistencyGate.ts:356:    const uniqueDeathDates = Array.from(new Set(normalizedDates));
+src/engine/FactConsistencyGate.ts:357:    if (uniqueDeathDates.length > 1) {
+src/engine/FactConsistencyGate.ts:360:        conflictId: `CONF-DATE-DEATH-${canonicalHash(uniqueDeathDates.join("|")).slice(0,12)}`,
+src/engine/FactConsistencyGate.ts:365:        description: `Multiple contradictory death dates extracted for the same ancestor: [${uniqueDeathDates.join(" vs. ")}]. Under Article 123/144 of the Limitation Act, exact date of demise determines the 12-year statutory limitation deadline.`,
+src/engine/FactConsistencyGate.ts:375:        details: `Discrepancy detected: ${uniqueDeathDates.length} distinct death dates asserted for same individual.`,
+src/engine/FactConsistencyGate.ts:390:    const hasInheritanceClaims =
+src/engine/FactConsistencyGate.ts:391:      (lower.includes("inheritance") ||
+src/engine/FactConsistencyGate.ts:392:        lower.includes("succession") ||
+src/engine/FactConsistencyGate.ts:393:        lower.includes("co-heir")) &&
+src/engine/FactConsistencyGate.ts:400:      hasInheritanceClaims &&
+src/engine/FactConsistencyGate.ts:406:      const right = { claimType: "INHERITANCE_CONSULTATION" };
+src/engine/FactConsistencyGate.ts:415:          "Substantive Doctrine Clash: Narrative conflates Contractual Specific Performance (SRA Section 12/21A) with Intestate Inheritance Partition (Muslim Law / Partition Act 1893) without pleading in the alternative.",
+src/engine/FactConsistencyGate.ts:418:          "Clarify whether Plaintiff sues as a contract purchaser under a Bainapatra or as a statutory co-sharer heir under Shariat.",
+src/engine/FactConsistencyGate.ts:426:          "Conflation of contractual remedy and inheritance partition remedy detected.",
+src/engine/FactConsistencyGate.ts:438:    const mentionsCoHeir =
+src/engine/FactConsistencyGate.ts:442:        lower.includes("co-heir") ||
+src/engine/FactConsistencyGate.ts:448:    if (mentionsCoHeir && mentionsStranger) {
+src/engine/FactConsistencyGate.ts:450:      const left = { role: "CO_HEIR" };
+src/engine/FactConsistencyGate.ts:457:        factIdA: "FACT-PARTY-HEIR",
+src/engine/FactConsistencyGate.ts:460:          "Contradictory Party Character: Defendant is asserted to be a biological co-heir (constructive joint possessor) while simultaneously characterized as an unrelated stranger trespasser.",
+src/engine/FactConsistencyGate.ts:503:      category === "INHERITANCE_CONSULTATION" &&
+src/engine/FactConsistencyGate.ts:516:        !lower.includes("heirship certificate") &&
+src/engine/FactConsistencyGate.ts:517:        !lower.includes("succession certificate")
+src/engine/FactConsistencyGate.ts:520:          "Certified Warisan Sanad / Legal Heirship Certificate from Ward Councilor / UP Chairman",
+src/types/types.ts:88:  | "INHERITANCE_CONSULTATION"
+src/types/types.ts:435:      category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION";

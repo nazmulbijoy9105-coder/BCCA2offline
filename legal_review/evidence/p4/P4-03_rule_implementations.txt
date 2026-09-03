@@ -1,0 +1,500 @@
+
+============================================================
+RULE: SP-ELEMENT-REGISTRATION
+============================================================
+775-// ============================================================================
+776-// DEVELOPMENT IMPLEMENTATIONS — MODULE SCOPE
+777-// ============================================================================
+778-
+779-function developmentIdentity(): RuleGraphIdentity {
+780-  return {
+781-    corpusId: "BD-DEVELOPMENT-FIXTURE",
+782-    corpusVersion: "DEVELOPMENT-2026.08",
+783-    corpusDigest: "DEVELOPMENT-NOT-A-LEGAL-CORPUS",
+784-    authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+785-    authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+786-    ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+787-    ruleGraphDigest: "DEVELOPMENT-RULE-GRAPH",
+788-  };
+789-}
+790-
+791-export class DevelopmentRuleRegistry implements RuleRegistry {
+792-  version = "DEVELOPMENT-FIXTURE-3.0.0";
+793-  identity = developmentIdentity();
+794-  authorityStatus = "DEVELOPMENT_FIXTURE" as const;
+795-
+796-  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[] {
+797-    if (claimType === "SPECIFIC_PERFORMANCE") {
+798-      return [
+799-        {
+800:          ruleId: "SP-ELEMENT-REGISTRATION",
+801-          ruleVersion: "1.0.0",
+802-          jurisdiction,
+803-          effectiveFrom: "1872-09-01",
+804-          claimTypes: [claimType],
+805-          ruleType: "ELEMENT",
+806-          logicalOperator: "ALL",
+807-          predicates: [
+808-            {
+809-              predicateId: "SP-P1",
+810-              subject: "Bainapatra",
+811-              predicate: "Registration Status",
+812-              object: "REGISTERED",
+813-              requiredTruth: Tristate.TRUE,
+814-              validationRequirements: {
+815-                extractionRequired: true,
+816-                sourceRequired: SourceStatus.SOURCE_VERIFIED,
+817-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+818-                corroborationRequired: CorroborationStatus.CORROBORATED,
+819-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+820-              },
+821-            },
+822-          ],
+823-          outcomeIfSatisfied: "REGISTRATION_ELEMENT_SATISFIED",
+824-          outcomeIfFailed: "REGISTRATION_ELEMENT_FAILED",
+825-          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+826-          priority: 1,
+827-        },
+828-        {
+829-          ruleId: "SP-ELEMENT-DEPOSIT",
+830-          ruleVersion: "1.0.0",
+831-          jurisdiction,
+832-          effectiveFrom: "1872-09-01",
+833-          claimTypes: [claimType],
+834-          ruleType: "ELEMENT",
+835-          logicalOperator: "ALL",
+836-          predicates: [
+837-            {
+838-              predicateId: "SP-P2",
+839-              subject: "Treasury Deposit",
+840-              predicate: "Payment Status",
+841-              object: "DEPOSITED",
+842-              requiredTruth: Tristate.TRUE,
+843-              validationRequirements: {
+844-                extractionRequired: true,
+845-                sourceRequired: SourceStatus.IDENTIFIED,
+846-                authenticationRequired: AuthenticationStatus.UNAUTHENTICATED,
+847-                corroborationRequired: CorroborationStatus.UNCORROBORATED,
+848-                humanValidationRequired: HumanValidationStatus.NOT_VALIDATED,
+849-              },
+850-            },
+851-          ],
+852-          outcomeIfSatisfied: "DEPOSIT_ELEMENT_SATISFIED",
+853-          outcomeIfFailed: "DEPOSIT_ELEMENT_FAILED",
+854-          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+855-          priority: 2,
+856-        },
+857-      ];
+858-    }
+859-    if (claimType === "INHERITANCE_CONSULTATION") {
+860-      return [
+861-        {
+862-          ruleId: "SUCCESSION-DEATH-ELEMENT",
+863-          ruleVersion: "1.0.0",
+864-          jurisdiction,
+865-          effectiveFrom: "1925-01-01",
+866-          claimTypes: [claimType],
+867-          ruleType: "ELEMENT",
+868-          logicalOperator: "ALL",
+869-          predicates: [
+870-            {
+
+============================================================
+RULE: SP-ELEMENT-DEPOSIT
+============================================================
+804-          claimTypes: [claimType],
+805-          ruleType: "ELEMENT",
+806-          logicalOperator: "ALL",
+807-          predicates: [
+808-            {
+809-              predicateId: "SP-P1",
+810-              subject: "Bainapatra",
+811-              predicate: "Registration Status",
+812-              object: "REGISTERED",
+813-              requiredTruth: Tristate.TRUE,
+814-              validationRequirements: {
+815-                extractionRequired: true,
+816-                sourceRequired: SourceStatus.SOURCE_VERIFIED,
+817-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+818-                corroborationRequired: CorroborationStatus.CORROBORATED,
+819-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+820-              },
+821-            },
+822-          ],
+823-          outcomeIfSatisfied: "REGISTRATION_ELEMENT_SATISFIED",
+824-          outcomeIfFailed: "REGISTRATION_ELEMENT_FAILED",
+825-          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+826-          priority: 1,
+827-        },
+828-        {
+829:          ruleId: "SP-ELEMENT-DEPOSIT",
+830-          ruleVersion: "1.0.0",
+831-          jurisdiction,
+832-          effectiveFrom: "1872-09-01",
+833-          claimTypes: [claimType],
+834-          ruleType: "ELEMENT",
+835-          logicalOperator: "ALL",
+836-          predicates: [
+837-            {
+838-              predicateId: "SP-P2",
+839-              subject: "Treasury Deposit",
+840-              predicate: "Payment Status",
+841-              object: "DEPOSITED",
+842-              requiredTruth: Tristate.TRUE,
+843-              validationRequirements: {
+844-                extractionRequired: true,
+845-                sourceRequired: SourceStatus.IDENTIFIED,
+846-                authenticationRequired: AuthenticationStatus.UNAUTHENTICATED,
+847-                corroborationRequired: CorroborationStatus.UNCORROBORATED,
+848-                humanValidationRequired: HumanValidationStatus.NOT_VALIDATED,
+849-              },
+850-            },
+851-          ],
+852-          outcomeIfSatisfied: "DEPOSIT_ELEMENT_SATISFIED",
+853-          outcomeIfFailed: "DEPOSIT_ELEMENT_FAILED",
+854-          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+855-          priority: 2,
+856-        },
+857-      ];
+858-    }
+859-    if (claimType === "INHERITANCE_CONSULTATION") {
+860-      return [
+861-        {
+862-          ruleId: "SUCCESSION-DEATH-ELEMENT",
+863-          ruleVersion: "1.0.0",
+864-          jurisdiction,
+865-          effectiveFrom: "1925-01-01",
+866-          claimTypes: [claimType],
+867-          ruleType: "ELEMENT",
+868-          logicalOperator: "ALL",
+869-          predicates: [
+870-            {
+871-              predicateId: "SUCC-P1",
+872-              subject: "Ancestor",
+873-              predicate: "Vital Status",
+874-              object: "DECEASED",
+875-              requiredTruth: Tristate.TRUE,
+876-              validationRequirements: {
+877-                extractionRequired: true,
+878-                sourceRequired: SourceStatus.IDENTIFIED,
+879-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+880-                corroborationRequired: CorroborationStatus.CORROBORATED,
+881-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+882-              },
+883-            },
+884-          ],
+885-          outcomeIfSatisfied: "SUCCESSION_OPENED",
+886-          outcomeIfFailed: "SUCCESSION_NOT_ESTABLISHED",
+887-          authority: { act: "Applicable succession law", section: "Registry-controlled" },
+888-          priority: 1,
+889-        },
+890-      ];
+891-    }
+892-    if (claimType === "DECLARATION_AND_POSSESSION") {
+893-      return [
+894-        {
+895-          ruleId: "DP-ELEMENT-TITLE",
+896-          ruleVersion: "1.0.0",
+897-          jurisdiction,
+898-          effectiveFrom: "1877-01-01",
+899-          claimTypes: [claimType],
+
+============================================================
+RULE: SUCCESSION-DEATH-ELEMENT
+============================================================
+837-            {
+838-              predicateId: "SP-P2",
+839-              subject: "Treasury Deposit",
+840-              predicate: "Payment Status",
+841-              object: "DEPOSITED",
+842-              requiredTruth: Tristate.TRUE,
+843-              validationRequirements: {
+844-                extractionRequired: true,
+845-                sourceRequired: SourceStatus.IDENTIFIED,
+846-                authenticationRequired: AuthenticationStatus.UNAUTHENTICATED,
+847-                corroborationRequired: CorroborationStatus.UNCORROBORATED,
+848-                humanValidationRequired: HumanValidationStatus.NOT_VALIDATED,
+849-              },
+850-            },
+851-          ],
+852-          outcomeIfSatisfied: "DEPOSIT_ELEMENT_SATISFIED",
+853-          outcomeIfFailed: "DEPOSIT_ELEMENT_FAILED",
+854-          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+855-          priority: 2,
+856-        },
+857-      ];
+858-    }
+859-    if (claimType === "INHERITANCE_CONSULTATION") {
+860-      return [
+861-        {
+862:          ruleId: "SUCCESSION-DEATH-ELEMENT",
+863-          ruleVersion: "1.0.0",
+864-          jurisdiction,
+865-          effectiveFrom: "1925-01-01",
+866-          claimTypes: [claimType],
+867-          ruleType: "ELEMENT",
+868-          logicalOperator: "ALL",
+869-          predicates: [
+870-            {
+871-              predicateId: "SUCC-P1",
+872-              subject: "Ancestor",
+873-              predicate: "Vital Status",
+874-              object: "DECEASED",
+875-              requiredTruth: Tristate.TRUE,
+876-              validationRequirements: {
+877-                extractionRequired: true,
+878-                sourceRequired: SourceStatus.IDENTIFIED,
+879-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+880-                corroborationRequired: CorroborationStatus.CORROBORATED,
+881-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+882-              },
+883-            },
+884-          ],
+885-          outcomeIfSatisfied: "SUCCESSION_OPENED",
+886-          outcomeIfFailed: "SUCCESSION_NOT_ESTABLISHED",
+887-          authority: { act: "Applicable succession law", section: "Registry-controlled" },
+888-          priority: 1,
+889-        },
+890-      ];
+891-    }
+892-    if (claimType === "DECLARATION_AND_POSSESSION") {
+893-      return [
+894-        {
+895-          ruleId: "DP-ELEMENT-TITLE",
+896-          ruleVersion: "1.0.0",
+897-          jurisdiction,
+898-          effectiveFrom: "1877-01-01",
+899-          claimTypes: [claimType],
+900-          ruleType: "ELEMENT",
+901-          logicalOperator: "ALL",
+902-          predicates: [
+903-            {
+904-              predicateId: "DP-P1",
+905-              subject: "Plaintiff",
+906-              predicate: "Title Status",
+907-              object: "REGISTERED_OWNER",
+908-              requiredTruth: Tristate.TRUE,
+909-              validationRequirements: {
+910-                extractionRequired: true,
+911-                sourceRequired: SourceStatus.SOURCE_VERIFIED,
+912-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+913-                corroborationRequired: CorroborationStatus.CORROBORATED,
+914-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+915-              },
+916-            },
+917-          ],
+918-          outcomeIfSatisfied: "TITLE_ELEMENT_SATISFIED",
+919-          outcomeIfFailed: "TITLE_ELEMENT_FAILED",
+920-          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+921-          priority: 1,
+922-        },
+923-        {
+924-          ruleId: "DP-ELEMENT-POSSESSION",
+925-          ruleVersion: "1.0.0",
+926-          jurisdiction,
+927-          effectiveFrom: "1908-01-01",
+928-          claimTypes: [claimType],
+929-          ruleType: "ELEMENT",
+930-          logicalOperator: "ALL",
+931-          predicates: [
+932-            {
+
+============================================================
+RULE: DP-ELEMENT-TITLE
+============================================================
+870-            {
+871-              predicateId: "SUCC-P1",
+872-              subject: "Ancestor",
+873-              predicate: "Vital Status",
+874-              object: "DECEASED",
+875-              requiredTruth: Tristate.TRUE,
+876-              validationRequirements: {
+877-                extractionRequired: true,
+878-                sourceRequired: SourceStatus.IDENTIFIED,
+879-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+880-                corroborationRequired: CorroborationStatus.CORROBORATED,
+881-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+882-              },
+883-            },
+884-          ],
+885-          outcomeIfSatisfied: "SUCCESSION_OPENED",
+886-          outcomeIfFailed: "SUCCESSION_NOT_ESTABLISHED",
+887-          authority: { act: "Applicable succession law", section: "Registry-controlled" },
+888-          priority: 1,
+889-        },
+890-      ];
+891-    }
+892-    if (claimType === "DECLARATION_AND_POSSESSION") {
+893-      return [
+894-        {
+895:          ruleId: "DP-ELEMENT-TITLE",
+896-          ruleVersion: "1.0.0",
+897-          jurisdiction,
+898-          effectiveFrom: "1877-01-01",
+899-          claimTypes: [claimType],
+900-          ruleType: "ELEMENT",
+901-          logicalOperator: "ALL",
+902-          predicates: [
+903-            {
+904-              predicateId: "DP-P1",
+905-              subject: "Plaintiff",
+906-              predicate: "Title Status",
+907-              object: "REGISTERED_OWNER",
+908-              requiredTruth: Tristate.TRUE,
+909-              validationRequirements: {
+910-                extractionRequired: true,
+911-                sourceRequired: SourceStatus.SOURCE_VERIFIED,
+912-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+913-                corroborationRequired: CorroborationStatus.CORROBORATED,
+914-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+915-              },
+916-            },
+917-          ],
+918-          outcomeIfSatisfied: "TITLE_ELEMENT_SATISFIED",
+919-          outcomeIfFailed: "TITLE_ELEMENT_FAILED",
+920-          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+921-          priority: 1,
+922-        },
+923-        {
+924-          ruleId: "DP-ELEMENT-POSSESSION",
+925-          ruleVersion: "1.0.0",
+926-          jurisdiction,
+927-          effectiveFrom: "1908-01-01",
+928-          claimTypes: [claimType],
+929-          ruleType: "ELEMENT",
+930-          logicalOperator: "ALL",
+931-          predicates: [
+932-            {
+933-              predicateId: "DP-P2",
+934-              subject: "Plaintiff",
+935-              predicate: "Possession Status",
+936-              object: "DISPOSSESSED",
+937-              requiredTruth: Tristate.TRUE,
+938-              validationRequirements: {
+939-                extractionRequired: true,
+940-                sourceRequired: SourceStatus.IDENTIFIED,
+941-                authenticationRequired: AuthenticationStatus.UNAUTHENTICATED,
+942-                corroborationRequired: CorroborationStatus.UNCORROBORATED,
+943-                humanValidationRequired: HumanValidationStatus.NOT_VALIDATED,
+944-              },
+945-            },
+946-          ],
+947-          outcomeIfSatisfied: "DISPOSSESSION_ELEMENT_SATISFIED",
+948-          outcomeIfFailed: "DISPOSSESSION_ELEMENT_FAILED",
+949-          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
+950-          priority: 2,
+951-        },
+952-      ];
+953-    }
+954-    return [];
+955-  }
+956-
+957-  getLegislationMapping(claimType: ClaimType) {
+958-    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
+959-      return {
+960-        primaryAct: "Specific Relief Act 1877",
+961-        relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Sections 8-12, 21A", purpose: "Claim-specific analysis" }],
+962-      };
+963-    }
+964-    if (claimType === "INHERITANCE_CONSULTATION")
+965-      return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
+
+============================================================
+RULE: DP-ELEMENT-POSSESSION
+============================================================
+899-          claimTypes: [claimType],
+900-          ruleType: "ELEMENT",
+901-          logicalOperator: "ALL",
+902-          predicates: [
+903-            {
+904-              predicateId: "DP-P1",
+905-              subject: "Plaintiff",
+906-              predicate: "Title Status",
+907-              object: "REGISTERED_OWNER",
+908-              requiredTruth: Tristate.TRUE,
+909-              validationRequirements: {
+910-                extractionRequired: true,
+911-                sourceRequired: SourceStatus.SOURCE_VERIFIED,
+912-                authenticationRequired: AuthenticationStatus.AUTHENTICATED,
+913-                corroborationRequired: CorroborationStatus.CORROBORATED,
+914-                humanValidationRequired: HumanValidationStatus.VALIDATED,
+915-              },
+916-            },
+917-          ],
+918-          outcomeIfSatisfied: "TITLE_ELEMENT_SATISFIED",
+919-          outcomeIfFailed: "TITLE_ELEMENT_FAILED",
+920-          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+921-          priority: 1,
+922-        },
+923-        {
+924:          ruleId: "DP-ELEMENT-POSSESSION",
+925-          ruleVersion: "1.0.0",
+926-          jurisdiction,
+927-          effectiveFrom: "1908-01-01",
+928-          claimTypes: [claimType],
+929-          ruleType: "ELEMENT",
+930-          logicalOperator: "ALL",
+931-          predicates: [
+932-            {
+933-              predicateId: "DP-P2",
+934-              subject: "Plaintiff",
+935-              predicate: "Possession Status",
+936-              object: "DISPOSSESSED",
+937-              requiredTruth: Tristate.TRUE,
+938-              validationRequirements: {
+939-                extractionRequired: true,
+940-                sourceRequired: SourceStatus.IDENTIFIED,
+941-                authenticationRequired: AuthenticationStatus.UNAUTHENTICATED,
+942-                corroborationRequired: CorroborationStatus.UNCORROBORATED,
+943-                humanValidationRequired: HumanValidationStatus.NOT_VALIDATED,
+944-              },
+945-            },
+946-          ],
+947-          outcomeIfSatisfied: "DISPOSSESSION_ELEMENT_SATISFIED",
+948-          outcomeIfFailed: "DISPOSSESSION_ELEMENT_FAILED",
+949-          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
+950-          priority: 2,
+951-        },
+952-      ];
+953-    }
+954-    return [];
+955-  }
+956-
+957-  getLegislationMapping(claimType: ClaimType) {
+958-    if (claimType === "SPECIFIC_PERFORMANCE" || claimType === "DECLARATION_AND_POSSESSION") {
+959-      return {
+960-        primaryAct: "Specific Relief Act 1877",
+961-        relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Sections 8-12, 21A", purpose: "Claim-specific analysis" }],
+962-      };
+963-    }
+964-    if (claimType === "INHERITANCE_CONSULTATION")
+965-      return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
+966-    return { primaryAct: null, relevantSections: [] };
+967-  }
+968-}
+969-
+970-export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
+971-  constructor() { super(); }
+972-}
+973-
+974-// P0 FIX: DefaultAuditSink.append() — remove unreachable code after return
+975-export class DefaultAuditSink implements AuditSink {
+976-  readonly isProductionReady = false;
+977-  private lastRecord: AuditRecord | null = null;
+978-  async append(payload: AuditRecordPayload): Promise<AuditRecord> {
+979-    const previousHash = this.lastRecord?.recordHash ?? null;
+980-    const recordHash = canonicalHash({ payload, previousHash });
+981-    const record = { ...payload, previousHash, recordHash };
+982-    this.lastRecord = record;
+983-    return record;
+984-  }
+985-}
+986-
+987-export class DefaultLicenseValidator implements LicenseValidator {
+988-  readonly isProductionReady = false;
+989-  async validate(_user: AuthUser, license: { licenseId: string; issuedTo: string }) {
+990-    if (!license?.licenseId || !license?.issuedTo)
+991-      return { valid: false, reason: "License object incomplete." };
+992-    return { valid: true };
+993-  }
+994-}
