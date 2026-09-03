@@ -25,6 +25,20 @@ import { AuthUser } from "../types/auth.types";
 import { generateSecureId, generateHash } from "../utils/crypto";
 import { CitationValidator } from "./CitationValidator";
 import { FactConsistencyGate } from "./FactConsistencyGate";
+import {
+  Tristate,
+} from "./rules/RuleContracts";
+import type {
+  AuthorityRef,
+  ValidationRequirements,
+  RulePredicate,
+  LegalRule,
+  RuleGraphIdentity,
+  RuleRegistry,
+  PredicateExecutionResult,
+  RuleExecutionResult,
+  RuleExecutionStatus,
+} from "./rules/RuleContracts";
 
 // ============================================================================
 // MANIFEST / HARD LIMITS
@@ -53,11 +67,6 @@ const MAX_INPUT_LENGTH = 100_000;
 // ENUMS
 // ============================================================================
 
-export enum Tristate {
-  TRUE = "TRUE",
-  FALSE = "FALSE",
-  UNKNOWN = "UNKNOWN",
-}
 
 export enum AssertionType {
   ALLEGED = "ALLEGED",
@@ -131,12 +140,6 @@ export enum GateStatus {
   HALT = "HALT",
 }
 
-export type RuleExecutionStatus =
-  | "NOT_EXECUTED"
-  | "BLOCKED"
-  | "UNKNOWN"
-  | "FAILED"
-  | "SATISFIED";
 
 export type CitationState =
   | "NOT_EXECUTED"
@@ -302,115 +305,32 @@ export interface ContradictionEdge {
 // ============================================================================
 // AUTHORITY / RULE GRAPH
 // ============================================================================
+//
+// P5-13:
+// Canonical contracts live in ./rules/RuleContracts.ts.
+// These re-exports preserve the existing BCCAAEngine public API so current
+// tests and consumers do not need an immediate import-path migration.
+//
 
-export interface AuthorityRef {
-  authorityId?: string;
-  act: string;
-  section: string;
-  citation?: string;
-}
-
-export interface ValidationRequirements {
-  extractionRequired: boolean;
-  sourceRequired: SourceStatus;
-  authenticationRequired: AuthenticationStatus;
-  corroborationRequired: CorroborationStatus;
-  humanValidationRequired: HumanValidationStatus;
-}
-
-export interface RulePredicate {
-  predicateId: string;
-  subject: string;
-  predicate: string;
-  object?: string;
-  requiredTruth: Tristate;
-  requireVerified?: boolean;
-  validationRequirements?: ValidationRequirements;
-  authorityIds?: string[];
-}
-
-export interface LegalRule {
-  ruleId: string;
-  ruleVersion: string;
-  jurisdiction: string;
-  effectiveFrom: string;
-  effectiveTo?: string;
-  claimTypes: ClaimType[];
-  ruleType:
-    | "ELEMENT"
-    | "BAR"
-    | "EXCEPTION"
-    | "BURDEN"
-    | "PRESUMPTION"
-    | "LIMITATION"
-    | "JURISDICTION"
-    | "PROCEDURE"
-    | "RELIEF";
-  predicates: RulePredicate[];
-  logicalOperator: "ALL" | "ANY" | "AT_LEAST_N";
-  atLeastN?: number;
-  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
-  outcomeIfSatisfied: string;
-  outcomeIfFailed: string;
-  legalEffect?: string;
-  authority: AuthorityRef;
-  supersedes?: string[];
-  exceptions?: string[];
-  priority?: number;
-}
-
-export interface RuleGraphIdentity {
-  corpusId: string;
-  corpusVersion: string;
-  corpusDigest: string;
-  authorityRegistryVersion: string;
-  authorityRegistryDigest: string;
-  ruleGraphVersion: string;
-  ruleGraphDigest: string;
-}
-
-export interface RuleRegistry {
-  version: string;
-  identity: RuleGraphIdentity;
-  authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
-  getClaimElements(claimType: ClaimType, jurisdiction: string): LegalRule[];
-  getLegislationMapping(claimType: ClaimType): {
-    primaryAct: string | null;
-    relevantSections: Array<{
-      actName: string;
-      sectionOrRule: string;
-      purpose: string;
-    }>;
-  };
-}
+export type {
+  AuthorityRef,
+  ValidationRequirements,
+  RulePredicate,
+  LegalRule,
+  RuleGraphIdentity,
+  RuleRegistry,
+  PredicateExecutionResult,
+  RuleExecutionResult,
+} from "./rules/RuleContracts";
 
 // ============================================================================
 // EXECUTION RESULTS
 // ============================================================================
-
-export interface PredicateExecutionResult {
-  predicateSubject: string;
-  predicateId: string;
-  status: "TRUE" | "FALSE" | "UNKNOWN";
-  factIds: string[];
-  conflictDetected?: boolean;
-  sameFamilyConflictingFacts?: Array<{
-    factId: string;
-    object: string | null;
-    truth: Tristate;
-  }>;
-}
-
-export interface RuleExecutionResult {
-  ruleId: string;
-  status: RuleExecutionStatus;
-  predicateResults: PredicateExecutionResult[];
-  authorityIds: string[];
-  burden?: { party: "PLAINTIFF" | "DEFENDANT"; standard: string };
-  legalEffect?: string;
-  explanationCode: string;
-  authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
-}
+//
+// PredicateExecutionResult and RuleExecutionResult are canonicalized above.
+// FactEvaluationResult remains engine-specific because it carries execution
+// and validation details not belonging to the rule-contract boundary.
+//
 
 export interface FactEvaluationResult {
   status: Tristate;
@@ -428,8 +348,6 @@ export interface FactEvaluationResult {
     humanValidationStatus: HumanValidationStatus;
   };
 }
-
-// ── Explicit internal interfaces ──
 
 interface ElementGateResult {
   status: GateStatus;
@@ -2345,7 +2263,12 @@ export class BCCAAEngine {
           validationRequirements: pred.validationRequirements,
           requireVerified: pred.requireVerified,
         });
-        const status = evalResult.status === Tristate.TRUE ? "TRUE" : evalResult.status === Tristate.FALSE ? "FALSE" : "UNKNOWN";
+        const status =
+          evalResult.status === Tristate.TRUE
+            ? Tristate.TRUE
+            : evalResult.status === Tristate.FALSE
+              ? Tristate.FALSE
+              : Tristate.UNKNOWN;
         predicateResults.push({
           predicateSubject: pred.subject,
           predicateId: pred.predicateId,

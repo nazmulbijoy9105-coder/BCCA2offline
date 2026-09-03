@@ -1,4 +1,6 @@
 import { AuthUser, LicenseData } from "./auth.types";
+export { Tristate } from "../engine/rules/RuleContracts";
+import type { Tristate } from "../engine/rules/RuleContracts";
 
 // ============================================================================
 // 4.4.0-HARDENED CORE TYPES  (widened for 4.5.2-P0 compatibility)
@@ -9,8 +11,6 @@ export interface EngineInput {
   focusDomain?: string;
   submissionDate?: string;
 }
-
-export enum Tristate { TRUE = "TRUE", FALSE = "FALSE", UNKNOWN = "UNKNOWN" }
 
 export enum AssertionType {
   ASSERTED = "ASSERTED",
