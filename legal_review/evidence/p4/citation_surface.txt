@@ -1,0 +1,326 @@
+src/App.tsx:76:    "Stage 2: Cross-referencing Acts & Precedents...",
+src/components/LegalAnalysisPanel.tsx:62:  // Precedents section
+src/components/LegalAnalysisPanel.tsx:63:  const precedentsLines = (result.stage2?.precedents && result.stage2.precedents.length > 0)
+src/components/LegalAnalysisPanel.tsx:64:    ? (result.stage2?.precedents ?? []).map(p => `- **${p.citation} (${p.court})**: *Holding*: "${p.holding}"\n  *Relevance*: ${p.relevance}`).join("\n\n")
+src/components/LegalAnalysisPanel.tsx:65:    : `- **75 DLR 142 (HCD)**: Held that a disowning affidavit has zero recognition under Muslim Personal Law (Shariat) Application Act 1937.\n- **56 DLR 215 (AD)**: Held that possession of one co-sharer is the possession of all co-sharers unless ouster is established.`;
+src/components/LegalAnalysisPanel.tsx:98:### LANDMARK SUPREME COURT OF BANGLADESH PRECEDENTS
+src/components/LegalAnalysisPanel.tsx:99:${precedentsLines}
+src/components/LegalAnalysisPanel.tsx:369:                  Synthesize a courtroom drafting memorandum tailored to Bangladesh civil procedure, complete with limitation checks, injunction strategies, and precedents. You can edit the text and export to Word (.docx) or PDF.
+src/components/LegalReliabilityStandardModal.tsx:19:    { step: 5, title: "Authority Retrieval", desc: "Canonical registry lookup with cryptographic citation hashes", icon: Database, type: "Registry" },
+src/components/LegalReliabilityStandardModal.tsx:30:    { title: "Candidate Precedent Retrieval", desc: "Querying canonical Supreme Court precedents index matching factual keywords." },
+src/components/LegalReliabilityStandardModal.tsx:42:    { title: "Authoritativeness of Precedents", desc: "Must be verified against the canonical Supreme Court registry with binding hierarchy (AD > HCD) and checksum validation." },
+src/components/LegalReliabilityStandardModal.tsx:137:                    <li>• Surfacing candidate statutes, sections, and precedent matches</li>
+src/components/StageExplorer.tsx:23:    { num: 2, title: "Legislation Map & Precedents", icon: Scale },
+src/components/StageExplorer.tsx:438:                            {analysis.stage2.citationValidationAudit.verifiedCount}/{analysis.stage2.citationValidationAudit.totalCitations} Precedents Authoritatively Verified
+src/components/StageExplorer.tsx:451:                  {(analysis.stage2?.precedents ?? []).length > 0 && (
+src/components/StageExplorer.tsx:455:                          High Court / Appellate Division Precedents (Authoritatively Verified)
+src/components/StageExplorer.tsx:463:                        {(analysis.stage2?.precedents ?? []).map((p, i) => (
+src/components/StageExplorer.tsx:478:                                {p.verificationStatus === "VERIFIED_CANONICAL" && (
+src/components/StageExplorer.tsx:511:                            {p.verificationHash && (
+src/components/StageExplorer.tsx:514:                                <span>Forensic Seal: {p.verificationHash}</span>
+src/engine/BCCAAEngine.deterministic.test.ts:6:  canonicalStringify,
+src/engine/BCCAAEngine.deterministic.test.ts:42:  return canonicalStringify({
+src/engine/BCCAAEngine.deterministic.test.ts:66:      precedentCount: stage2?.precedents?.length ?? 0,
+src/engine/BCCAAEngine.deterministic.test.ts:67:      verifiedPrecedentCount: stage2?.precedents?.filter(
+src/engine/BCCAAEngine.deterministic.test.ts:68:        (p: any) => p.verificationStatus === "VERIFIED_CANONICAL"
+src/engine/BCCAAEngine.deterministic.test.ts:232:  describe("P2-02 Legislation & precedent resolution", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:245:    it("Precedent verification audit is deterministic and reports counts consistently", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:250:            "The plaintiff cited 43 DLR 234 and 52 DLR 112 for the proposition that unregistered bainapatra is admissible in evidence.",
+src/engine/BCCAAEngine.deterministic.test.ts:255:        "Deterministic canonical-registry citation verification"
+src/engine/BCCAAEngine.deterministic.test.ts:359:      expect(canonicalStringify(i1)).toBe(canonicalStringify(i2));
+src/engine/BCCAAEngine.deterministic.test.ts:389:      expect(canonicalStringify(m1)).toBe(canonicalStringify(m2));
+src/engine/BCCAAEngine.deterministic.test.ts:431:      expect(canonicalStringify(a1)).toBe(canonicalStringify(a2));
+src/engine/BCCAAEngine.deterministic.test.ts:482:      canonicalStringify((r1 as any).stage12),
+src/engine/BCCAAEngine.deterministic.test.ts:484:      canonicalStringify((r2 as any).stage12),
+src/engine/BCCAAEngine.deterministic.test.ts:514:      expect(canonicalStringify(r1.gateF0)).toBe(canonicalStringify(r2.gateF0));
+src/engine/BCCAAEngine.deterministic.test.ts:523:          "All elements proved. No equitable bar. Procedure valid. Precedents verified.",
+src/engine/BCCAAEngine.deterministic.test.ts:527:      expect(canonicalStringify(r1)).toBe(canonicalStringify(r2));
+src/engine/BCCAAEngine.deterministic.test.ts:597:      expect(canonicalStringify(r1.stage0.contradictionGraph)).toBe(
+src/engine/BCCAAEngine.deterministic.test.ts:598:        canonicalStringify(r2.stage0.contradictionGraph)
+src/engine/BCCAAEngine.phase1.test.ts:1:import { describe, it, expect } from "vitest"; import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine"; import { makeAnalyzeRequest as makeRequest } from "./testFixtures"; const engine = new BCCAAEngine({ licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) }, factValidationProvider: new NoOpFactValidationProvider() }); describe("P1-01: Semantic determinism", () => { it("SPECIFIC_PERFORMANCE identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01", factPattern: "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); it("death pattern identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01-SC", factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); }); describe("P1-02: Temporal determinism", () => { it("3-year limitation from 2020 refusal is TIME_BARRED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-02", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.", submissionDate: "2024-01-15" })); expect(r.stage3.isTimeBarred).toBe(true); expect(r.stage3.accrualDate).toBe("2020-08-20"); }); }); describe("P1-03: Fact extraction", () => { it("UNREGISTERED in atomicFacts", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-REG", factPattern: "The plaintiff relied on an unregistered bainapatra." })); const objs = (r.stage0?.atomicFacts ?? []).map((f: any) => f.object).filter(Boolean); expect(objs).toContain("UNREGISTERED"); }); it("death fact extracted as DECEASED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-DEATH", factPattern: "The plaintiff father died on 10 March 2020." })); const deathFacts = (r.stage0?.atomicFacts ?? []).filter((f: any) => f.predicate === "Vital Status" && f.object === "DECEASED"); expect(deathFacts.length).toBeGreaterThanOrEqual(1); expect(deathFacts[0].subject).toBe("Ancestor"); }); });
+src/engine/BCCAAEngine.phase1b.test.ts:2:import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase1b.test.ts:109:    // Default canonical precedents may still be injected; primaryAct must be null
+src/engine/BCCAAEngine.phase1b.test.ts:252:  it("identical inputs produce identical canonical representations", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:256:    expect(canonicalStringify(r1)).toBe(canonicalStringify(r2));
+src/engine/BCCAAEngine.phase1b.test.ts:260:describe("P1-16: Canonical stringify determinism", () => {
+src/engine/BCCAAEngine.phase1b.test.ts:261:  it("canonicalStringify produces stable, parseable JSON", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:263:    const s1 = canonicalStringify(r);
+src/engine/BCCAAEngine.phase1b.test.ts:264:    const s2 = canonicalStringify(r);
+src/engine/BCCAAEngine.phase2.test.ts:2:import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase2.test.ts:148:    expect(canonicalStringify(r1.stage8)).toBe(canonicalStringify(r2.stage8));
+src/engine/BCCAAEngine.phase2.test.ts:201:    expect(canonicalStringify(r1.gateF0)).toBe(canonicalStringify(r2.gateF0));
+src/engine/BCCAAEngine.phase2.test.ts:217:describe("P2-05: Precedent security hash token", () => {
+src/engine/BCCAAEngine.phase2.test.ts:218:  it("every precedent carries a non-empty security hash token", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:220:    for (const p of r.stage2!.precedents!) {
+src/engine/BCCAAEngine.phase2.test.ts:227:describe("P2-06: Precedent verification hash", () => {
+src/engine/BCCAAEngine.phase2.test.ts:228:  it("every precedent carries a non-empty verification hash", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:230:    for (const p of r.stage2!.precedents!) {
+src/engine/BCCAAEngine.phase2.test.ts:231:      expect(p.verificationHash).toBeTruthy();
+src/engine/BCCAAEngine.phase2.test.ts:232:      expect(typeof p.verificationHash).toBe("string");
+src/engine/BCCAAEngine.phase2.test.ts:238:  it("isDeterministic flag is boolean on all precedents", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:240:    for (const p of r.stage2!.precedents!) {
+src/engine/BCCAAEngine.phase2.test.ts:247:  it("audit totals match actual precedent array length", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:249:    expect(r.stage2!.citationValidationAudit!.totalCitations).toBe((r.stage2!.precedents!).length);
+src/engine/BCCAAEngine.phase2.test.ts:310:    const inputBefore = canonicalStringify(input);
+src/engine/BCCAAEngine.phase2.test.ts:312:    expect(canonicalStringify(input)).toBe(inputBefore);
+src/engine/BCCAAEngine.phase2.test.ts:344:describe("P2-16: Precedent hash uniqueness", () => {
+src/engine/BCCAAEngine.phase2.test.ts:345:  it("no two precedents share the same security hash", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:350:    const hashes = (r.stage2?.precedents ?? []).map((p: any) => p.securityHash);
+src/engine/BCCAAEngine.phase2.test.ts:401:  it("same input produces identical canonical string", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:405:    expect(canonicalStringify(r1)).toBe(canonicalStringify(r2));
+src/engine/BCCAAEngine.phase2.test.ts:478:  it("same case run 20 times produces identical canonical hashes", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:485:      Array.from({ length: 20 }, () => engine.analyze(input).then((r) => canonicalStringify(r)))
+src/engine/BCCAAEngine.phase3.test.ts:2:import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase3.test.ts:39:    const canonical = results.map((r) => canonicalStringify(r));
+src/engine/BCCAAEngine.phase3.test.ts:40:    expect(new Set(canonical).size).toBe(1);
+src/engine/BCCAAEngine.phase3.test.ts:76:describe("P3-03: Deterministic canonical-registry citation verification standard", () => {
+src/engine/BCCAAEngine.phase3.test.ts:89:    expect(typeof canonicalStringify).toBe("function");
+src/engine/BCCAAEngine.phase3.test.ts:99:    expect(canonicalStringify(r1)).toBe(canonicalStringify(r2));
+src/engine/BCCAAEngine.phase3.test.ts:133:    const json = canonicalStringify(r);
+src/engine/BCCAAEngine.ts:26:import { CitationValidator } from "./CitationValidator";
+src/engine/BCCAAEngine.ts:244:  canonicalKey: string;
+src/engine/BCCAAEngine.ts:288:   *  When two clauses produce the same canonical fact, both assertion IDs
+src/engine/BCCAAEngine.ts:579:// ONE CANONICAL SERIALIZATION / HASH PATH
+src/engine/BCCAAEngine.ts:582:function canonicalize(value: unknown): unknown {
+src/engine/BCCAAEngine.ts:588:  if (Array.isArray(value)) return value.map(canonicalize);
+src/engine/BCCAAEngine.ts:592:      out[key] = canonicalize((value as Record<string, unknown>)[key]);
+src/engine/BCCAAEngine.ts:599:export function canonicalStringify(value: unknown): string {
+src/engine/BCCAAEngine.ts:600:  return JSON.stringify(canonicalize(value));
+src/engine/BCCAAEngine.ts:603:export function canonicalHash(value: unknown): string {
+src/engine/BCCAAEngine.ts:604:  return generateHash(canonicalStringify(value));
+src/engine/BCCAAEngine.ts:608: *  preserves Date as ISO strings via canonicalStringify. Replaces
+src/engine/BCCAAEngine.ts:611:  return JSON.parse(canonicalStringify(obj)) as T;
+src/engine/BCCAAEngine.ts:623:  return canonicalHash(input);
+src/engine/BCCAAEngine.ts:980:    const recordHash = canonicalHash({ payload, previousHash });
+src/engine/BCCAAEngine.ts:1094: * P1-04 canonical date projection.
+src/engine/BCCAAEngine.ts:1222:      || `BCCAA-${canonicalStringify(request).slice(0, 16)}`;
+src/engine/BCCAAEngine.ts:1427:          // P0-6: Canonical deduplication with deterministic provenance merge
+src/engine/BCCAAEngine.ts:1428:          const canonicalKey = `${candidate.subject}|${candidate.predicate}|${(candidate.object || "").toString().toUpperCase()}`;
+src/engine/BCCAAEngine.ts:1430:            (f) => `${f.subject}|${f.predicate}|${(f.object || "").toString().toUpperCase()}`.toUpperCase() === canonicalKey.toUpperCase()
+src/engine/BCCAAEngine.ts:1502:    const canonicalKey = `${subject}|${predicate}|${object ?? "*"}`.toUpperCase();
+src/engine/BCCAAEngine.ts:1503:    const existing = Array.from(ctx.propositionRegistry.values()).find((p) => p.canonicalKey === canonicalKey);
+src/engine/BCCAAEngine.ts:1507:      propositionId, subject, predicate, object, canonicalKey, text,
+src/engine/BCCAAEngine.ts:1563:      "Prof", "Hon", "Jr", "Sr", "ALR", "BLD", "BLC", "DLR", "MLR",
+src/engine/BCCAAEngine.ts:2979:        citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, verifiedCount: 0, rejectedCount: 0, registrySignature: "BCCAA-REGISTRY-SIGNATURE", auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" },
+src/engine/BCCAAEngine.ts:2981:        precedents: [],
+src/engine/BCCAAEngine.ts:3103:      stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
+src/engine/BCCAAEngine.ts:3193:      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
+src/engine/BCCAAEngine.ts:3283:    const factRegistryHash = canonicalHash(facts.map((f) => ({ factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, eventDate: f.eventDate, normalizedValue: f.normalizedValue })));
+src/engine/BCCAAEngine.ts:3284:    const timelineHash = canonicalHash(ctx.eventTimeline);
+src/engine/BCCAAEngine.ts:3285:    const executionTraceHash = canonicalHash(ctx.executionTrace);
+src/engine/BCCAAEngine.ts:3286:    const rawInputHash = canonicalHash(request.input?.factPattern ?? "");
+src/engine/BCCAAEngine.ts:3287:    const extractionHash = canonicalHash(facts.map((f) => f.proposition));
+src/engine/BCCAAEngine.ts:3288:    const inputHash = canonicalHash(request.input);
+src/engine/BCCAAEngine.ts:3307:      ruleRegistryHash: canonicalHash(this.ruleRegistry.identity),
+src/engine/BCCAAEngine.ts:3326:    // It represents the canonical legal analysis result.
+src/engine/BCCAAEngine.ts:3408:    return canonicalHash(semantic);
+src/engine/CitationValidator.ts:6: * deterministically resolved and verified against the canonical registry of Bangladesh
+src/engine/CitationValidator.ts:7: * Supreme Court (Appellate Division & High Court Division) precedents.
+src/engine/CitationValidator.ts:10:export interface AuthoritativePrecedent {
+src/engine/CitationValidator.ts:16:  courtForum: "Appellate Division" | "High Court Division" | "Supreme Court of Bangladesh";
+src/engine/CitationValidator.ts:17:  reporter: "DLR" | "BLC" | "BLD" | "ADC" | "MLR" | "ALR" | "BCR";
+src/engine/CitationValidator.ts:23:  ratioDecidendi: string;
+src/engine/CitationValidator.ts:26:  bindingAuthority: "BINDING_APPELLATE_DIVISION" | "BINDING_HIGH_COURT_DIVISION";
+src/engine/CitationValidator.ts:27:  verificationHash: string;
+src/engine/CitationValidator.ts:30:export interface VerifiedPrecedentOutput {
+src/engine/CitationValidator.ts:42:  ratioDecidendi: string;
+src/engine/CitationValidator.ts:43:  verificationStatus: "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED";
+src/engine/CitationValidator.ts:44:  verificationHash: string;
+src/engine/CitationValidator.ts:50: * Deterministic Hash computation for Precedent Validation
+src/engine/CitationValidator.ts:52:function computePrecedentValidationHash(citation: string, title: string, year: number, reporter: string, vol: number, page: number): string {
+src/engine/CitationValidator.ts:63: * CANONICAL PRECEDENT REGISTRY
+src/engine/CitationValidator.ts:66:export const CANONICAL_PRECEDENT_REGISTRY: Record<string, AuthoritativePrecedent> = {
+src/engine/CitationValidator.ts:68:  "45 DLR (AD) 124": {
+src/engine/CitationValidator.ts:69:    id: "CIT-45DLR124-AD",
+src/engine/CitationValidator.ts:70:    citation: "45 DLR (AD) 124",
+src/engine/CitationValidator.ts:71:    normalizedCitation: "45-dlr-ad-124",
+src/engine/CitationValidator.ts:74:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:75:    reporter: "DLR",
+src/engine/CitationValidator.ts:88:    ratioDecidendi: "Under Islamic Law of Inheritance, succession opens immediately and automatically upon the death of the propositus/ancestor. The shares of lawful heirs vest instantaneously without requiring any probate, letter of administration, or mutation. An ante-mortem disowning declaration has zero legal effect.",
+src/engine/CitationValidator.ts:91:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:92:    verificationHash: computePrecedentValidationHash("45 DLR (AD) 124", "Mvi. Md. Abdul Jalil v. Md. Abul Hossain", 1993, "DLR", 45, 124),
+src/engine/CitationValidator.ts:95:  "55 DLR (AD) 180": {
+src/engine/CitationValidator.ts:96:    id: "CIT-55DLR180-AD",
+src/engine/CitationValidator.ts:97:    citation: "55 DLR (AD) 180",
+src/engine/CitationValidator.ts:98:    normalizedCitation: "55-dlr-ad-180",
+src/engine/CitationValidator.ts:101:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:102:    reporter: "DLR",
+src/engine/CitationValidator.ts:114:    ratioDecidendi: "A unilateral declaration, affidavit, or newspaper notice 'disowning' a child is unknown to Muslim law and Bangladesh civil jurisprudence. It cannot disinherit a legal heir or divest lawful proprietary rights.",
+src/engine/CitationValidator.ts:117:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:118:    verificationHash: computePrecedentValidationHash("55 DLR (AD) 180", "Md. Mofizul Islam v. Md. Nurul Islam", 2003, "DLR", 55, 180),
+src/engine/CitationValidator.ts:121:  "39 DLR (AD) 162": {
+src/engine/CitationValidator.ts:122:    id: "CIT-39DLR162-AD",
+src/engine/CitationValidator.ts:123:    citation: "39 DLR (AD) 162",
+src/engine/CitationValidator.ts:124:    normalizedCitation: "39-dlr-ad-162",
+src/engine/CitationValidator.ts:127:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:128:    reporter: "DLR",
+src/engine/CitationValidator.ts:140:    ratioDecidendi: "Mutation of names (namjari khatian) in the revenue records and rent receipts are maintained strictly for fiscal collection purposes; they neither create title in favour of the recorded person nor extinguish the lawful title of other co-sharers.",
+src/engine/CitationValidator.ts:143:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:144:    verificationHash: computePrecedentValidationHash("39 DLR (AD) 162", "Sona Mia v. Abdul Jabbar", 1987, "DLR", 39, 162),
+src/engine/CitationValidator.ts:147:  "30 DLR (SC) 115": {
+src/engine/CitationValidator.ts:148:    id: "CIT-30DLR115-SC",
+src/engine/CitationValidator.ts:149:    citation: "30 DLR (SC) 115",
+src/engine/CitationValidator.ts:150:    normalizedCitation: "30-dlr-sc-115",
+src/engine/CitationValidator.ts:153:    courtForum: "Supreme Court of Bangladesh",
+src/engine/CitationValidator.ts:154:    reporter: "DLR",
+src/engine/CitationValidator.ts:167:    ratioDecidendi: "During the lifetime of an ancestor, no descendant h as unknown vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
+src/engine/CitationValidator.ts:170:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:171:    verificationHash: computePrecedentValidationHash("30 DLR (SC) 115", "Mst. Amena Khatun v. Mst. Sabira Khatun", 1978, "DLR", 30, 115),
+src/engine/CitationValidator.ts:175:  "60 DLR (AD) 54": {
+src/engine/CitationValidator.ts:176:    id: "CIT-60DLR54-AD",
+src/engine/CitationValidator.ts:177:    citation: "60 DLR (AD) 54",
+src/engine/CitationValidator.ts:178:    normalizedCitation: "60-dlr-ad-54",
+src/engine/CitationValidator.ts:181:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:182:    reporter: "DLR",
+src/engine/CitationValidator.ts:196:    ratioDecidendi: "Registration of the contract for sale (Bainapatra) under Section 17A of the Registration Act 1908 and deposit of the remaining consideration in court via treasury challan are mandatory statutory prerequisites under Section 21A SRA. Non-compliance renders the suit incompetent ab initio.",
+src/engine/CitationValidator.ts:199:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:200:    verificationHash: computePrecedentValidationHash("60 DLR (AD) 54", "Md. Arfan Ali v. Md. Abdul Barek", 2008, "DLR", 60, 54),
+src/engine/CitationValidator.ts:203:  "59 DLR (AD) 112": {
+src/engine/CitationValidator.ts:204:    id: "CIT-59DLR112-AD",
+src/engine/CitationValidator.ts:205:    citation: "59 DLR (AD) 112",
+src/engine/CitationValidator.ts:206:    normalizedCitation: "59-dlr-ad-112",
+src/engine/CitationValidator.ts:209:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:210:    reporter: "DLR",
+src/engine/CitationValidator.ts:222:    ratioDecidendi: "In a suit for specific performance, the purchaser must aver and prove continuous readiness and willingness to perform his part of the contract. The statutory deposit of the balance consideration into court conclusively satisfies this requirement.",
+src/engine/CitationValidator.ts:225:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:226:    verificationHash: computePrecedentValidationHash("59 DLR (AD) 112", "Al-Haj Md. Serajul Islam v. Md. Abdul Khalique", 2007, "DLR", 59, 112),
+src/engine/CitationValidator.ts:230:  "56 DLR (AD) 34": {
+src/engine/CitationValidator.ts:231:    id: "CIT-56DLR34-AD",
+src/engine/CitationValidator.ts:232:    citation: "56 DLR (AD) 34",
+src/engine/CitationValidator.ts:233:    normalizedCitation: "56-dlr-ad-34",
+src/engine/CitationValidator.ts:236:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:237:    reporter: "DLR",
+src/engine/CitationValidator.ts:251:    ratioDecidendi: "An unregistered contract or sale agreement conveys no proprietary title or interest in immovable property. A duly registered conveyance (Kabala) supported by valid chain of deeds and possession must prevail over unregistered claims.",
+src/engine/CitationValidator.ts:254:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:255:    verificationHash: computePrecedentValidationHash("56 DLR (AD) 34", "Abdul Gafur v. Ministry of Land", 2004, "DLR", 56, 34),
+src/engine/CitationValidator.ts:258:  "12 BLC (AD) 102": {
+src/engine/CitationValidator.ts:259:    id: "CIT-12BLC102-AD",
+src/engine/CitationValidator.ts:260:    citation: "12 BLC (AD) 102",
+src/engine/CitationValidator.ts:261:    normalizedCitation: "12-blc-ad-102",
+src/engine/CitationValidator.ts:264:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:265:    reporter: "BLC",
+src/engine/CitationValidator.ts:278:    ratioDecidendi: "Continuous entries in record-of-rights (Khatian) coupled with payment of land development tax receipts (Dakhila) establish presumption of possession in favour of the recorded owner against third-party trespassers.",
+src/engine/CitationValidator.ts:281:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:282:    verificationHash: computePrecedentValidationHash("12 BLC (AD) 102", "Abdur Rashid v. Md. Nurul Islam", 2007, "BLC", 12, 102),
+src/engine/CitationValidator.ts:286:  "42 DLR (AD) 289": {
+src/engine/CitationValidator.ts:287:    id: "CIT-42DLR289-AD",
+src/engine/CitationValidator.ts:288:    citation: "42 DLR (AD) 289",
+src/engine/CitationValidator.ts:289:    normalizedCitation: "42-dlr-ad-289",
+src/engine/CitationValidator.ts:292:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:293:    reporter: "DLR",
+src/engine/CitationValidator.ts:305:    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+src/engine/CitationValidator.ts:308:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:309:    verificationHash: computePrecedentValidationHash("42 DLR (AD) 289", "Moniruddin v. Soleman Ali", 1990, "DLR", 42, 289),
+src/engine/CitationValidator.ts:312:  "43 DLR (AD) 21": {
+src/engine/CitationValidator.ts:313:    id: "CIT-43DLR21-AD",
+src/engine/CitationValidator.ts:314:    citation: "43 DLR (AD) 21",
+src/engine/CitationValidator.ts:315:    normalizedCitation: "43-dlr-ad-21",
+src/engine/CitationValidator.ts:318:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:319:    reporter: "DLR",
+src/engine/CitationValidator.ts:329:    ratioDecidendi: "The burden of proof in civil litigation lies firmly upon the party who substantiates the affirmative of the issue. A plaintiff must succeed on the strength of his own title and cannot rely on the weakness of the defendant's case.",
+src/engine/CitationValidator.ts:332:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:333:    verificationHash: computePrecedentValidationHash("43 DLR (AD) 21", "Amena Khatun v. Serajuddin", 1991, "DLR", 43, 21),
+src/engine/CitationValidator.ts:336:  "51 DLR (AD) 234": {
+src/engine/CitationValidator.ts:337:    id: "CIT-51DLR234-AD",
+src/engine/CitationValidator.ts:338:    citation: "51 DLR (AD) 234",
+src/engine/CitationValidator.ts:339:    normalizedCitation: "51-dlr-ad-234",
+src/engine/CitationValidator.ts:342:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:343:    reporter: "DLR",
+src/engine/CitationValidator.ts:355:    ratioDecidendi: "In a suit for partition of joint ancestral property, all co-sharers are necessary parties. Non-joinder of any surviving legal heir is a fatal defect that vitiates the partition proceedings and renders the decree defective.",
+src/engine/CitationValidator.ts:358:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:359:    verificationHash: computePrecedentValidationHash("51 DLR (AD) 234", "Md. Ali v. Md. Hanif", 1999, "DLR", 51, 234),
+src/engine/CitationValidator.ts:362:  "17 BLD (AD) 77": {
+src/engine/CitationValidator.ts:363:    id: "CIT-17BLD77-AD",
+src/engine/CitationValidator.ts:364:    citation: "17 BLD (AD) 77",
+src/engine/CitationValidator.ts:365:    normalizedCitation: "17-bld-ad-77",
+src/engine/CitationValidator.ts:368:    courtForum: "Appellate Division",
+src/engine/CitationValidator.ts:369:    reporter: "BLD",
+src/engine/CitationValidator.ts:379:    ratioDecidendi: "A suit for mere declaration of title is barred under the Proviso to Section 42 of the Specific Relief Act 1877 if the plaintiff, being out of physical possession, omits to pray for consequential relief of recovery of possession.",
+src/engine/CitationValidator.ts:382:    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+src/engine/CitationValidator.ts:383:    verificationHash: computePrecedentValidationHash("17 BLD (AD) 77", "Shamsuddin Ahmed v. Bangladesh Railway", 1997, "BLD", 17, 77),
+src/engine/CitationValidator.ts:401:export class CitationValidator {
+src/engine/CitationValidator.ts:403:   * Validate a single citation against the canonical registry
+src/engine/CitationValidator.ts:405:  public static validate(citationStr: string, customRelevance?: string): VerifiedPrecedentOutput {
+src/engine/CitationValidator.ts:409:    // Direct lookup by canonical string or normalized string
+src/engine/CitationValidator.ts:410:    let match: AuthoritativePrecedent | undefined = CANONICAL_PRECEDENT_REGISTRY[raw];
+src/engine/CitationValidator.ts:412:      match = Object.values(CANONICAL_PRECEDENT_REGISTRY).find(
+src/engine/CitationValidator.ts:421:        caseTitle: "UNVERIFIED PRECEDENT (Rejected by BCCAA Validation Layer)",
+src/engine/CitationValidator.ts:424:        reporter: "DLR",
+src/engine/CitationValidator.ts:430:        ratioDecidendi: "REJECTED_UNVERIFIED",
+src/engine/CitationValidator.ts:432:        verificationHash: "INVALID-HASH-REJECTED",
+src/engine/CitationValidator.ts:441:      court: match.courtForum,
+src/engine/CitationValidator.ts:448:      holding: match.ratioDecidendi,
+src/engine/CitationValidator.ts:450:      ratioDecidendi: match.ratioDecidendi,
+src/engine/CitationValidator.ts:451:      verificationStatus: "VERIFIED_CANONICAL",
+src/engine/CitationValidator.ts:452:      verificationHash: match.verificationHash,
+src/engine/CitationValidator.ts:459:   * Deterministically select and validate verified precedents for a specific case category & factual context.
+src/engine/CitationValidator.ts:460:   * Returns only citations that passed the deterministic canonical-registry lookup.
+src/engine/CitationValidator.ts:462:  public static getVerifiedPrecedentsForContext(
+src/engine/CitationValidator.ts:471:  ): VerifiedPrecedentOutput[] {
+src/engine/CitationValidator.ts:472:    const selected: VerifiedPrecedentOutput[] = [];
+src/engine/CitationValidator.ts:475:      // 60 DLR (AD) 54 & 59 DLR (AD) 112
+src/engine/CitationValidator.ts:478:          "60 DLR (AD) 54",
+src/engine/CitationValidator.ts:482:          "59 DLR (AD) 112",
+src/engine/CitationValidator.ts:486:          "42 DLR (AD) 289",
+src/engine/CitationValidator.ts:493:          "56 DLR (AD) 34",
+src/engine/CitationValidator.ts:497:          "12 BLC (AD) 102",
+src/engine/CitationValidator.ts:501:          "17 BLD (AD) 77",
+src/engine/CitationValidator.ts:507:        // Ancestor explicitly evaluated as deceased — load partition/succession precedents
+src/engine/CitationValidator.ts:510:            "45 DLR (AD) 124",
+src/engine/CitationValidator.ts:514:            "55 DLR (AD) 180",
+src/engine/CitationValidator.ts:518:            "39 DLR (AD) 162",
+src/engine/CitationValidator.ts:522:            "51 DLR (AD) 234",
+src/engine/CitationValidator.ts:530:            "30 DLR (SC) 115",
+src/engine/CitationValidator.ts:534:            "55 DLR (AD) 180",
+src/engine/CitationValidator.ts:539:        // Ancestor vital status NOT DETERMINED — fail-closed: load only precedents
+src/engine/CitationValidator.ts:543:            "55 DLR (AD) 180",
+src/engine/CitationValidator.ts:547:            "42 DLR (AD) 289",
+src/engine/CitationValidator.ts:551:            "43 DLR (AD) 21",
+src/engine/CitationValidator.ts:559:          "43 DLR (AD) 21",
+src/engine/CitationValidator.ts:563:          "42 DLR (AD) 289",
+src/engine/CitationValidator.ts:570:    return selected.filter((p) => p.verificationStatus === "VERIFIED_CANONICAL");
+src/engine/CitationValidator.ts:574:   * Audit and verify an entire array of raw precedents
+src/engine/CitationValidator.ts:576:  public static validatePrecedentArray(rawPrecedents: Array<{ citation: string; relevance?: string }>): VerifiedPrecedentOutput[] {
+src/engine/CitationValidator.ts:577:    return rawPrecedents.map((p) => this.validate(p.citation, p.relevance));
+src/engine/CitationValidator.ts:581:   * Return entire canonical registry list for verification inspections
+src/engine/CitationValidator.ts:583:  public static getFullRegistry(): AuthoritativePrecedent[] {
+src/engine/CitationValidator.ts:584:    return Object.values(CANONICAL_PRECEDENT_REGISTRY);
+src/engine/FactConsistencyGate.ts:1:import { canonicalHash } from "./BCCAAEngine";
+src/engine/FactConsistencyGate.ts:298:        conflictId: `CONF-VITAL-${canonicalHash(left.propositionKey + "|" + right.propositionKey).slice(0,12)}`,
+src/engine/FactConsistencyGate.ts:360:        conflictId: `CONF-DATE-DEATH-${canonicalHash(uniqueDeathDates.join("|")).slice(0,12)}`,
+src/engine/FactConsistencyGate.ts:409:        conflictId: `CONF-COA-${canonicalHash(left.claimType + "|" + right.claimType).slice(0,12)}`,
+src/engine/FactConsistencyGate.ts:454:        conflictId: `CONF-PARTY-ROLE-${canonicalHash(left.role + "|" + right.role).slice(0,12)}`,
+src/types/types.ts:113:  canonicalKey: string;
+src/types/types.ts:468:    precedents?: Array<{
+src/types/types.ts:480:      ratioDecidendi?: string;
+src/types/types.ts:481:      verificationStatus: "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED";
+src/types/types.ts:482:      verificationHash: string;
+src/utils/crypto.security.test.ts:3:  canonicalHash,
+src/utils/crypto.security.test.ts:4:  canonicalStringify,
+src/utils/crypto.security.test.ts:30:  it("canonicalizes object keys deterministically", () => {
+src/utils/crypto.security.test.ts:32:      canonicalStringify({ b: 2, a: 1 }),
+src/utils/crypto.security.test.ts:34:      canonicalStringify({ a: 1, b: 2 }),
+src/utils/crypto.security.test.ts:38:      canonicalHash({ b: 2, a: 1 }),
+src/utils/crypto.security.test.ts:40:      canonicalHash({ a: 1, b: 2 }),
+src/utils/crypto.ts:206:// CANONICAL SERIALIZATION / HASH PATH
+src/utils/crypto.ts:209:function canonicalize(value: unknown): unknown {
+src/utils/crypto.ts:211:    return value.map(canonicalize);
+src/utils/crypto.ts:220:      out[key] = canonicalize(
+src/utils/crypto.ts:231:export function canonicalStringify(value: unknown): string {
+src/utils/crypto.ts:232:  return JSON.stringify(canonicalize(value));
+src/utils/crypto.ts:236: * SHA-256 hash over canonical JSON.
+src/utils/crypto.ts:238:export function canonicalHash(value: unknown): string {
+src/utils/crypto.ts:239:  return generateHash(canonicalStringify(value));
+src/utils/docxGenerator.ts:143:  // Build Precedents rows
+src/utils/docxGenerator.ts:144:  const precedentsRows: TableRow[] = [
+src/utils/docxGenerator.ts:156:  if (analysis.stage2?.precedents && analysis.stage2.precedents.length > 0) {
+src/utils/docxGenerator.ts:157:    analysis.stage2.precedents.forEach((p, idx) => {
+src/utils/docxGenerator.ts:182:      precedentsRows.push(
+src/utils/docxGenerator.ts:503:          // Precedents Table
+src/utils/docxGenerator.ts:508:                text: "GATEWAY 2: AUTHORITATIVE CANONICAL PRECEDENTS (SUPREME COURT)",
+src/utils/docxGenerator.ts:520:            rows: precedentsRows,
+src/utils/pdfGeneratorSecure.ts:275:      <div class="section-heading">Section III: Statutory Framework & Precedents (Stage 1 & 2)</div>
+src/utils/pdfGeneratorSecure.ts:296:      ${analysis.stage2.precedents && analysis.stage2.precedents.length > 0 ? `
+src/utils/pdfGeneratorSecure.ts:299:            Supreme Court Precedents (Canonical Registry Match Status):
+src/utils/pdfGeneratorSecure.ts:302:            ✓ Deterministic canonical-registry verification
+src/utils/pdfGeneratorSecure.ts:315:            ${(analysis.stage2?.precedents ?? []).map(p => `

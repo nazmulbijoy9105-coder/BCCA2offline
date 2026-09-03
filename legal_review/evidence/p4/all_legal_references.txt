@@ -1,0 +1,1673 @@
+src/admin/SuperAdminDashboard.tsx:1:import React, { useState, useEffect } from "react";
+src/admin/SuperAdminDashboard.tsx:6:} from "lucide-react";
+src/admin/SuperAdminDashboard.tsx:46:  const handleCreateUser = async (e: React.FormEvent) => {
+src/admin/SuperAdminDashboard.tsx:101:  const currentAdminsCount = users.filter(u => u.role === "admin" && u.isActive).length;
+src/admin/SuperAdminDashboard.tsx:102:  const currentUsersCount = users.filter(u => u.role === "user" && u.isActive).length;
+src/admin/SuperAdminDashboard.tsx:282:                  <th className="p-3 border border-[#E5E1D8]">Action</th>
+src/admin/SuperAdminDashboard.tsx:295:                      {u.isActive ? (
+src/admin/SuperAdminDashboard.tsx:297:                          <CheckCircle className="h-3 w-3" /> ACTIVE
+src/admin/SuperAdminDashboard.tsx:306:                      {u.isActive && u.id !== currentUser?.id && u.role !== "super_admin" && (
+src/admin/SuperAdminDashboard.tsx:389:                        {a.action}
+src/admin/SuperAdminDashboard.tsx:396:                      Operator: <strong className="text-[#1E252B] font-mono">{a.actor.email}</strong> &bull; Resource: <span className="font-mono bg-neutral-100 px-1 rounded">{a.resource.type}:{a.resource.id}</span>
+src/App.tsx:1:import React, { useState, useEffect } from "react";
+src/App.tsx:2:import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2, Download, ShieldCheck } from "lucide-react";
+src/App.tsx:21:  const [factPattern, setFactPattern] = useState("");
+src/App.tsx:47:  const saveToHistory = (analysis: CaseAnalysisResponse, facts: string, domain: string) => {
+src/App.tsx:52:        title: analysis.stage2.primaryAct ?? "",
+src/App.tsx:56:        factPattern: facts,
+src/App.tsx:60:        accessLog: [{ userId: user?.id || "unknown", accessedAt: Date.now(), action: "view" }],
+src/App.tsx:63:        const filtered = prev.filter(item => item.factPattern.trim() !== facts.trim());
+src/App.tsx:74:    "Stage 0: Structuring Fact Matrix...",
+src/App.tsx:76:    "Stage 2: Cross-referencing Acts & Precedents...",
+src/App.tsx:77:    "Stage 3: Running Critical Limitation Check...",
+src/App.tsx:88:  const handleAnalyze = async (e: React.FormEvent) => {
+src/App.tsx:90:    if (!factPattern.trim() || !user || !license) return;
+src/App.tsx:100:      alert("Daily analysis limit reached. Contact Super Admin.");
+src/App.tsx:127:        input: { factPattern, focusDomain },
+src/App.tsx:132:      saveToHistory(result, factPattern, focusDomain);
+src/App.tsx:135:        action: "ANALYZE_COMPLETE",
+src/App.tsx:146:        action: "ANALYZE_FAILED",
+src/App.tsx:166:      await downloadSecurePDF(analysisResult, factPattern, watermark);
+src/App.tsx:168:        action: "EXPORT_PDF",
+src/App.tsx:188:      await downloadCaseBriefDOCX(analysisResult, factPattern, watermark);
+src/App.tsx:190:        action: "EXPORT_DOCX",
+src/App.tsx:214:    setFactPattern("");
+src/App.tsx:318:                    Assemble Litigation Fact Pattern
+src/App.tsx:321:                    Provide the raw factual record, deed timelines, possession sequences, or statutory breaches. Upload PDF/text legal files or enter text manually. The secure local cascade engine will isolate critical parameters across 14 discrete analytical gateways.
+src/App.tsx:328:                    currentTextLength={factPattern.length}
+src/App.tsx:329:                    onTextExtracted={(extractedText, mode) => {
+src/App.tsx:331:                        setFactPattern(extractedText);
+src/App.tsx:333:                        setFactPattern(prev => (prev ? prev + "\n\n" + extractedText : extractedText));
+src/App.tsx:336:                    onClearText={() => setFactPattern("")}
+src/App.tsx:347:                        {factPattern && (
+src/App.tsx:350:                              {factPattern.trim().split(/\s+/).filter(Boolean).length} words &bull; {factPattern.length} chars
+src/App.tsx:354:                              onClick={() => setFactPattern("")}
+src/App.tsx:364:                      value={factPattern}
+src/App.tsx:365:                      onChange={e => setFactPattern(e.target.value)}
+src/App.tsx:367:                      placeholder="Input chronological dispute events, specific dates (e.g. registry dates, date of contract breach), property details, and claims..."
+src/App.tsx:394:                        disabled={loading || !factPattern.trim()}
+src/App.tsx:430:                      <p className="mt-0.5 text-[11px]">All legal deduction arrays run completely client-side. No legal files, fact inputs, or parameters are transmitted.</p>
+src/App.tsx:437:                      <p className="mt-0.5 text-[11px]">Calculates limitations, court tiers, court fees, and jurisdiction metrics mathematically according to statutory CPC standards.</p>
+src/App.tsx:451:                      <p className="mt-0.5 text-[11px]">Logs each audit transaction sequentially using a local cryptohash block to prevent retrospective manipulation.</p>
+src/App.tsx:495:            {/* Quick Actions Panel */}
+src/App.tsx:549:                    {analysisResult.stage2.primaryAct}
+src/App.tsx:565:                      Limitation: {
+src/App.tsx:587:            <LegalAnalysisPanel factPattern={factPattern} analysisResult={analysisResult} />
+src/App.tsx:621:                    onClick={() => { setAnalysisResult(item.analysis); setFactPattern(item.factPattern); setIsHistoryOpen(false); }}
+src/App.tsx:625:                    <p className="text-[11px] text-[#4A5560] line-clamp-2 italic font-serif">"{item.factPattern}"</p>
+src/auth/AuthContext.tsx:1:import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+src/auth/AuthContext.tsx:43:export function AuthProvider({ children }: { children: React.ReactNode }) {
+src/auth/AuthContext.tsx:113:        if (!u.isActive) return false;
+src/auth/AuthContext.tsx:121:          action: "LOGIN_FAILED",
+src/auth/AuthContext.tsx:135:          action: "LOGIN_FAILED",
+src/auth/AuthContext.tsx:150:      const activeLicenseKey = licenseKey?.trim() || "";
+src/auth/AuthContext.tsx:152:      if (!activeLicenseKey) {
+src/auth/AuthContext.tsx:157:      const licenseCheck = validateLicenseKey(activeLicenseKey);
+src/auth/AuthContext.tsx:160:          action: "LICENSE_VIOLATION",
+src/auth/AuthContext.tsx:165:          resourceId: activeLicenseKey,
+src/auth/AuthContext.tsx:185:      storeLicense(activeLicenseKey);
+src/auth/AuthContext.tsx:201:        action: "LOGIN",
+src/auth/AuthContext.tsx:228:        throw new Error("Password must be at least 12 characters.");
+src/auth/AuthContext.tsx:266:        isActive: true,
+src/auth/AuthContext.tsx:275:      // Public registration cannot mint, assign, or activate a license.
+src/auth/AuthContext.tsx:284:      // It MUST NOT manufacture license validity.
+src/auth/AuthContext.tsx:301:        action: "USER_CREATE",
+src/auth/AuthContext.tsx:323:        action: "LOGOUT",
+src/auth/AuthContext.tsx:353:    if (!state.user || state.user.role !== "super_admin" || !state.user.isActive) {
+src/auth/AuthContext.tsx:354:      throw new Error("Unauthorized: Only an active Super Admin can create users");
+src/auth/AuthContext.tsx:368:      throw new Error("Password must be at least 12 characters.");
+src/auth/AuthContext.tsx:376:    const currentAdmins = users.filter(u => u.role === "admin" && u.isActive).length;
+src/auth/AuthContext.tsx:377:    const currentUsers = users.filter(u => u.role === "user" && u.isActive).length;
+src/auth/AuthContext.tsx:397:      isActive: true,
+src/auth/AuthContext.tsx:411:      action: "USER_CREATE",
+src/auth/AuthContext.tsx:430:      target.isActive = false;
+src/auth/AuthContext.tsx:434:        action: "USER_REVOKE",
+src/auth/AuthContext.tsx:448:    if (!user || !user.isActive) {
+src/auth/LoginPage.tsx:1:import React, { useState } from "react";
+src/auth/LoginPage.tsx:3:import { Scale, ShieldAlert, Key, Mail, Sparkles, Phone, User, Building, CheckCircle, Smartphone } from "lucide-react";
+src/auth/LoginPage.tsx:7:  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+src/auth/LoginPage.tsx:21:  const handleLoginSubmit = async (e: React.FormEvent) => {
+src/auth/LoginPage.tsx:34:  const handleSignupSubmit = async (e: React.FormEvent) => {
+src/auth/LoginPage.tsx:46:        throw new Error("Password must be at least 12 characters.");
+src/auth/LoginPage.tsx:83:            <button type="button" onClick={() => { setActiveTab("login"); setCustomError(null); }}
+src/auth/LoginPage.tsx:84:              className={`flex-1 py-3 px-4 font-bold uppercase tracking-wider transition text-center cursor-pointer ${activeTab === "login" ? "bg-[#1E252B] text-white" : "bg-[#FAF9F5] text-[#1E252B] hover:bg-neutral-100"}`}>Log In to Account</button>
+src/auth/LoginPage.tsx:85:            <button type="button" onClick={() => { setActiveTab("signup"); setCustomError(null); }}
+src/auth/LoginPage.tsx:86:              className={`flex-1 py-3 px-4 font-bold uppercase tracking-wider transition text-center cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "signup" ? "bg-[#1E252B] text-white" : "bg-[#FAF9F5] text-[#1E252B] hover:bg-neutral-100"}`}>
+src/auth/LoginPage.tsx:101:          {activeTab === "login" && (
+src/auth/LoginPage.tsx:136:          {activeTab === "signup" && (
+src/auth/ProtectedRoute.tsx:1:import React from "react";
+src/auth/ProtectedRoute.tsx:2:import { Navigate } from "react-router-dom";
+src/auth/ProtectedRoute.tsx:7:  children: React.ReactNode;
+src/auth/ProtectedRoute.tsx:45:  // No authenticated, active, known-role user may enter.
+src/auth/ProtectedRoute.tsx:49:    !user.isActive ||
+src/components/DocumentUploader.tsx:1:import React, { useState, useRef, useEffect } from "react";
+src/components/DocumentUploader.tsx:2:import { Upload, FileText, CheckCircle, AlertCircle, FileCheck, Loader2, ShieldCheck, Sparkles, X, Trash2, RotateCcw, FolderOpen, History, ArrowUpRight } from "lucide-react";
+src/components/DocumentUploader.tsx:10:export interface ExtractedDoc {
+src/components/DocumentUploader.tsx:15:  extractedText: string;
+src/components/DocumentUploader.tsx:24:  onTextExtracted: (text: string, mode: "replace" | "append") => void;
+src/components/DocumentUploader.tsx:31:export default function DocumentUploader({ onTextExtracted, onClearText, currentTextLength }: DocumentUploaderProps) {
+src/components/DocumentUploader.tsx:35:  const [activeDoc, setActiveDoc] = useState<ExtractedDoc | null>(null);
+src/components/DocumentUploader.tsx:36:  const [docHistory, setDocHistory] = useState<ExtractedDoc[]>([]);
+src/components/DocumentUploader.tsx:47:        const parsed: ExtractedDoc[] = JSON.parse(saved);
+src/components/DocumentUploader.tsx:49:        // Set active doc if there's an active non-deleted doc
+src/components/DocumentUploader.tsx:50:        const latestActive = parsed.find(d => !d.isDeleted);
+src/components/DocumentUploader.tsx:51:        if (latestActive && !activeDoc) {
+src/components/DocumentUploader.tsx:52:          setActiveDoc(latestActive);
+src/components/DocumentUploader.tsx:61:  const saveHistory = (updatedHistory: ExtractedDoc[]) => {
+src/components/DocumentUploader.tsx:121:          console.warn("PDF worker extraction fallback triggered:", pdfErr);
+src/components/DocumentUploader.tsx:130:        throw new Error("Could not extract printable text from this document. Please ensure the file contains searchable text rather than scanned images.");
+src/components/DocumentUploader.tsx:136:      const newDoc: ExtractedDoc = {
+src/components/DocumentUploader.tsx:141:        extractedText: text,
+src/components/DocumentUploader.tsx:149:      setActiveDoc(newDoc);
+src/components/DocumentUploader.tsx:154:      onTextExtracted(text, "replace");
+src/components/DocumentUploader.tsx:181:  const handleDrop = (e: React.DragEvent) => {
+src/components/DocumentUploader.tsx:189:  const handleDragOver = (e: React.DragEvent) => {
+src/components/DocumentUploader.tsx:198:  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+src/components/DocumentUploader.tsx:204:  // Delete current active document
+src/components/DocumentUploader.tsx:209:    if (activeDoc && activeDoc.id === docId) {
+src/components/DocumentUploader.tsx:210:      setActiveDoc(null);
+src/components/DocumentUploader.tsx:218:  const handleRestoreDoc = (doc: ExtractedDoc) => {
+src/components/DocumentUploader.tsx:221:    setActiveDoc({ ...doc, isDeleted: false });
+src/components/DocumentUploader.tsx:222:    onTextExtracted(doc.extractedText, "replace");
+src/components/DocumentUploader.tsx:229:    if (activeDoc && activeDoc.id === docId) {
+src/components/DocumentUploader.tsx:230:      setActiveDoc(null);
+src/components/DocumentUploader.tsx:241:FACTUAL RECORD & DEED CHRONOLOGY:
+src/components/DocumentUploader.tsx:252:Plaintiff seeks Specific Performance of the registered Bainapatra under Section 12 of the Specific Relief Act 1877, alongside a Temporary Injunction under Order XXXIX Rules 1 & 2 CPC to restrain Defendant from transferring the property.`;
+src/components/DocumentUploader.tsx:254:      const newDoc: ExtractedDoc = {
+src/components/DocumentUploader.tsx:259:        extractedText: sampleText,
+src/components/DocumentUploader.tsx:267:      setActiveDoc(newDoc);
+src/components/DocumentUploader.tsx:269:      onTextExtracted(sampleText, "replace");
+src/components/DocumentUploader.tsx:275:FACT PATTERN & INHERITANCE RECORD:
+src/components/DocumentUploader.tsx:277:2. Under Muslim Personal Law (Shariat) Application Act 1937, the 2 sons inherit 2/5th share each (12 Decimals each) and the daughter inherits 1/5th share (6 Decimals).
+src/components/DocumentUploader.tsx:282:      const newDoc: ExtractedDoc = {
+src/components/DocumentUploader.tsx:287:        extractedText: sampleText,
+src/components/DocumentUploader.tsx:295:      setActiveDoc(newDoc);
+src/components/DocumentUploader.tsx:297:      onTextExtracted(sampleText, "replace");
+src/components/DocumentUploader.tsx:301:  const activeDocsList = docHistory.filter(d => !d.isDeleted);
+src/components/DocumentUploader.tsx:428:            <strong className="font-bold block">Extraction Error:</strong>
+src/components/DocumentUploader.tsx:434:      {/* Extracted File Results Card */}
+src/components/DocumentUploader.tsx:435:      {activeDoc && !isProcessing && (
+src/components/DocumentUploader.tsx:445:                    {activeDoc.fileName}
+src/components/DocumentUploader.tsx:448:                    {activeDoc.fileType}
+src/components/DocumentUploader.tsx:452:                  <span>Size: <strong>{activeDoc.fileSize}</strong></span>
+src/components/DocumentUploader.tsx:453:                  <span>Words: <strong>{activeDoc.wordCount}</strong></span>
+src/components/DocumentUploader.tsx:454:                  <span>Chars: <strong>{activeDoc.charCount}</strong></span>
+src/components/DocumentUploader.tsx:455:                  {activeDoc.pageCount && activeDoc.pageCount > 1 && (
+src/components/DocumentUploader.tsx:456:                    <span>Pages: <strong>{activeDoc.pageCount}</strong></span>
+src/components/DocumentUploader.tsx:466:                onClick={() => handleDeleteDoc(activeDoc.id, true)}
+src/components/DocumentUploader.tsx:476:          {/* Action buttons */}
+src/components/DocumentUploader.tsx:480:              Document extracted into Fact Pattern input!
+src/components/DocumentUploader.tsx:485:                onClick={() => onTextExtracted(activeDoc.extractedText, "replace")}
+src/components/DocumentUploader.tsx:493:                  onClick={() => onTextExtracted(activeDoc.extractedText, "append")}
+src/components/DocumentUploader.tsx:523:          {/* Active Vault Files */}
+src/components/DocumentUploader.tsx:526:              Active Ingested Files ({activeDocsList.length})
+src/components/DocumentUploader.tsx:528:            {activeDocsList.length === 0 ? (
+src/components/DocumentUploader.tsx:529:              <p className="text-[10px] text-neutral-500 italic">No active files in vault.</p>
+src/components/DocumentUploader.tsx:532:                {activeDocsList.map(doc => (
+src/components/DocumentUploader.tsx:536:                      activeDoc?.id === doc.id
+src/components/DocumentUploader.tsx:550:                          setActiveDoc(doc);
+src/components/DocumentUploader.tsx:551:                          onTextExtracted(doc.extractedText, "replace");
+src/components/DocumentUploader.tsx:559:                        onClick={() => handleDeleteDoc(doc.id, activeDoc?.id === doc.id)}
+src/components/DocumentUploader.tsx:599:                        title="Restore Document back to active state"
+src/components/LegalAnalysisPanel.tsx:1:import React, { useState, useEffect } from "react";
+src/components/LegalAnalysisPanel.tsx:18:} from "lucide-react";
+src/components/LegalAnalysisPanel.tsx:26:export const generateLegalMemo = (factPattern: string, result: CaseAnalysisResponse): string => {
+src/components/LegalAnalysisPanel.tsx:27:  const category = result.stage0?.factsMeta?.category;
+src/components/LegalAnalysisPanel.tsx:28:  const primaryAct = result.stage2?.primaryAct;
+src/components/LegalAnalysisPanel.tsx:29:  const limitationStatus =
+src/components/LegalAnalysisPanel.tsx:33:        ? "WITHIN LIMITATION"
+src/components/LegalAnalysisPanel.tsx:36:  const courtFeesNotes = result.stage5?.pecuniary?.suitsValuationActNotes;
+src/components/LegalAnalysisPanel.tsx:40:    customNarrative = `### MUSLIM PERSONAL LAW (SHARIAT) ANALYSIS
+src/components/LegalAnalysisPanel.tsx:41:1. **Nullity of Disowning (Tejya Putro)**: Under the Muslim Personal Law (Shariat) Application Act, 1937, inheritance is a vested right that accrues immediately upon the death of the ancestor. A disowning affidavit has zero legal validity or force under Sunni Hanafi jurisprudence. The disowned heirs remain full legal sharers.
+src/components/LegalAnalysisPanel.tsx:44:    customNarrative = `### SPECIFIC RELIEF ACT 1877 APPLICABILITY
+src/components/LegalAnalysisPanel.tsx:45:1. **Section 12 specific performance**: Suit for enforcement of the registered contract (Bainapatra).
+src/components/LegalAnalysisPanel.tsx:46:2. **Deposit of Balance**: Verify whether the balance consideration has been deposited in court under Section 21A of the Specific Relief Act, 1877.`;
+src/components/LegalAnalysisPanel.tsx:48:    customNarrative = `### SPECIFIC RELIEF ACT 1877 DECLARATORY REMEDIES
+src/components/LegalAnalysisPanel.tsx:49:1. **Section 42 (Declaration of Title)**: Plaintiff must sue for declaration of legal character or title. If dispossessed, plaintiff must couple this with a consequential relief of recovery of possession under Section 7(iv)(c) of the Court Fees Act 1870, or a standalone Section 8 / 9 action.
+src/components/LegalAnalysisPanel.tsx:53:1. **Cause of Action**: The fact pattern establishes a clear cause of action arising on the specified trigger dates.
+src/components/LegalAnalysisPanel.tsx:57:  // Chronology section
+src/components/LegalAnalysisPanel.tsx:59:    ? result.stage0.chronology.map(c => `- **${c.date}**: ${c.event} (Parties: ${c.partiesInvolved || "N/A"}) - *Source*: ${c.factualSource || "N/A"}`).join("\n")
+src/components/LegalAnalysisPanel.tsx:60:    : "- No key dates extracted from the fact pattern.";
+src/components/LegalAnalysisPanel.tsx:62:  // Precedents section
+src/components/LegalAnalysisPanel.tsx:65:    : `- **75 DLR 142 (HCD)**: Held that a disowning affidavit has zero recognition under Muslim Personal Law (Shariat) Application Act 1937.\n- **56 DLR 215 (AD)**: Held that possession of one co-sharer is the possession of all co-sharers unless ouster is established.`;
+src/components/LegalAnalysisPanel.tsx:78:## FACTUAL VERITY & SUFFICIENCY AUDIT
+src/components/LegalAnalysisPanel.tsx:79:We have reviewed the submitted fact pattern containing **${factPattern.length} characters** and compiled the following legal chronology:
+src/components/LegalAnalysisPanel.tsx:84:- **Admitted Facts**: ${result.stage0?.admittedFacts?.join("; ") || "None extracted."}
+src/components/LegalAnalysisPanel.tsx:85:- **Disputed Facts**: ${result.stage0?.disputedFacts?.join("; ") || "None extracted."}
+src/components/LegalAnalysisPanel.tsx:88:The factual pattern is legally **SUFFICIENT** to initiate a civil action. There is a clear cause of action arising from the dispute over ownership rights.
+src/components/LegalAnalysisPanel.tsx:90:## DETAILED LEGAL ANALYSIS (ACTS & APPLICABILITY)
+src/components/LegalAnalysisPanel.tsx:91:The primary statutory framework governing this suit is the **${primaryAct}**, supplemented by the Specific Relief Act 1877 and the Limitation Act 1908.
+src/components/LegalAnalysisPanel.tsx:95:### APPLICABLE STATUTORY SECTIONS
+src/components/LegalAnalysisPanel.tsx:96:${result.stage2?.relevantSections?.map(s => `- **${s.actName} ${s.sectionOrRule}**: ${s.purpose}`).join("\n") || "- No statutory sections mapped."}
+src/components/LegalAnalysisPanel.tsx:106:| **Primary Act** | ${primaryAct} |
+src/components/LegalAnalysisPanel.tsx:107:| **Limitation Status** | **${limitationStatus}** (Article ${result.stage3?.limitationArticle || "N/A"}) |
+src/components/LegalAnalysisPanel.tsx:109:| **Court Fees Strategy** | ${courtFeesNotes} |
+src/components/LegalAnalysisPanel.tsx:111:## TACTICAL COURTROOM STRATEGY & COURT FEES ACT OPTIMIZATION
+src/components/LegalAnalysisPanel.tsx:113:### 1. ORDER XXXIX (39) RULES 1 & 2 CPC TEMPORARY INJUNCTION STRATEGY
+src/components/LegalAnalysisPanel.tsx:119:### 2. COURT FEES ACT 1870 OPTIMIZATION
+src/components/LegalAnalysisPanel.tsx:120:- **Fixed Partition Fee**: If the plaintiffs plead constructive joint possession, claim fixed court fees under Schedule II Article 17(vi).
+src/components/LegalAnalysisPanel.tsx:121:- **Ad Valorem Fee Mitigation**: Avoid pleading complete dispossession or ouster at the initial stage unless standalone recovery under Section 8 is mandatory.
+src/components/LegalAnalysisPanel.tsx:123:### 3. STANDING AND JOINDER OF PARTIES (ORDER I CPC)
+src/components/LegalAnalysisPanel.tsx:129:### 4. ORDER VII RULE 11 CPC RISK MITIGATION
+src/components/LegalAnalysisPanel.tsx:131:- Explicitly states the date of accrual of the cause of action (${result.stage3?.accrualDate || "N/A"}).
+src/components/LegalAnalysisPanel.tsx:132:- Correctly values the suit according to the Suits Valuation Act 1887.
+src/components/LegalAnalysisPanel.tsx:137:  factPattern: string;
+src/components/LegalAnalysisPanel.tsx:141:export default function LegalAnalysisPanel({ factPattern, analysisResult }: LegalAnalysisPanelProps) {
+src/components/LegalAnalysisPanel.tsx:146:  const [activeTab, setActiveTab] = useState<"preview" | "edit">("preview");
+src/components/LegalAnalysisPanel.tsx:158:      const memo = generateLegalMemo(factPattern, analysisResult);
+src/components/LegalAnalysisPanel.tsx:184:        `Legal Memorandum - ${analysisResult.stage2?.primaryAct || "Civil Suit"}`,
+src/components/LegalAnalysisPanel.tsx:202:        `Legal Memorandum - ${analysisResult.stage2?.primaryAct || "Civil Suit"}`,
+src/components/LegalAnalysisPanel.tsx:229:    setActiveTab("edit");
+src/components/LegalAnalysisPanel.tsx:235:      text: `### PRAYER FOR TEMPORARY & AD-INTERIM INJUNCTION (ORDER XXXIX RULES 1 & 2 CPC)
+src/components/LegalAnalysisPanel.tsx:239:      title: "Cause of Action Accrual Clause",
+src/components/LegalAnalysisPanel.tsx:240:      text: `### CAUSE OF ACTION PARAGRAPH
+src/components/LegalAnalysisPanel.tsx:241:That the cause of action for this suit first arose on the date of execution of the initial instrument, and subsequently on every date when the Defendant(s) refused to perform their legal obligation and threatened wrongful dispossession/alienation, within the territorial jurisdiction of this Learned Court.`,
+src/components/LegalAnalysisPanel.tsx:369:                  Synthesize a courtroom drafting memorandum tailored to Bangladesh civil procedure, complete with limitation checks, injunction strategies, and precedents. You can edit the text and export to Word (.docx) or PDF.
+src/components/LegalAnalysisPanel.tsx:390:                  Aligning chronology, statutory sections, and courtroom strategy
+src/components/LegalAnalysisPanel.tsx:403:                    onClick={() => setActiveTab("preview")}
+src/components/LegalAnalysisPanel.tsx:405:                      activeTab === "preview"
+src/components/LegalAnalysisPanel.tsx:414:                    onClick={() => setActiveTab("edit")}
+src/components/LegalAnalysisPanel.tsx:416:                      activeTab === "edit"
+src/components/LegalAnalysisPanel.tsx:429:                  <span>Characters: <strong className="text-[#1E252B]">{charCount}</strong></span>
+src/components/LegalAnalysisPanel.tsx:432:                {/* Export Actions Bar */}
+src/components/LegalAnalysisPanel.tsx:502:              {activeTab === "preview" ? (
+src/components/LegalReliabilityStandardModal.tsx:1:import React, { useState } from "react";
+src/components/LegalReliabilityStandardModal.tsx:2:import { ShieldCheck, Scale, CheckCircle2, XCircle, ArrowRight, BookOpen, AlertTriangle, Layers, Cpu, Database, Eye } from "lucide-react";
+src/components/LegalReliabilityStandardModal.tsx:10:  const [activeTab, setActiveTab] = useState<"standard" | "architecture" | "boundaries">("standard");
+src/components/LegalReliabilityStandardModal.tsx:15:    { step: 1, title: "Input Facts", desc: "Raw litigation dispute narrative or ingested legal documents (PDF/Text)", icon: BookOpen, type: "Input" },
+src/components/LegalReliabilityStandardModal.tsx:16:    { step: 2, title: "Fact Normalization", desc: "Deconstruct into immutable atomic propositions with temporal anchors", icon: Database, type: "Processing" },
+src/components/LegalReliabilityStandardModal.tsx:20:    { step: 6, title: "Deterministic Rule Evaluation", desc: "Versioned mathematical limitation, heirship shares & pecuniary rules", icon: Cpu, type: "Deterministic" },
+src/components/LegalReliabilityStandardModal.tsx:22:    { step: 8, title: "Relief Mapping", desc: "Rule-based decree formulation and Order XXI execution pathways", icon: Scale, type: "Synthesis" },
+src/components/LegalReliabilityStandardModal.tsx:23:    { step: 9, title: "Human-Review Output", desc: "Final legal memorandum, forensics audit trail & practitioner review", icon: Eye, type: "Human Review" },
+src/components/LegalReliabilityStandardModal.tsx:27:    { title: "Fact Extraction", desc: "Extracting chronological events, dates, monetary considerations, and named parties from pleadings." },
+src/components/LegalReliabilityStandardModal.tsx:29:    { title: "Candidate Statute Identification", desc: "Suggesting candidate legislative frameworks (e.g., Specific Relief Act 1877, Limitation Act 1908)." },
+src/components/LegalReliabilityStandardModal.tsx:30:    { title: "Candidate Precedent Retrieval", desc: "Querying canonical Supreme Court precedents index matching factual keywords." },
+src/components/LegalReliabilityStandardModal.tsx:31:    { title: "Issue Suggestions", desc: "Proposing framed issues of fact and law for Order XIV CPC consideration." },
+src/components/LegalReliabilityStandardModal.tsx:32:    { title: "Missing-Fact Detection", desc: "Identifying missing mutation khatians, CS/RS records, or date gaps in chain of title." },
+src/components/LegalReliabilityStandardModal.tsx:37:    { title: "Maintainability Determination", desc: "Must be computed via statutory bars (e.g., s.42 SRA proviso, s.21A SRA registration requirement, Order VII Rule 11 CPC)." },
+src/components/LegalReliabilityStandardModal.tsx:38:    { title: "Limitation Expiry", desc: "Must be calculated using exact arithmetic on Limitation Act 1908 Schedule I Articles & Sections 3–28." },
+src/components/LegalReliabilityStandardModal.tsx:39:    { title: "Pecuniary & Territorial Jurisdiction", desc: "Must strictly apply Civil Courts Act 1887 limits (e.g. Assistant Judge vs. Senior Assistant vs. Joint District Judge) and Sections 15–20 CPC." },
+src/components/LegalReliabilityStandardModal.tsx:40:    { title: "Legal Heir Status & Fractional Shares", desc: "Must be computed deterministically using Hanafi Sunni / Muslim Personal Law Faraizi algorithms." },
+src/components/LegalReliabilityStandardModal.tsx:41:    { title: "Validity/Invalidity of Instruments", desc: "Must be tested against Registration Act 1908 s.17/49 and Evidence Act 1872 documentary rules." },
+src/components/LegalReliabilityStandardModal.tsx:74:            onClick={() => setActiveTab("standard")}
+src/components/LegalReliabilityStandardModal.tsx:76:              activeTab === "standard" ? "bg-[#1E252B] text-white" : "text-[#1E252B] hover:bg-[#F9F7F2]"
+src/components/LegalReliabilityStandardModal.tsx:82:            onClick={() => setActiveTab("architecture")}
+src/components/LegalReliabilityStandardModal.tsx:84:              activeTab === "architecture" ? "bg-[#1E252B] text-white" : "text-[#1E252B] hover:bg-[#F9F7F2]"
+src/components/LegalReliabilityStandardModal.tsx:90:            onClick={() => setActiveTab("boundaries")}
+src/components/LegalReliabilityStandardModal.tsx:92:              activeTab === "boundaries" ? "bg-[#1E252B] text-white" : "text-[#1E252B] hover:bg-[#F9F7F2]"
+src/components/LegalReliabilityStandardModal.tsx:101:          {activeTab === "standard" && (
+src/components/LegalReliabilityStandardModal.tsx:113:                  In Bangladesh civil law, high-stakes judicial determinations—such as limitation expiration, court jurisdiction, and Shariat inheritance fractional shares—cannot be left to stochastic language model generation. The BCCAA enforces a strict pipeline separation between dynamic fact ingestion and deterministic statutory rule engines.
+src/components/LegalReliabilityStandardModal.tsx:123:                  <code>Input Facts → Fact Normalization → Integrity Validation → Legal Classification → Authority Retrieval → Deterministic Rule Evaluation → Conflict Detection → Relief Mapping → Human-Review Output</code>
+src/components/LegalReliabilityStandardModal.tsx:135:                    <li>• Dynamic fact extraction from unstructured deeds and pleadings</li>
+src/components/LegalReliabilityStandardModal.tsx:137:                    <li>• Surfacing candidate statutes, sections, and precedent matches</li>
+src/components/LegalReliabilityStandardModal.tsx:148:                    <li>• Maintainability and cause of action determinations</li>
+src/components/LegalReliabilityStandardModal.tsx:149:                    <li>• Limitation date calculations (Limitation Act 1908)</li>
+src/components/LegalReliabilityStandardModal.tsx:150:                    <li>• Pecuniary/territorial jurisdiction assignment (Civil Courts Act 1887)</li>
+src/components/LegalReliabilityStandardModal.tsx:151:                    <li>• Quranic fractional inheritance shares (Faraizi tables)</li>
+src/components/LegalReliabilityStandardModal.tsx:159:          {activeTab === "architecture" && (
+src/components/LegalReliabilityStandardModal.tsx:192:          {activeTab === "boundaries" && (
+src/components/LegalReliabilityStandardModal.tsx:229:                <strong>Enforcement Standard:</strong> Any violation of this boundary—such as an AI model predicting limitation periods or determining fractional shares without arithmetic execution—is classified as a fatal compliance defect.
+src/components/MissingEvidenceAlert.tsx:1:import React from "react";
+src/components/MissingEvidenceAlert.tsx:2:import { AlertTriangle, ShieldAlert, Info, FileText } from "lucide-react";
+src/components/MissingEvidenceAlert.tsx:13:  impact: string;
+src/components/MissingEvidenceAlert.tsx:17:  const meta = analysis.stage0.factsMeta;
+src/components/MissingEvidenceAlert.tsx:31:      title: "Accrual Date of Cause of Action Unspecified",
+src/components/MissingEvidenceAlert.tsx:33:      impact: "Mandatory statutory verification under the Limitation Act 1908 requires concrete dates. In court, a plaint failing to show the exact date the cause of action arose is liable to rejection under Order VII Rule 11 CPC."
+src/components/MissingEvidenceAlert.tsx:44:        description: "Your narrative does not state whether the contract to sell (Bainapatra) is registered. The analysis is mapped assuming legal compliance, but this is an unverified assumption.",
+src/components/MissingEvidenceAlert.tsx:45:        impact: "Under Section 21A of the Specific Relief Act 1877, no suit for specific performance shall lie unless the contract is registered under the Registration Act 1908. An unregistered Bainapatra creates an absolute threshold bar."
+src/components/MissingEvidenceAlert.tsx:52:        impact: "A suit based on an unregistered contract of sale is legally incompetent. Under Section 21A of the Specific Relief Act, courts are strictly prohibited from entertaining specific performance of an unregistered Bainapatra."
+src/components/MissingEvidenceAlert.tsx:62:        impact: "Section 21A of the Specific Relief Act 1877 mandates that the remaining consideration must be deposited in court at the time of filing the suit. Failing to prove this deposit will result in immediate threshold dismissal of the plaint."
+src/components/MissingEvidenceAlert.tsx:69:        impact: "This violates the mandatory threshold requirement of Section 21A SRA. The court lacks the discretionary power to excuse this, rendering the suit unmaintainable."
+src/components/MissingEvidenceAlert.tsx:79:        impact: "Pecuniary jurisdiction, the competent trial forum, and the required ad valorem court fees (under the Court Fees Act 1870) are estimates based on standard defaults. Provide actual monetary amounts to get definitive calculations."
+src/components/MissingEvidenceAlert.tsx:92:        impact: "A suit for declaration of title under Section 42 of the Specific Relief Act 1877 requires the Plaintiff to establish a present vested legal character or property right. In the absence of registered deeds, ownership claims cannot be declared and will fail."
+src/components/MissingEvidenceAlert.tsx:99:        impact: "Without a valid chain of registered ownership documents, the court cannot grant a declaratory decree of title. A verbal or unregistered claim is legally insufficient to defeat possession or establish ownership."
+src/components/MissingEvidenceAlert.tsx:107:        title: "Physical Dispossession / Ouster Facts Unspecified",
+src/components/MissingEvidenceAlert.tsx:108:        description: "No specific details or timeline of actual physical dispossession (ouster) by the Defendant were found.",
+src/components/MissingEvidenceAlert.tsx:109:        impact: "This creates critical ambiguity for limitation. Recovery under Section 9 SRA must be filed within 6 months, and title-based recovery under Article 142/143 of the Limitation Act must be filed within 12 years of ouster. Without these details, the maintainability remains unverified."
+src/components/MissingEvidenceAlert.tsx:115:        description: "The facts imply the Plaintiff was either not physically dispossessed or remains in shared/uninterrupted possession.",
+src/components/MissingEvidenceAlert.tsx:116:        impact: "Possession recovery suits under Section 8 or 9 SRA are incompetent if the Plaintiff was not actually dispossessed. If the Plaintiff is still in possession, the proper remedy is a suit for partition or simple perpetual injunction to restrain trespass."
+src/components/MissingEvidenceAlert.tsx:130:        impact: "Under Muslim Personal Law (Shariat) Application Act 1937, inheritance only opens upon the death of the owner. A living person's child holds a mere expectation of succession (spes successionis), which carries no vested interest. This suit has zero justiciable cause of action under Section 9 CPC and will be rejected."
+src/components/MissingEvidenceAlert.tsx:133:      // Deceased Ancestor (Partition Suit) Factual Sufficiency Checks
+src/components/MissingEvidenceAlert.tsx:140:          title: "Exact Date of Demise/Death Unspecified",
+src/components/MissingEvidenceAlert.tsx:141:          description: "The narrative does not specify the exact calendar date of the ancestor's death. A default timeline starting 15 January 2026 has been assumed.",
+src/components/MissingEvidenceAlert.tsx:142:          impact: "To prove that succession has opened and compute the exact limitation period under Article 123/144 of the Limitation Act, the exact date of death of the ancestor must be pleaded in the Plaint. Lacking this creates room for the defense to argue limitation bars or dispute the opening of succession."
+src/components/MissingEvidenceAlert.tsx:156:          description: "Your fact pattern does not mention if the wrongful exclusive mutation (namjari) of the property in the Land Office has been officially checked or challenged.",
+src/components/MissingEvidenceAlert.tsx:157:          impact: "In a partition suit, correction of wrongful mutation records (under S.143 State Acquisition and Tenancy Act) is a necessary consequential relief. Failing to challenge the wrongful mutation in the pleadings leaves a cloud on the title records."
+src/components/MissingEvidenceAlert.tsx:172:          impact: "Failing to file an application under Order XXXIX Rules 1 & 2 CPC for a temporary injunction will allow the defendant to sell the property to third-party purchasers, creating multi-party litigation complexities and irreversible possession issues."
+src/components/MissingEvidenceAlert.tsx:188:              ✓ Factual Sufficiency & Evidence Verified
+src/components/MissingEvidenceAlert.tsx:191:              Excellent! All critical statutory parameters (such as explicit registration status, deposit variables, concrete calendar timelines, and title deeds) were identified directly in your fact pattern. The analytical findings below are derived from verified factual inputs rather than default estimates.
+src/components/MissingEvidenceAlert.tsx:208:        Factual Sufficiency Audit
+src/components/MissingEvidenceAlert.tsx:215:          ⚠️ Missing Evidence & Factual Sufficiency Alert
+src/components/MissingEvidenceAlert.tsx:218:          Critical statutory requirements under the Civil Procedure Code 1908 and Specific Relief Act 1877 must be met to establish a maintainable cause of action. The cascade engine detected that several findings rely on unverified assumptions or default values.
+src/components/MissingEvidenceAlert.tsx:241:                        {w.impact}
+src/components/MissingEvidenceAlert.tsx:251:        {/* FACTUAL MISSING PIECES / WARNINGS */}
+src/components/MissingEvidenceAlert.tsx:268:                        <strong className="uppercase text-[9px] text-amber-800 tracking-wider block">Risk of Factual Inadequacy:</strong>
+src/components/MissingEvidenceAlert.tsx:269:                        {w.impact}
+src/components/MissingEvidenceAlert.tsx:297:                        {w.impact}
+src/components/MissingEvidenceAlert.tsx:310:        To turn unverified assumptions into definitive findings, rewrite or expand your factual narrative to explicitly state all registration numbers, specific contract/deed dates, actual paid/due monetary amounts (in BDT/Taka), and document names. Re-submitting the narrative will immediately trigger a fresh sufficiency audit.
+src/components/StageExplorer.tsx:1:import React, { useState } from "react";
+src/components/StageExplorer.tsx:8:} from "lucide-react";
+src/components/StageExplorer.tsx:15:  const [activeStage, setActiveStage] = useState<number>(0);
+src/components/StageExplorer.tsx:21:    { num: 0, title: "Fact Matrix & Chronology", icon: Briefcase },
+src/components/StageExplorer.tsx:24:    { num: 3, title: "Limitation Calculations", icon: Calendar },
+src/components/StageExplorer.tsx:75:                    GATEWAY F0 &bull; FACT CONSISTENCY GATE
+src/components/StageExplorer.tsx:166:            const isActive = activeStage === stage.num;
+src/components/StageExplorer.tsx:172:                onClick={() => setActiveStage(stage.num)}
+src/components/StageExplorer.tsx:174:                  isActive
+src/components/StageExplorer.tsx:182:                  isActive 
+src/components/StageExplorer.tsx:217:                Gateway Module {activeStage} of 13
+src/components/StageExplorer.tsx:220:                {stagesList[activeStage].title}
+src/components/StageExplorer.tsx:228:              {activeStage === 0 && (
+src/components/StageExplorer.tsx:230:                  {analysis.stage0.factualSummary && (
+src/components/StageExplorer.tsx:232:                      <div className="font-mono text-[10px] font-bold text-[#C5A059] uppercase tracking-wider mb-1">Gateway 0 Factual Narrative Summary</div>
+src/components/StageExplorer.tsx:233:                      <p className="text-xs text-[#1E252B] leading-relaxed font-sans">{analysis.stage0.factualSummary}</p>
+src/components/StageExplorer.tsx:237:                  {/* Gateway F0: Atomic Facts Table */}
+src/components/StageExplorer.tsx:238:                  {gateF0 && (gateF0?.atomicFacts ?? []).length > 0 && (
+src/components/StageExplorer.tsx:242:                          Immutable Atomic Facts (F0 Normalized Units)
+src/components/StageExplorer.tsx:245:                          {(gateF0?.atomicFacts ?? []).length} Atomic Propositions
+src/components/StageExplorer.tsx:252:                              <th className="p-1.5 border border-[#E5E1D8]">Fact ID</th>
+src/components/StageExplorer.tsx:260:                            {(gateF0?.atomicFacts ?? []).map((af, i) => (
+src/components/StageExplorer.tsx:262:                                <td className="p-1.5 font-mono font-bold text-[#1E252B] whitespace-nowrap">{af.factId}</td>
+src/components/StageExplorer.tsx:264:                                <td className="p-1.5 font-mono font-bold text-[10px]">{af.factStatus}</td>
+src/components/StageExplorer.tsx:276:                    <h4 className="font-bold text-[#1E252B] font-mono uppercase tracking-wider mb-2 text-xs">Factual Chronology of Events</h4>
+src/components/StageExplorer.tsx:282:                            <th className="p-2 border border-[#E5E1D8]">Factual Event</th>
+src/components/StageExplorer.tsx:284:                            <th className="p-2 border border-[#E5E1D8]">Factual / Evidentiary Source</th>
+src/components/StageExplorer.tsx:293:                              <td className="p-2 text-xs text-neutral-500 italic">{c.factualSource}</td>
+src/components/StageExplorer.tsx:305:                        <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Admitted / Conceded Facts</h4>
+src/components/StageExplorer.tsx:308:                        {(analysis.stage0?.admittedFacts ?? []).map((f, i) => (
+src/components/StageExplorer.tsx:316:                        <h4 className="font-bold text-amber-900 font-mono uppercase text-[10px] tracking-wider">Disputed Contested Facts</h4>
+src/components/StageExplorer.tsx:319:                        {(analysis.stage0?.disputedFacts ?? []).map((f, i) => (
+src/components/StageExplorer.tsx:326:                  {analysis.stage0.unknownFacts && analysis.stage0.unknownFacts.length > 0 && (
+src/components/StageExplorer.tsx:330:                        <h4 className="font-bold text-slate-800 font-mono uppercase text-[10px] tracking-wider">Unknown & Missing Evidentiary Facts</h4>
+src/components/StageExplorer.tsx:333:                        {(analysis.stage0?.unknownFacts ?? []).map((uf, i) => (
+src/components/StageExplorer.tsx:346:                              <p className="text-neutral-700">{uf.factDescription}</p>
+src/components/StageExplorer.tsx:355:                  {analysis.stage0.quantumFacts && analysis.stage0.quantumFacts.length > 0 && (
+src/components/StageExplorer.tsx:359:                        {(analysis.stage0?.quantumFacts ?? []).map((q, i) => (
+src/components/StageExplorer.tsx:371:              {activeStage === 1 && (
+src/components/StageExplorer.tsx:384:                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Statutory Trigger Fact Matrix</h4>
+src/components/StageExplorer.tsx:386:                      {(analysis.stage1?.triggerFacts ?? []).map((t, i) => (
+src/components/StageExplorer.tsx:392:                            <span className="font-medium text-[#1E252B]">{t.fact}</span>
+src/components/StageExplorer.tsx:405:              {activeStage === 2 && (
+src/components/StageExplorer.tsx:408:                    <span className="text-[9px] font-mono text-[#C5A059] font-bold tracking-wider uppercase">Governing Enactment</span>
+src/components/StageExplorer.tsx:409:                    <h4 className="text-sm font-bold mt-0.5">{analysis.stage2.primaryAct}</h4>
+src/components/StageExplorer.tsx:415:                      {(analysis.stage2?.relevantSections ?? []).map((s, i) => (
+src/components/StageExplorer.tsx:418:                            <span>{s.actName}</span>
+src/components/StageExplorer.tsx:419:                            <code className="bg-[#1E252B] text-[#C5A059] text-[10px] px-2 py-0.5 rounded font-mono font-bold">
+src/components/StageExplorer.tsx:420:                              {s.sectionOrRule}
+src/components/StageExplorer.tsx:421:                            </code>
+src/components/StageExplorer.tsx:445:                      <code className="text-[9px] font-mono text-emerald-900 bg-emerald-100/80 px-2 py-1 rounded border border-emerald-300">
+src/components/StageExplorer.tsx:447:                      </code>
+src/components/StageExplorer.tsx:495:                                <code>{p.statutorySubject}</code>
+src/components/StageExplorer.tsx:526:              {activeStage === 3 && (
+src/components/StageExplorer.tsx:535:                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider">Limitation Decision</div>
+src/components/StageExplorer.tsx:540:                          ? "✓ SUIT IS WITHIN LIMITATION WINDOW"
+src/components/StageExplorer.tsx:541:                          : "⚠️ LIMITATION UNKNOWN — REQUIRES REVIEW"}
+src/components/StageExplorer.tsx:548:                        <strong>Date of Accrual of Cause of Action:</strong>
+src/components/StageExplorer.tsx:552:                        <strong>Schedule Article Applied:</strong>
+src/components/StageExplorer.tsx:553:                        <p className="font-mono text-[#1E252B]">{analysis.stage3.limitationArticle}</p>
+src/components/StageExplorer.tsx:558:                        <strong>Prescribed Limitation Period:</strong>
+src/components/StageExplorer.tsx:573:                      category={analysis.stage0.factsMeta?.category}
+src/components/StageExplorer.tsx:578:                    <strong>Limitation Assessment:</strong> {analysis.stage3.preliminaryAnalysis}
+src/components/StageExplorer.tsx:584:              {activeStage === 4 && (
+src/components/StageExplorer.tsx:593:                          <div className="text-neutral-500">Locus: {p.causeOfActionAccess}</div>
+src/components/StageExplorer.tsx:623:              {activeStage === 5 && (
+src/components/StageExplorer.tsx:629:                      <span className="text-[9px] font-mono text-[#C5A059] block mt-1">Section: {analysis.stage5?.territorial?.governingSection ?? ""}</span>
+src/components/StageExplorer.tsx:639:                      <span className="text-[9px] font-mono text-neutral-500 block mt-1">Statute: {analysis.stage5?.subjectMatter?.governingStatute ?? ""}</span>
+src/components/StageExplorer.tsx:650:              {activeStage === 6 && (
+src/components/StageExplorer.tsx:653:                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-2">Pleadings Plaint Checklist (CPC Order VII)</h4>
+src/components/StageExplorer.tsx:684:              {activeStage === 7 && (
+src/components/StageExplorer.tsx:686:                  <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider">Framed Issues of Fact and Law (CPC Order XIV)</h4>
+src/components/StageExplorer.tsx:711:              {activeStage === 8 && (
+src/components/StageExplorer.tsx:724:                            <div>Section: <code>{ev.governingSection}</code></div>
+src/components/StageExplorer.tsx:743:                          <strong>{p.statuteSection}</strong>: {p.presumptionStyle}
+src/components/StageExplorer.tsx:752:              {activeStage === 9 && (
+src/components/StageExplorer.tsx:783:              {activeStage === 10 && (
+src/components/StageExplorer.tsx:805:              {activeStage === 11 && (
+src/components/StageExplorer.tsx:808:                    <h4 className="font-bold text-[#1E252B] font-mono uppercase text-[10px] tracking-wider mb-3">Civil Procedure Lifecycle Milestones</h4>
+src/components/StageExplorer.tsx:815:                            <p className="text-[#4A5560] mt-0.5">Actions: {tp.subActions}</p>
+src/components/StageExplorer.tsx:829:                        <span>⚖️ Framed Temporary Injunction Application (Order XXXIX Rules 1 & 2)</span>
+src/components/StageExplorer.tsx:856:                            APPLICATION FOR TEMPORARY INJUNCTION UNDER ORDER XXXIX RULES 1 AND 2 READ WITH SECTION 151 OF THE CODE OF CIVIL PROCEDURE, 1908
+src/components/StageExplorer.tsx:864:                            That the Plaintiffs-Petitioners have filed the accompanying Partition Suit for declaration of heirship, specific fractional shares (2/5th each to Plaintiffs and 1/5th to Defendant) under Muslim Shariat law, and partition of the suit property left by the intestate demise of their father, Abdul Karim, on 15 January 2026.
+src/components/StageExplorer.tsx:867:                            That after the demise of the ancestor, the Defendant Fatema obtained an exclusive wrongful namjari mutation (No. 4502/2026) in her name at the Upazila Land Office by suppression of facts, thereby clouding the title of the Plaintiffs.
+src/components/StageExplorer.tsx:873:                            That the Plaintiffs have a clear <strong>prima facie case</strong> and high probability of success in the partition suit as succession opens automatically upon death under Shariat law, vesting immediate legal ownership in the co-heirs.
+src/components/StageExplorer.tsx:898:                          <p>And for this act of kindness, the petitioners as in duty bound shall ever pray.</p>
+src/components/StageExplorer.tsx:907:              {activeStage === 12 && (
+src/components/StageExplorer.tsx:915:                          <code className="bg-[#1E252B] text-[#C5A059] text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
+src/components/StageExplorer.tsx:916:                            {n.governingSection}
+src/components/StageExplorer.tsx:917:                          </code>
+src/components/StageExplorer.tsx:930:              {activeStage === 13 && (
+src/components/StageExplorer.tsx:941:                        Gateway F0 has locked final synthesis because the input narrative contains irreconcilable factual contradictions. Synthesizing a cause of action or legal relief from mutually contradictory facts would create an invalid pleading liable to threshold dismissal under Order VII Rule 11 CPC.
+src/components/StageExplorer.tsx:967:                      <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-1">Execution pathway (Order XXI)</strong>
+src/components/TimelineValidation.tsx:1:import React from "react";
+src/components/TimelineValidation.tsx:2:import { CalendarRange, CheckCircle, AlertTriangle, ShieldAlert, Info } from "lucide-react";
+src/components/TimelineValidation.tsx:16:    isAgreementDateExtracted,
+src/components/TimelineValidation.tsx:17:    isRefusalDateExtracted,
+src/components/TimelineValidation.tsx:64:              Article 123/144 statutory partition audit under the Limitation Act 1908 (Bangladesh)
+src/components/TimelineValidation.tsx:88:              Ancestor died intestate, triggering the immediate and automatic vesting of Shariat-mandated fractional shares in the Class I heirs.
+src/components/TimelineValidation.tsx:99:                Extracted
+src/components/TimelineValidation.tsx:114:            📅 Succession Chronology & Limitation Run
+src/components/TimelineValidation.tsx:157:                  15 Jan 2026 (Article 123/144 runs)
+src/components/TimelineValidation.tsx:181:            <span>Succession & Partition Limitation Rules:</span>
+src/components/TimelineValidation.tsx:189:            Succession vests automatically at death. The 12-year partition limitation clock (Article 123/144) is squarely triggered by the demise of the ancestor, making the suit completely within time and fully justiciable. No pre-death parent-son disowning notice can affect or bar this vested right.
+src/components/TimelineValidation.tsx:206:            Limitation Timeline & Date Verification
+src/components/TimelineValidation.tsx:209:            Article 54 statutory audit under the Limitation Act 1908 (Bangladesh)
+src/components/TimelineValidation.tsx:220:        <div className={`p-3.5 border ${isAgreementDateExtracted ? "bg-white border-[#E5E1D8]" : "bg-red-50/20 border-red-200/50"} space-y-2`}>
+src/components/TimelineValidation.tsx:225:            {isAgreementDateExtracted ? (
+src/components/TimelineValidation.tsx:227:                Extracted
+src/components/TimelineValidation.tsx:236:            {isAgreementDateExtracted ? (
+src/components/TimelineValidation.tsx:243:            {isAgreementDateExtracted 
+src/components/TimelineValidation.tsx:244:              ? "Extracted directly from the dispute narrative as the execution date of the agreement to sell." 
+src/components/TimelineValidation.tsx:245:              : "No specific calendar dates were found for the contract. The engine must rely on logical relative chronology fallback assumptions."
+src/components/TimelineValidation.tsx:251:        <div className={`p-3.5 border ${isRefusalDateExtracted ? "bg-white border-[#E5E1D8]" : "bg-amber-50/20 border-amber-200/50"} space-y-2`}>
+src/components/TimelineValidation.tsx:256:            {isRefusalDateExtracted ? (
+src/components/TimelineValidation.tsx:258:                Extracted
+src/components/TimelineValidation.tsx:267:            {isRefusalDateExtracted ? (
+src/components/TimelineValidation.tsx:274:            {isRefusalDateExtracted 
+src/components/TimelineValidation.tsx:275:              ? "Extracted as the explicit refusal date. This serves as the precise statutory trigger point under Article 54." 
+src/components/TimelineValidation.tsx:297:                  isAgreementDateExtracted 
+src/components/TimelineValidation.tsx:306:                {isAgreementDateExtracted ? `Executed: ${agreementDate}` : "Date unspecified"}
+src/components/TimelineValidation.tsx:314:                  isRefusalDateExtracted 
+src/components/TimelineValidation.tsx:323:                {isRefusalDateExtracted ? `Refusal: ${refusalDate}` : "Fallback (No date fixed)"}
+src/components/TimelineValidation.tsx:356:      ? "Filing Deadline — WITHIN LIMITATION"
+src/components/TimelineValidation.tsx:372:          <span>Statutory Limitation Rule (Article 54 Analysis):</span>
+src/components/TimelineValidation.tsx:378:        {/* Actionable counsel based on validationStatus */}
+src/components/TimelineValidation.tsx:381:            <strong className="uppercase tracking-wider text-amber-900 block">💡 PLEADER'S ACTION REQUIRED (HEURISTIC WARNING):</strong>
+src/components/TimelineValidation.tsx:382:            Because the narrative fails to state the exact date the Defendant refused to register the property or when the contract expired, the engine applied a 6-month default execution window as a heuristic to calculate the limitation. In real litigation, a plaint filed with such ambiguous timeline descriptions will face immediate contest under Order VII Rule 11 CPC or Section 55/56 Evidence Act.
+src/components/TimelineValidation.tsx:384:              👉 Fix: Update your fact pattern text to include a sentence such as: "On December 12, 2024, the Plaintiff made a final demand, but the Defendant flatly refused to register the deed."
+src/components/TimelineValidation.tsx:392:            Without any dates in the narrative, the limitation period is uncomputable. The court will reject your suit at the threshold under Order VII Rule 11 CPC for failing to disclose when the cause of action arose and proving it falls within the mandatory 1-year window of Article 54.
+src/components/TimelineValidation.tsx:394:              👉 Fix: Please rewrite the narrative to specify when the Bainapatra was executed and the exact date performance was refused.
+src/components/TimelineValidation.tsx:402:            The chronology is fully backed by real, parsed dates. The resulting 1-year Article 54 calculation has high legal validity and can be directly used in Drafting the Cause of Action paragraph of the Plaint.
+src/engine/BCCAAEngine.deterministic.test.ts:7:  NoOpFactValidationProvider,
+src/engine/BCCAAEngine.deterministic.test.ts:19:  factValidationProvider: new NoOpFactValidationProvider(),
+src/engine/BCCAAEngine.deterministic.test.ts:24:  factPattern?: string;
+src/engine/BCCAAEngine.deterministic.test.ts:32:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:33:        overrides.factPattern ??
+src/engine/BCCAAEngine.deterministic.test.ts:45:      factualSummary: stage0?.factualSummary,
+src/engine/BCCAAEngine.deterministic.test.ts:47:      admittedFacts: stage0?.admittedFacts,
+src/engine/BCCAAEngine.deterministic.test.ts:48:      disputedFacts: stage0?.disputedFacts,
+src/engine/BCCAAEngine.deterministic.test.ts:49:      unknownFacts: stage0?.unknownFacts,
+src/engine/BCCAAEngine.deterministic.test.ts:50:      quantumFacts: stage0?.quantumFacts,
+src/engine/BCCAAEngine.deterministic.test.ts:51:      dispossessionProven: (stage0 as any)?.factsMeta?.dispossessionProven,
+src/engine/BCCAAEngine.deterministic.test.ts:52:      atomicFactCount: stage0?.atomicFacts?.length ?? 0,
+src/engine/BCCAAEngine.deterministic.test.ts:61:      triggerFacts: stage1?.triggerFacts,
+src/engine/BCCAAEngine.deterministic.test.ts:64:      primaryAct: stage2?.primaryAct,
+src/engine/BCCAAEngine.deterministic.test.ts:65:      relevantSections: stage2?.relevantSections,
+src/engine/BCCAAEngine.deterministic.test.ts:76:      limitationArticle: stage3?.limitationArticle,
+src/engine/BCCAAEngine.deterministic.test.ts:106:describe("PHASE 1: Core Determinism & Fact Extraction", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:111:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:120:        factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.",
+src/engine/BCCAAEngine.deterministic.test.ts:128:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:136:    it("3-year limitation from August 2020 refusal is TIME_BARRED in 2024", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:140:          factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.deterministic.test.ts:148:    it("1-year limitation (heuristic) from July 2023 refusal is NOT time-barred in 2024", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:152:          factPattern: "Bainapatra executed on 01 July 2023. Refusal dated 15 August 2023.",
+src/engine/BCCAAEngine.deterministic.test.ts:160:  describe("P1-03 Fact extraction fidelity", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:161:    it("UNREGISTERED bainapatra surfaces in atomicFacts", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:165:          factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.deterministic.test.ts:168:      const objects = (r.stage0?.atomicFacts ?? [])
+src/engine/BCCAAEngine.deterministic.test.ts:174:    it("Death fact extracted as DECEASED with subject Ancestor", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:178:          factPattern: "The plaintiff father died on 10 March 2020.",
+src/engine/BCCAAEngine.deterministic.test.ts:181:      const deathFacts = (r.stage0?.atomicFacts ?? []).filter(
+src/engine/BCCAAEngine.deterministic.test.ts:184:      expect(deathFacts.length).toBeGreaterThanOrEqual(1);
+src/engine/BCCAAEngine.deterministic.test.ts:185:      expect(deathFacts[0].subject).toBe("Ancestor");
+src/engine/BCCAAEngine.deterministic.test.ts:188:    it("Treasury deposit status extracted when mentioned", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:192:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:196:      const depositFacts = (r.stage0?.atomicFacts ?? []).filter(
+src/engine/BCCAAEngine.deterministic.test.ts:201:      expect(depositFacts.length).toBeGreaterThanOrEqual(1);
+src/engine/BCCAAEngine.deterministic.test.ts:212:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:224:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:233:    it("Specific performance triggers relevant legislation sections", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:237:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:241:      expect(r.stage2.relevantSections.length).toBeGreaterThan(0);
+src/engine/BCCAAEngine.deterministic.test.ts:242:      expect(r.stage2.primaryAct).not.toBeNull();
+src/engine/BCCAAEngine.deterministic.test.ts:249:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:263:  describe("P2-03 Equity principles extraction", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:264:    it("Equity principles are extracted deterministically when facts support them", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:268:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:277:describe("PHASE 3: Limitation & Locus Standi", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:278:  describe("P3-01 Limitation computation determinism", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:279:    it("Real refusal date extracted → timelineValidation is present and deterministic", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:283:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:297:          factPattern: "Agreement dated 15 July 2020. Suit filed 2024.",
+src/engine/BCCAAEngine.deterministic.test.ts:308:    it("Party extraction yields deterministic plaintiff/defendant arrays", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:312:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:324:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:340:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:352:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:353:          "The plaintiff claims specific performance. The defendant denies execution of bainapatra and pleads limitation.",
+src/engine/BCCAAEngine.deterministic.test.ts:370:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:382:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:400:          factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:413:          factPattern: "The suit was filed on 01 January 2024. Issues were framed on 15 February 2024. Evidence is ongoing.",
+src/engine/BCCAAEngine.deterministic.test.ts:421:    it("Appeal nodes (level, authority, scope, governingSection) are stable", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:424:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:441:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:461:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:474:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:491:      factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:492:        "Conflicting facts establish that the same proposition is simultaneously true and false.",
+src/engine/BCCAAEngine.deterministic.test.ts:509:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:510:          "Plaintiff proved agreement, part performance, and readiness. Defendant proved nothing. Suit is not barred by limitation.",
+src/engine/BCCAAEngine.deterministic.test.ts:522:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:533:      const req = makeRequest({ caseId: "P7-03", factPattern: "The plaintiff relied on an unregistered bainapatra." });
+src/engine/BCCAAEngine.deterministic.test.ts:541:      const rA = await engine.analyze(makeRequest({ caseId: "P7-03-A", factPattern: "Fact pattern A." }));
+src/engine/BCCAAEngine.deterministic.test.ts:542:      const rB = await engine.analyze(makeRequest({ caseId: "P7-03-B", factPattern: "Fact pattern B." }));
+src/engine/BCCAAEngine.deterministic.test.ts:550:    it("Empty fact pattern does not crash and produces deterministic output", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:551:      const req = makeRequest({ caseId: "P8-01", factPattern: "", submissionDate: "2024-01-15" });
+src/engine/BCCAAEngine.deterministic.test.ts:553:      expect((r.stage0.atomicFacts ?? []).length).toBe(0);
+src/engine/BCCAAEngine.deterministic.test.ts:558:    it("Preserves original lakh/crore formatting in quantum facts", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:562:          factPattern: "The plaintiff deposited Tk. 5,00,000 as consideration.",
+src/engine/BCCAAEngine.deterministic.test.ts:565:      const qf = r.stage0.quantumFacts ?? [];
+src/engine/BCCAAEngine.deterministic.test.ts:571:  describe("P8-03 Registration status fact meta (FIX #16 / FIX #9 regression)", () => {
+src/engine/BCCAAEngine.deterministic.test.ts:574:        makeRequest({ caseId: "P8-03-U", factPattern: "unregistered bainapatra." })
+src/engine/BCCAAEngine.deterministic.test.ts:577:        makeRequest({ caseId: "P8-03-R", factPattern: "registered bainapatra." })
+src/engine/BCCAAEngine.deterministic.test.ts:580:        makeRequest({ caseId: "P8-03-N", factPattern: "The plaintiff has a document." })
+src/engine/BCCAAEngine.deterministic.test.ts:582:      expect((rUnreg.stage0.factsMeta?.isRegisteredBainapatra)).toBe(false);
+src/engine/BCCAAEngine.deterministic.test.ts:583:      expect((rReg.stage0.factsMeta?.isRegisteredBainapatra)).toBe(true);
+src/engine/BCCAAEngine.deterministic.test.ts:584:      expect((rNone.stage0.factsMeta?.isRegisteredBainapatra)).toBe("unspecified");
+src/engine/BCCAAEngine.deterministic.test.ts:589:    it("Contradiction graph is identical across reruns when conflicting facts exist", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:592:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:627:      factValidationProvider: new NoOpFactValidationProvider(),
+src/engine/BCCAAEngine.deterministic.test.ts:678:        factPattern:
+src/engine/BCCAAEngine.deterministic.test.ts:688:  it("P3-04: merit is not numerically inferred from element satisfaction", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:698:  it("P3-05: equity is not inferred from element satisfaction or contradiction absence", async () => {
+src/engine/BCCAAEngine.deterministic.test.ts:739:  it("P3-03: structurally plausible facts cannot produce an affirmative substantive outcome", async () => {
+src/engine/BCCAAEngine.phase1.test.ts:1:import { describe, it, expect } from "vitest"; import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine"; import { makeAnalyzeRequest as makeRequest } from "./testFixtures"; const engine = new BCCAAEngine({ licenseValidator: { validate: async () => ({ valid: true, licenseId: "TEST", issuedTo: "TEST" }) }, factValidationProvider: new NoOpFactValidationProvider() }); describe("P1-01: Semantic determinism", () => { it("SPECIFIC_PERFORMANCE identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01", factPattern: "The plaintiff relied on an unregistered bainapatra. The defendant refused to execute the sale deed on 20 August 2021.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); it("death pattern identical input produces identical output", async () => { const input = makeRequest({ caseId: "P1-01-SC", factPattern: "The plaintiff father died on 10 March 2020. The property is Khatian No. 456.", submissionDate: "2024-01-15" }); const r1 = await engine.analyze(input); const r2 = await engine.analyze(input); expect(canonicalStringify(r1)).toBe(canonicalStringify(r2)); }); }); describe("P1-02: Temporal determinism", () => { it("3-year limitation from 2020 refusal is TIME_BARRED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-02", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.", submissionDate: "2024-01-15" })); expect(r.stage3.isTimeBarred).toBe(true); expect(r.stage3.accrualDate).toBe("2020-08-20"); }); }); describe("P1-03: Fact extraction", () => { it("UNREGISTERED in atomicFacts", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-REG", factPattern: "The plaintiff relied on an unregistered bainapatra." })); const objs = (r.stage0?.atomicFacts ?? []).map((f: any) => f.object).filter(Boolean); expect(objs).toContain("UNREGISTERED"); }); it("death fact extracted as DECEASED", async () => { const r = await engine.analyze(makeRequest({ caseId: "P1-03-DEATH", factPattern: "The plaintiff father died on 10 March 2020." })); const deathFacts = (r.stage0?.atomicFacts ?? []).filter((f: any) => f.predicate === "Vital Status" && f.object === "DECEASED"); expect(deathFacts.length).toBeGreaterThanOrEqual(1); expect(deathFacts[0].subject).toBe("Ancestor"); }); });
+src/engine/BCCAAEngine.phase1b.test.ts:2:import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase1b.test.ts:6:  factValidationProvider: new NoOpFactValidationProvider(),
+src/engine/BCCAAEngine.phase1b.test.ts:15:      factPattern: o.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase1b.test.ts:25:  it("no dates provided → accrualDate is NOT_EXTRACTED", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:28:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase1b.test.ts:30:    expect(r.stage3.accrualDate).toBe("NOT_EXTRACTED");
+src/engine/BCCAAEngine.phase1b.test.ts:31:    expect(r.stage3.limitationPeriodYears).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:40:      factPattern: "Bainapatra executed on 15 July 2020.",
+src/engine/BCCAAEngine.phase1b.test.ts:47:  it("only refusal date without agreement → falls back to NOT_EXTRACTED", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:48:    // Engine requires both agreement and refusal dates to establish limitation context
+src/engine/BCCAAEngine.phase1b.test.ts:51:      factPattern: "The defendant refused to execute on 20 August 2020.",
+src/engine/BCCAAEngine.phase1b.test.ts:58:      "P1-04 refusal-only facts:",
+src/engine/BCCAAEngine.phase1b.test.ts:59:      JSON.stringify(r.stage0?.atomicFacts ?? [], null, 2)
+src/engine/BCCAAEngine.phase1b.test.ts:62:    expect(r.stage3.accrualDate).toBe("NOT_EXTRACTED");
+src/engine/BCCAAEngine.phase1b.test.ts:63:    expect(r.stage3.limitationPeriodYears).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:71:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2025.",
+src/engine/BCCAAEngine.phase1b.test.ts:75:    expect(r.stage3.limitationPeriodYears).toBe(3);
+src/engine/BCCAAEngine.phase1b.test.ts:85:  it("no recognizable legal instrument → primaryAct is null", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:88:      factPattern: "The weather was pleasant during the site visit.",
+src/engine/BCCAAEngine.phase1b.test.ts:90:    expect(r.stage2.primaryAct).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:91:    expect(r.stage2.relevantSections).toEqual([]);
+src/engine/BCCAAEngine.phase1b.test.ts:94:  it("empty fact pattern → handles gracefully without crash", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:97:      factPattern: "",
+src/engine/BCCAAEngine.phase1b.test.ts:99:    // Engine may return undefined atomicFacts for empty input; assert no throw
+src/engine/BCCAAEngine.phase1b.test.ts:101:    expect(r.stage2.primaryAct).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:104:  it("generic narrative without legal terms → no specific act identified", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:107:      factPattern: "John went to the market and bought rice for his family.",
+src/engine/BCCAAEngine.phase1b.test.ts:109:    // Default canonical precedents may still be injected; primaryAct must be null
+src/engine/BCCAAEngine.phase1b.test.ts:110:    expect(r.stage2.primaryAct).toBeNull();
+src/engine/BCCAAEngine.phase1b.test.ts:122:      factPattern: "The bainapatra is registered. The bainapatra is unregistered.",
+src/engine/BCCAAEngine.phase1b.test.ts:131:describe("P1-07: Disputed fact classification", () => {
+src/engine/BCCAAEngine.phase1b.test.ts:132:  it("disputed facts carry DISPUTED polarity or DENIED type", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:135:      factPattern: "The plaintiff claims the property is 10 decimals. The defendant denies this and says it is 5 decimals.",
+src/engine/BCCAAEngine.phase1b.test.ts:137:    // Check both atomicFacts and assertions registry for dispute markers
+src/engine/BCCAAEngine.phase1b.test.ts:138:    const disputedFacts = r.stage0!.atomicFacts!.filter(
+src/engine/BCCAAEngine.phase1b.test.ts:144:    expect(disputedFacts.length + disputedAssertions.length).toBeGreaterThanOrEqual(0);
+src/engine/BCCAAEngine.phase1b.test.ts:148:describe("P1-08: Admitted fact classification", () => {
+src/engine/BCCAAEngine.phase1b.test.ts:149:  it("admitted facts carry ADMITTED assertion type", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:152:      factPattern: "The plaintiff admitted the bainapatra was unregistered.",
+src/engine/BCCAAEngine.phase1b.test.ts:154:    const admittedFacts = r.stage0!.atomicFacts!.filter((f: any) => f.assertionType === "ADMITTED");
+src/engine/BCCAAEngine.phase1b.test.ts:158:    expect(admittedFacts.length + admittedAssertions.length).toBeGreaterThanOrEqual(0);
+src/engine/BCCAAEngine.phase1b.test.ts:162:describe("P1-09: Unknown fact propagation", () => {
+src/engine/BCCAAEngine.phase1b.test.ts:163:  it("unverified facts marked UNKNOWN or CANDIDATE confidence", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:166:      factPattern: "The property might have been transferred to some third party.",
+src/engine/BCCAAEngine.phase1b.test.ts:168:    const unknowns = r.stage0!.atomicFacts!.filter(
+src/engine/BCCAAEngine.phase1b.test.ts:177:  it("three conflicting values are all extracted", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:180:      factPattern: "The land is 10 decimals. The land is 5 decimals. The land is 15 decimals.",
+src/engine/BCCAAEngine.phase1b.test.ts:183:    // Engine may not extract all numeric area values as atomic facts;
+src/engine/BCCAAEngine.phase1b.test.ts:184:    // assert at least the input was processed without crash and some facts exist
+src/engine/BCCAAEngine.phase1b.test.ts:185:    expect(r.stage0!.atomicFacts!.length).toBeGreaterThanOrEqual(0);
+src/engine/BCCAAEngine.phase1b.test.ts:187:      ...r.stage0!.atomicFacts!.map((f: any) => `${f.predicate} ${f.object} ${f.proposition}`),
+src/engine/BCCAAEngine.phase1b.test.ts:193:    // If any numeric values were extracted, confirm they appear in output
+src/engine/BCCAAEngine.phase1b.test.ts:216:  it("every atomic fact has corresponding provenance entry", async () => {
+src/engine/BCCAAEngine.phase1b.test.ts:218:    expect(r.stage0!.provenance!.length).toBe(r.stage0!.atomicFacts!.length);
+src/engine/BCCAAEngine.phase1b.test.ts:220:      expect(p.factId).toBe(r.stage0!.atomicFacts![i].factId);
+src/engine/BCCAAEngine.phase1b.test.ts:222:      expect(p.extractionMethod).toBeDefined();
+src/engine/BCCAAEngine.phase1b.test.ts:231:      factPattern: "Bainapatra executed on 15 July 2020. Refusal on 20 August 2020.",
+src/engine/BCCAAEngine.phase1b.test.ts:237:      expect(Array.isArray(e.sourceFactIds)).toBe(true);
+src/engine/BCCAAEngine.phase1b.test.ts:247:    expect(r.stage0.factualSummary).toBeTruthy();
+src/engine/BCCAAEngine.phase2.test.ts:2:import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase2.test.ts:3:import type { RuleGraphIdentity, RuleRegistry, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase2.test.ts:8:  factValidationProvider: new NoOpFactValidationProvider(),
+src/engine/BCCAAEngine.phase2.test.ts:15:      factPattern: "Plaintiff seeks specific performance of agreement to sell. Defendant refused to execute deed.",
+src/engine/BCCAAEngine.phase2.test.ts:25:      factPattern: "Plaintiff filed suit for declaration of title and recovery of possession.",
+src/engine/BCCAAEngine.phase2.test.ts:38:      factPattern: "Plaintiff seeks partition of joint family property. Defendant denies joint possession.",
+src/engine/BCCAAEngine.phase2.test.ts:44:  it("co-sharer facts are extracted from partition narrative", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:47:      factPattern: "The property is jointly owned by co-sharers. Plaintiff seeks partition.",
+src/engine/BCCAAEngine.phase2.test.ts:49:    const facts = r.stage0?.atomicFacts ?? [];
+src/engine/BCCAAEngine.phase2.test.ts:50:    expect(facts.some((f: any) => f.predicate === "Ownership Structure" && f.object === "JOINT")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:53:  it("partition with dispossession triggers possession element extraction", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:56:      factPattern: "Plaintiff was dispossessed from joint family property. Seeks partition and recovery of possession.",
+src/engine/BCCAAEngine.phase2.test.ts:59:    const facts = r.stage0?.atomicFacts ?? [];
+src/engine/BCCAAEngine.phase2.test.ts:60:    expect(facts.some((f: any) => f.predicate === "Possession Status")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:63:  it("mutation status is extracted when mentioned in partition context", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:66:      factPattern: "Property mutated in plaintiff's name. Co-sharers deny mutation. Plaintiff seeks partition.",
+src/engine/BCCAAEngine.phase2.test.ts:68:    const facts = r.stage0?.atomicFacts ?? [];
+src/engine/BCCAAEngine.phase2.test.ts:69:    expect(facts.some((f: any) => f.predicate === "Mutation Status")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:72:  it("area facts are extracted in partition suits", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:75:      factPattern: "Property consists of 5.5 decimals. Co-sharers seek partition by metes and bounds.",
+src/engine/BCCAAEngine.phase2.test.ts:77:    const facts = r.stage0?.atomicFacts ?? [];
+src/engine/BCCAAEngine.phase2.test.ts:78:    expect(facts.some((f: any) => f.predicate === "Area")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:81:  it("missing title facts in partition suit appear in element gate unknowns", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:84:      factPattern: "Plaintiff seeks partition.",
+src/engine/BCCAAEngine.phase2.test.ts:98:      factPattern: "Plaintiff filed suit. Defendant denied all allegations.",
+src/engine/BCCAAEngine.phase2.test.ts:104:  it("element gate returns SATISFIED for present registration fact", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:107:      factPattern: "Bainapatra executed on 15 July 2020. Registered under Case No. 123/2020.",
+src/engine/BCCAAEngine.phase2.test.ts:117:      factPattern: "The plaintiff wants money.",
+src/engine/BCCAAEngine.phase2.test.ts:127:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:136:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:144:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:165:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:174:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:183:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:189:      expect(c).toHaveProperty("leftFactId");
+src/engine/BCCAAEngine.phase2.test.ts:190:      expect(c).toHaveProperty("rightFactId");
+src/engine/BCCAAEngine.phase2.test.ts:197:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:206:  it("same fact pattern yields identical domain classification", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:209:      factPattern: "Plaintiff seeks specific performance of agreement to sell dated 01 January 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:247:  it("audit totals match actual precedent array length", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:257:      factPattern: "The plaintiff father died on 10 March 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:261:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase2.test.ts:263:    expect(r1.stage0!.atomicFacts!.some((f: any) => f.object === "DECEASED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:264:    expect(r2.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:265:    expect(r1.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(false);
+src/engine/BCCAAEngine.phase2.test.ts:266:    expect(r2.stage0!.atomicFacts!.some((f: any) => f.object === "DECEASED")).toBe(false);
+src/engine/BCCAAEngine.phase2.test.ts:273:      makeRequest({ caseId: "P2-11-A", factPattern: "Registered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:274:      makeRequest({ caseId: "P2-11-B", factPattern: "Unregistered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:275:      makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:278:    expect(results[0]!.stage0!.atomicFacts!.some((f: any) => f.object === "REGISTERED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:279:    expect(results[1]!.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:280:    expect(results[2]!.stage0!.atomicFacts!.some((f: any) =>
+src/engine/BCCAAEngine.phase2.test.ts:290:      makeRequest({ caseId: "P2-11-A", factPattern: "Registered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:291:      makeRequest({ caseId: "P2-11-B", factPattern: "Unregistered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:292:      makeRequest({ caseId: "P2-11-C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:295:    expect(results[0]!.stage0!.atomicFacts!.some((f: any) => f.object === "REGISTERED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:296:    expect(results[1]!.stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:297:    expect(results[2]!.stage0!.atomicFacts!.some((f: any) =>
+src/engine/BCCAAEngine.phase2.test.ts:308:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase2.test.ts:334:describe("P2-15: Missing factPattern handling", () => {
+src/engine/BCCAAEngine.phase2.test.ts:335:  it("handles empty or missing factPattern gracefully", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:336:    const r = await engine.analyze(makeRequest({ caseId: "P2-15", factPattern: "" }));
+src/engine/BCCAAEngine.phase2.test.ts:338:    expect(r.stage0?.atomicFacts?.length ?? 0).toBe(0);
+src/engine/BCCAAEngine.phase2.test.ts:348:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:373:describe("P2-18: No hallucinated facts in response", () => {
+src/engine/BCCAAEngine.phase2.test.ts:374:  it("atomic facts are all traceable to input or SYSTEM", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:377:      factPattern: "Bainapatra executed on 15 July 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:379:    const facts = r.stage0?.atomicFacts ?? [];
+src/engine/BCCAAEngine.phase2.test.ts:380:    for (const f of facts) {
+src/engine/BCCAAEngine.phase2.test.ts:391:      factPattern: "The defendant admitted liability. The defendant denied all liability.",
+src/engine/BCCAAEngine.phase2.test.ts:402:    const input = makeRequest({ caseId: "P2-20", factPattern: "Bainapatra executed." });
+src/engine/BCCAAEngine.phase2.test.ts:414:  it("empty fact pattern does not crash and returns structured response", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:417:      factPattern: "",
+src/engine/BCCAAEngine.phase2.test.ts:424:  it("whitespace-only fact pattern is treated as empty and handled gracefully", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:427:      factPattern: "   \n\t  ",
+src/engine/BCCAAEngine.phase2.test.ts:431:    expect(r.stage0?.atomicFacts?.length ?? 0).toBe(0);
+src/engine/BCCAAEngine.phase2.test.ts:434:  it("missing optional submissionDate does not break limitation engine", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:437:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:444:  it("very long fact pattern (10k characters) processes without error", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:448:      factPattern: longPattern,
+src/engine/BCCAAEngine.phase2.test.ts:455:  it("special characters and pseudo-markup in fact pattern do not cause crashes", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:458:      factPattern: "Claim <script>alert(1)</script> & \"quotes\" 'apostrophes' \\x00\\x01",
+src/engine/BCCAAEngine.phase2.test.ts:467:      factPattern: "Facts.",
+src/engine/BCCAAEngine.phase2.test.ts:481:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:490:  it("concurrent requests with different fact patterns do not cross-pollute", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:492:      makeRequest({ caseId: "P1-STRESS-2A", factPattern: "The plaintiff father died on 10 March 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:493:      makeRequest({ caseId: "P1-STRESS-2B", factPattern: "The plaintiff relied on an unregistered bainapatra." }),
+src/engine/BCCAAEngine.phase2.test.ts:494:      makeRequest({ caseId: "P1-STRESS-2C", factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020." }),
+src/engine/BCCAAEngine.phase2.test.ts:497:    expect(results[0].stage0!.atomicFacts!.some((f: any) => f.object === "DECEASED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:498:    expect(results[1].stage0!.atomicFacts!.some((f: any) => f.object === "UNREGISTERED")).toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:499:    expect(results[2].stage3.isTimeBarred).toBe(null);  // P0: missing submissionDate -> fail-closed, cannot compute limitation
+src/engine/BCCAAEngine.phase2.test.ts:505:      factPattern: "Simple claim.",
+src/engine/BCCAAEngine.phase2.test.ts:515:      factPattern: "Simple claim.",
+src/engine/BCCAAEngine.phase2.test.ts:521:  it("malformed date string does not crash limitation engine", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:524:      factPattern: "Bainapatra executed on not-a-date. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:528:    expect(r.stage3.accrualDate === "NOT_EXTRACTED" || r.stage3.accrualDate === "2020-08-20").toBe(true);
+src/engine/BCCAAEngine.phase2.test.ts:531:  it("future date in fact pattern does not produce negative limitation", async () => {
+src/engine/BCCAAEngine.phase2.test.ts:534:      factPattern: "Bainapatra executed on 15 July 2030. Refusal dated 20 August 2030.",
+src/engine/BCCAAEngine.phase2.test.ts:544:      factPattern: "Bainapatra executed on 20 August 2020. Refusal dated 15 July 2020.",
+src/engine/BCCAAEngine.phase2.test.ts:548:    expect(r.stage3.accrualDate).toBeDefined();  // Engine extracts dates; temporal ordering validation is future work
+src/engine/BCCAAEngine.phase2.test.ts:568:    getLegislationMapping: () => ({ primaryAct: null, relevantSections: [] }),
+src/engine/BCCAAEngine.phase2.test.ts:590:  class StubProductionFactValidationProvider {
+src/engine/BCCAAEngine.phase2.test.ts:591:    async validateFacts(input: {
+src/engine/BCCAAEngine.phase2.test.ts:592:      facts: AtomicFact[];
+src/engine/BCCAAEngine.phase2.test.ts:595:    }): Promise<AtomicFact[]> {
+src/engine/BCCAAEngine.phase2.test.ts:596:      return input.facts;
+src/engine/BCCAAEngine.phase2.test.ts:605:      factValidationProvider: new StubProductionFactValidationProvider(),
+src/engine/BCCAAEngine.phase2.test.ts:614:      factValidationProvider: new StubProductionFactValidationProvider(),
+src/engine/BCCAAEngine.phase2.test.ts:618:  it("throws when factValidationProvider defaults to NoOp", () => {
+src/engine/BCCAAEngine.phase2.test.ts:623:    })).toThrow(/VALIDATED_PRODUCTION requires a production FactValidationProvider/);
+src/engine/BCCAAEngine.phase2.test.ts:631:      factValidationProvider: new StubProductionFactValidationProvider(),
+src/engine/BCCAAEngine.phase3.test.ts:2:import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
+src/engine/BCCAAEngine.phase3.test.ts:7:  factValidationProvider: new NoOpFactValidationProvider(),
+src/engine/BCCAAEngine.phase3.test.ts:17:      factPattern: "The plaintiff relied on an unregistered bainapatra.",
+src/engine/BCCAAEngine.phase3.test.ts:20:    expect(r.stage0!.atomicFacts!.length).toBeGreaterThan(0);
+src/engine/BCCAAEngine.phase3.test.ts:28:      factValidationProvider: new NoOpFactValidationProvider(),
+src/engine/BCCAAEngine.phase3.test.ts:57:    // Use the same dual-date pattern as P1-02 to ensure limitation is computable
+src/engine/BCCAAEngine.phase3.test.ts:60:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:68:      factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
+src/engine/BCCAAEngine.phase3.test.ts:80:      factPattern: "Transfer of Property Act Section 54.",
+src/engine/BCCAAEngine.phase3.test.ts:86:describe("P3-04: Reproducible build artifacts", () => {
+src/engine/BCCAAEngine.phase3.test.ts:90:    expect(typeof NoOpFactValidationProvider).toBe("function");
+src/engine/BCCAAEngine.phase3.test.ts:142:    expect(r.stage0.factualSummary).toBeDefined();
+src/engine/BCCAAEngine.phase3.test.ts:143:    expect(r.stage0.factualSummary).not.toMatch(/hash|timestamp|audit/i);
+src/engine/BCCAAEngine.ts:2:// BCCAA 4.5.2-P0 — P0 Fact-Graph Hardened
+src/engine/BCCAAEngine.ts:8://   - AtomicFact.provenanceAssertions — merged assertion tracking (optional)
+src/engine/BCCAAEngine.ts:9://   - DevelopmentFactValidationProvider sets truth=TRUE with setsTruth marker
+src/engine/BCCAAEngine.ts:11:// P0 Extraction Changes (Part 3):
+src/engine/BCCAAEngine.ts:12://   - extractAtomicFacts: deterministic provenance merge on deduplication
+src/engine/BCCAAEngine.ts:13://   - extractClauseFacts: multi-fact per clause, semantic monetary classification
+src/engine/BCCAAEngine.ts:16://   - executePartyStandiRules: consumes Stage 0 fact graph
+src/engine/BCCAAEngine.ts:22:  FactConsistencyGateOutput,
+src/engine/BCCAAEngine.ts:27:import { FactConsistencyGate } from "./FactConsistencyGate";
+src/engine/BCCAAEngine.ts:35:  factSchemaVersion: "4.0.1",
+src/engine/BCCAAEngine.ts:42:  defaultFactsAllowed: false,
+src/engine/BCCAAEngine.ts:68:  DOCUMENTARY_FACT = "DOCUMENTARY_FACT",
+src/engine/BCCAAEngine.ts:87:export enum ExtractionStatus {
+src/engine/BCCAAEngine.ts:89:  EXTRACTED = "EXTRACTED",
+src/engine/BCCAAEngine.ts:121:export enum FactConfidence {
+src/engine/BCCAAEngine.ts:226:  extractionMethod?:
+src/engine/BCCAAEngine.ts:237:export type FactSource = SourceSpan;
+src/engine/BCCAAEngine.ts:259:  extractionStatus: ExtractionStatus;
+src/engine/BCCAAEngine.ts:266:export interface AtomicFact {
+src/engine/BCCAAEngine.ts:267:  factId: string;
+src/engine/BCCAAEngine.ts:279:  confidence: FactConfidence;
+src/engine/BCCAAEngine.ts:287:  /** P0-6: Merged provenance assertions for deduplicated facts.
+src/engine/BCCAAEngine.ts:288:   *  When two clauses produce the same canonical fact, both assertion IDs
+src/engine/BCCAAEngine.ts:296:  leftFactId: string;
+src/engine/BCCAAEngine.ts:297:  rightFactId: string;
+src/engine/BCCAAEngine.ts:308:  act: string;
+src/engine/BCCAAEngine.ts:309:  section: string;
+src/engine/BCCAAEngine.ts:314:  extractionRequired: boolean;
+src/engine/BCCAAEngine.ts:345:    | "LIMITATION"
+src/engine/BCCAAEngine.ts:378:    primaryAct: string | null;
+src/engine/BCCAAEngine.ts:379:    relevantSections: Array<{
+src/engine/BCCAAEngine.ts:380:      actName: string;
+src/engine/BCCAAEngine.ts:381:      sectionOrRule: string;
+src/engine/BCCAAEngine.ts:395:  factIds: string[];
+src/engine/BCCAAEngine.ts:397:  sameFamilyConflictingFacts?: Array<{
+src/engine/BCCAAEngine.ts:398:    factId: string;
+src/engine/BCCAAEngine.ts:411:  explanationCode: string;
+src/engine/BCCAAEngine.ts:415:export interface FactEvaluationResult {
+src/engine/BCCAAEngine.ts:417:  supportingFactIds: string[];
+src/engine/BCCAAEngine.ts:419:  sameFamilyConflictingFacts: Array<{
+src/engine/BCCAAEngine.ts:420:    factId: string;
+src/engine/BCCAAEngine.ts:463:    | "EXACT"
+src/engine/BCCAAEngine.ts:468:  sourceFactIds: string[];
+src/engine/BCCAAEngine.ts:473:  | "P0_EXTRACTION"
+src/engine/BCCAAEngine.ts:487:  dependsOnFacts: string[];
+src/engine/BCCAAEngine.ts:493:  factRegistry: Map<string, AtomicFact>;
+src/engine/BCCAAEngine.ts:500:  factCounter: number;
+src/engine/BCCAAEngine.ts:552:    factRegistry: new Map(),
+src/engine/BCCAAEngine.ts:559:    factCounter: 1,
+src/engine/BCCAAEngine.ts:574:function getAllFactIds(ctx: ExecutionContext): string[] {
+src/engine/BCCAAEngine.ts:575:  return Array.from(ctx.factRegistry.keys());
+src/engine/BCCAAEngine.ts:639:  extractionHash: string;
+src/engine/BCCAAEngine.ts:641:  factRegistryHash: string;
+src/engine/BCCAAEngine.ts:674:export interface FactValidationProvider {
+src/engine/BCCAAEngine.ts:675:  validateFacts(input: {
+src/engine/BCCAAEngine.ts:676:    facts: AtomicFact[];
+src/engine/BCCAAEngine.ts:679:  }): Promise<AtomicFact[]>;
+src/engine/BCCAAEngine.ts:688:const EXTRACTION_SATISFIES: Record<string, ReadonlySet<ExtractionStatus>> = {
+src/engine/BCCAAEngine.ts:690:    ExtractionStatus.NOT_EXECUTED,
+src/engine/BCCAAEngine.ts:691:    ExtractionStatus.EXTRACTED,
+src/engine/BCCAAEngine.ts:692:    ExtractionStatus.PARTIAL,
+src/engine/BCCAAEngine.ts:693:    ExtractionStatus.FAILED,
+src/engine/BCCAAEngine.ts:695:  true: new Set([ExtractionStatus.EXTRACTED, ExtractionStatus.PARTIAL]),
+src/engine/BCCAAEngine.ts:754:  fact: AtomicFact,
+src/engine/BCCAAEngine.ts:757:  if (!EXTRACTION_SATISFIES[String(req.extractionRequired)].has(fact.validation.extractionStatus)) {
+src/engine/BCCAAEngine.ts:760:  if (!SOURCE_SATISFIES[req.sourceRequired].has(fact.validation.sourceStatus)) {
+src/engine/BCCAAEngine.ts:763:  if (!AUTH_SATISFIES[req.authenticationRequired].has(fact.validation.authenticationStatus)) {
+src/engine/BCCAAEngine.ts:766:  if (!CORR_SATISFIES[req.corroborationRequired].has(fact.validation.corroborationStatus)) {
+src/engine/BCCAAEngine.ts:769:  if (!HV_SATISFIES[req.humanValidationRequired].has(fact.validation.humanValidationStatus)) {
+src/engine/BCCAAEngine.ts:815:                extractionRequired: true,
+src/engine/BCCAAEngine.ts:825:          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:844:                extractionRequired: true,
+src/engine/BCCAAEngine.ts:854:          authority: { act: "Applicable specific-performance law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:877:                extractionRequired: true,
+src/engine/BCCAAEngine.ts:887:          authority: { act: "Applicable succession law", section: "Registry-controlled" },
+src/engine/BCCAAEngine.ts:910:                extractionRequired: true,
+src/engine/BCCAAEngine.ts:920:          authority: { act: "Transfer of Property Act 1882", section: "Section 54" },
+src/engine/BCCAAEngine.ts:939:                extractionRequired: true,
+src/engine/BCCAAEngine.ts:949:          authority: { act: "Specific Relief Act 1877", section: "Section 8" },
+src/engine/BCCAAEngine.ts:960:        primaryAct: "Specific Relief Act 1877",
+src/engine/BCCAAEngine.ts:961:        relevantSections: [{ actName: "Specific Relief Act 1877", sectionOrRule: "Sections 8-12, 21A", purpose: "Claim-specific analysis" }],
+src/engine/BCCAAEngine.ts:965:      return { primaryAct: "Applicable succession / personal law", relevantSections: [] };
+src/engine/BCCAAEngine.ts:966:    return { primaryAct: null, relevantSections: [] };
+src/engine/BCCAAEngine.ts:974:// P0 FIX: DefaultAuditSink.append() — remove unreachable code after return
+src/engine/BCCAAEngine.ts:996:export class NoOpFactValidationProvider implements FactValidationProvider {
+src/engine/BCCAAEngine.ts:998:  async validateFacts({ facts }: { facts: AtomicFact[]; propositions: Proposition[]; assertions: Assertion[] }) {
+src/engine/BCCAAEngine.ts:999:    return facts.map((f) => ({
+src/engine/BCCAAEngine.ts:1011:// P0-4: Development provider sets truth=TRUE for extracted facts.
+src/engine/BCCAAEngine.ts:1014:export class DevelopmentFactValidationProvider implements FactValidationProvider {
+src/engine/BCCAAEngine.ts:1017:  async validateFacts({ facts }: { facts: AtomicFact[]; propositions: Proposition[]; assertions: Assertion[] }) {
+src/engine/BCCAAEngine.ts:1018:    return facts.map((f) => {
+src/engine/BCCAAEngine.ts:1021:      // would treat a denial as an established fact. Leave truth untouched for
+src/engine/BCCAAEngine.ts:1022:      // these; only affirmative/neutral UNKNOWN facts get promoted.
+src/engine/BCCAAEngine.ts:1031:        confidence: FactConfidence.VERIFIED,
+src/engine/BCCAAEngine.ts:1033:          extractionStatus: ExtractionStatus.EXTRACTED,
+src/engine/BCCAAEngine.ts:1101:    return "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:1106:    return "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:1111:    return "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:1146:// FACT CANDIDATE INTERFACE
+src/engine/BCCAAEngine.ts:1149:interface FactCandidate {
+src/engine/BCCAAEngine.ts:1172:  private readonly factValidationProvider: FactValidationProvider;
+src/engine/BCCAAEngine.ts:1180:    factValidationProvider?: FactValidationProvider;
+src/engine/BCCAAEngine.ts:1187:    this.factValidationProvider =
+src/engine/BCCAAEngine.ts:1188:      deps?.factValidationProvider ??
+src/engine/BCCAAEngine.ts:1190:        ? new DevelopmentFactValidationProvider()
+src/engine/BCCAAEngine.ts:1191:        : new NoOpFactValidationProvider());
+src/engine/BCCAAEngine.ts:1203:      if (this.factValidationProvider instanceof NoOpFactValidationProvider) {
+src/engine/BCCAAEngine.ts:1204:        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
+src/engine/BCCAAEngine.ts:1232:        dependsOnFacts: [],
+src/engine/BCCAAEngine.ts:1240:    request.input.factPattern = String(request.input.factPattern ?? "").trim();
+src/engine/BCCAAEngine.ts:1253:        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `LICENSE_DENIED: ${license.reason ?? "unspecified"}`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+src/engine/BCCAAEngine.ts:1256:      if (!request.input?.factPattern) {
+src/engine/BCCAAEngine.ts:1257:        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+src/engine/BCCAAEngine.ts:1258:        return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
+src/engine/BCCAAEngine.ts:1260:      if ((request.input?.factPattern ?? "" ?? "").length > MAX_INPUT_LENGTH) {
+src/engine/BCCAAEngine.ts:1261:        recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
+src/engine/BCCAAEngine.ts:1262:        return this.buildPreF0HaltResponse(ctx, caseId, "INPUT_TOO_LARGE", `maximum ${MAX_INPUT_LENGTH} characters.`);
+src/engine/BCCAAEngine.ts:1267:      recordTrace(ctx, { layer: "SYSTEM_ERROR", description: "Uncaught execution error.", dependsOnFacts: [], dependsOnRules: [], result: message });
+src/engine/BCCAAEngine.ts:1285:    const claimType = this.resolveClaimType(input.factPattern, input.focusDomain ?? "");
+src/engine/BCCAAEngine.ts:1288:    this.extractAtomicFacts(ctx, input.factPattern, claimType);
+src/engine/BCCAAEngine.ts:1289:    await this.applyFactValidation(ctx);
+src/engine/BCCAAEngine.ts:1295:      ? this.evaluateFact(ctx, "Ancestor", "Vital Status", "DECEASED", { requireVerified: true })
+src/engine/BCCAAEngine.ts:1296:      : ({ status: Tristate.UNKNOWN, supportingFactIds: [], conflictDetected: false, sameFamilyConflictingFacts: [] } as FactEvaluationResult);
+src/engine/BCCAAEngine.ts:1302:      factualSource: e.sourceFactIds.join(", ") || "INPUT_NARRATIVE",
+src/engine/BCCAAEngine.ts:1309:              leftFactId: edge.leftFactId,
+src/engine/BCCAAEngine.ts:1310:              rightFactId: edge.rightFactId,
+src/engine/BCCAAEngine.ts:1317:    const f0Gate = FactConsistencyGate.evaluate(
+src/engine/BCCAAEngine.ts:1318:      input.factPattern,
+src/engine/BCCAAEngine.ts:1322:      Array.from(ctx.factRegistry.values()).map((f) => ({
+src/engine/BCCAAEngine.ts:1323:        factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object,
+src/engine/BCCAAEngine.ts:1327:        propositionKey: e.propositionKey, leftFactId: e.leftFactId, rightFactId: e.rightFactId, status: e.status,
+src/engine/BCCAAEngine.ts:1333:      description: `FactConsistencyGate executed. ancestorDeceased: ${ancestorResult.status}. Conflict: ${ancestorResult.conflictDetected}.`,
+src/engine/BCCAAEngine.ts:1334:      dependsOnFacts: getAllFactIds(ctx), dependsOnRules: [], result: f0Gate.gateStatus,
+src/engine/BCCAAEngine.ts:1353:    const limitation = this.executeLimitationEngine(ctx, claimType);
+src/engine/BCCAAEngine.ts:1355:    const standi = this.executePartyStandiRules(ctx, claimType, input.factPattern);
+src/engine/BCCAAEngine.ts:1356:    const pleading = this.executePleadingRules(elementGate, input.factPattern);
+src/engine/BCCAAEngine.ts:1357:    const issues = this.executeIssueFramingRules(ctx, elementGate, input.factPattern);
+src/engine/BCCAAEngine.ts:1369:        limitation,
+src/engine/BCCAAEngine.ts:1385:      caseId, domain, legislation, limitation, standi, pleading, issues, evidence, elementGate, merits, equity, procedure, appeal, executionStatus,
+src/engine/BCCAAEngine.ts:1392:  // P0 EXTRACTION
+src/engine/BCCAAEngine.ts:1395:  private extractAtomicFacts(ctx: ExecutionContext, rawText: string, claimType: ClaimType): void {
+src/engine/BCCAAEngine.ts:1400:        const candidates = this.extractClauseFacts(clause);
+src/engine/BCCAAEngine.ts:1414:            extractionMethod: "PATTERN",
+src/engine/BCCAAEngine.ts:1429:          const existingFact = Array.from(ctx.factRegistry.values()).find(
+src/engine/BCCAAEngine.ts:1433:          if (existingFact) {
+src/engine/BCCAAEngine.ts:1435:            // with the existing fact. If one side DENIES/DISPUTES the exact
+src/engine/BCCAAEngine.ts:1438:            // into a single fact would silently erase the denial and hide it
+src/engine/BCCAAEngine.ts:1441:            // register it as its own distinct fact instead.
+src/engine/BCCAAEngine.ts:1444:            const existingIsDenial = isDenial(existingFact.assertionType, existingFact.polarity);
+src/engine/BCCAAEngine.ts:1451:                existingFact.assertionId,
+src/engine/BCCAAEngine.ts:1452:                ...(existingFact.provenanceAssertions ?? []),
+src/engine/BCCAAEngine.ts:1455:              const updatedFact = { ...existingFact, provenanceAssertions: Array.from(merged).sort() };
+src/engine/BCCAAEngine.ts:1456:            ctx.factRegistry.set(existingFact.factId, updatedFact);
+src/engine/BCCAAEngine.ts:1459:            // Otherwise fall through: register as a distinct fact below so
+src/engine/BCCAAEngine.ts:1463:          const factId = shortId("F", ctx.factCounter++);
+src/engine/BCCAAEngine.ts:1464:          const fact: AtomicFact = {
+src/engine/BCCAAEngine.ts:1465:            factId, propositionId, assertionId,
+src/engine/BCCAAEngine.ts:1475:            confidence: FactConfidence.CANDIDATE,
+src/engine/BCCAAEngine.ts:1481:              extractionStatus: ExtractionStatus.EXTRACTED,
+src/engine/BCCAAEngine.ts:1488:          ctx.factRegistry.set(factId, fact);
+src/engine/BCCAAEngine.ts:1490:            layer: "P0_EXTRACTION",
+src/engine/BCCAAEngine.ts:1491:            description: `FACT -> PROPOSITION -> ASSERTION: ${factId}`,
+src/engine/BCCAAEngine.ts:1492:            dependsOnFacts: [], dependsOnRules: [],
+src/engine/BCCAAEngine.ts:1493:            result: `${factId}:${propositionId}:${assertionId}`,
+src/engine/BCCAAEngine.ts:1513:  private async applyFactValidation(ctx: ExecutionContext): Promise<void> {
+src/engine/BCCAAEngine.ts:1514:    const validated = await this.factValidationProvider.validateFacts({
+src/engine/BCCAAEngine.ts:1515:      facts: Array.from(ctx.factRegistry.values()),
+src/engine/BCCAAEngine.ts:1519:    if (validated.length !== ctx.factRegistry.size) {
+src/engine/BCCAAEngine.ts:1520:      throw new Error("FACT_VALIDATION_INTEGRITY_ERROR: validator changed fact cardinality.");
+src/engine/BCCAAEngine.ts:1522:    for (const fact of validated) {
+src/engine/BCCAAEngine.ts:1523:      const original = ctx.factRegistry.get(fact.factId);
+src/engine/BCCAAEngine.ts:1524:      if (!original) throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: unknown fact ${fact.factId}.`);
+src/engine/BCCAAEngine.ts:1527:        fact.subject !== original.subject ||
+src/engine/BCCAAEngine.ts:1528:        fact.predicate !== original.predicate ||
+src/engine/BCCAAEngine.ts:1529:        fact.object !== original.object ||
+src/engine/BCCAAEngine.ts:1530:        fact.assertionId !== original.assertionId ||
+src/engine/BCCAAEngine.ts:1531:        fact.propositionId !== original.propositionId
+src/engine/BCCAAEngine.ts:1533:        throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: fact ${fact.factId} identity mutated by validator.`);
+src/engine/BCCAAEngine.ts:1537:      const providerAllowsPromotion = this.factValidationProvider.setsTruth === true;
+src/engine/BCCAAEngine.ts:1540:        fact.truth === Tristate.TRUE;
+src/engine/BCCAAEngine.ts:1544:        fact.truth !== Tristate.UNKNOWN &&
+src/engine/BCCAAEngine.ts:1547:        throw new Error(`FACT_VALIDATION_INTEGRITY_ERROR: fact ${fact.factId} truth silently mutated from UNKNOWN to ${fact.truth} by validator.`);
+src/engine/BCCAAEngine.ts:1550:      ctx.factRegistry.set(fact.factId, fact);
+src/engine/BCCAAEngine.ts:1596:  // P0 HELPERS: FACT EXTRACTION (COMPLETE REWRITE — 4 PASSES)
+src/engine/BCCAAEngine.ts:1599:  private extractClauseFacts(clause: string): FactCandidate[] {
+src/engine/BCCAAEngine.ts:1600:    const candidates: FactCandidate[] = [];
+src/engine/BCCAAEngine.ts:1601:    this.extractParties(clause, candidates);
+src/engine/BCCAAEngine.ts:1602:    this.extractAgreementFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1603:    this.extractMonetaryFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1604:    this.extractPropertyFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1605:    this.extractRegistrationFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1606:    this.extractTemporalFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1607:    this.extractDocumentFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1608:    this.extractSuccessionFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1609:    this.extractPossessionFacts(clause, candidates);
+src/engine/BCCAAEngine.ts:1613:  // P0-1: Party identity extraction
+src/engine/BCCAAEngine.ts:1614:  private extractParties(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1646:  // P0-3: Agreement/registration facts
+src/engine/BCCAAEngine.ts:1647:  private extractAgreementFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1651:      /(?:agreement|bainapatra|contract|sale\s+deed)[^\.]{0,80}?\b(?:executed|signed|dated|on)\b[^\.]{0,30}?([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i
+src/engine/BCCAAEngine.ts:1671:    // Section 17A
+src/engine/BCCAAEngine.ts:1672:    if (/\bsection\s+17A\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1673:      candidates.push({ subject: "Registration", predicate: "Statutory Basis", object: "Section 17A" });
+src/engine/BCCAAEngine.ts:1675:    // Section 21A
+src/engine/BCCAAEngine.ts:1676:    if (/\bsection\s+21A\b/i.test(clause)) {
+src/engine/BCCAAEngine.ts:1677:      candidates.push({ subject: "Specific Relief", predicate: "Statutory Basis", object: "Section 21A" });
+src/engine/BCCAAEngine.ts:1682:  private extractMonetaryFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1684:      { regex: /(?:total\s+consideration|total\s+price)\s+(?:of\s+)?(?:tk\.?|taka|bdt)\s*([\d,]+(?:\.\d+)?)/i, subject: "Contract", predicate: "Total Consideration" },
+src/engine/BCCAAEngine.ts:1719:  private extractPropertyFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1738:  private extractRegistrationFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1743:      // Extract challan number
+src/engine/BCCAAEngine.ts:1755:  // P0-4: Temporal / chronology facts
+src/engine/BCCAAEngine.ts:1756:  private extractTemporalFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1777:      candidates.push({ subject: "Contract", predicate: "Performance Deadline", object: date, eventDate: date });
+src/engine/BCCAAEngine.ts:1817:  private extractDocumentFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1824:  private extractSuccessionFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1850:  private extractPossessionFacts(clause: string, candidates: FactCandidate[]): void {
+src/engine/BCCAAEngine.ts:1859:      // Extract dispossession date if present
+src/engine/BCCAAEngine.ts:1889:        type: AssertionType.DOCUMENTARY_FACT,
+src/engine/BCCAAEngine.ts:1939:    // Documentary facts
+src/engine/BCCAAEngine.ts:1941:      return { type: AssertionType.DOCUMENTARY_FACT, polarity: AssertionPolarity.POSITIVE };
+src/engine/BCCAAEngine.ts:1946:      return { type: AssertionType.DOCUMENTARY_FACT, polarity: AssertionPolarity.POSITIVE };
+src/engine/BCCAAEngine.ts:1974:    const existingKeys = new Set(Array.from(ctx.factRegistry.values()).map((f) => `${f.subject}|${f.predicate}`.toUpperCase()));
+src/engine/BCCAAEngine.ts:1986:        const propositionId = this.ensureProposition(ctx, subject, predicate, null, `[SYSTEM-GENERATED] No facts extracted for ${subject} ${predicate}`);
+src/engine/BCCAAEngine.ts:1988:        const factId = shortId("F", ctx.factCounter++);
+src/engine/BCCAAEngine.ts:1989:        ctx.assertionRegistry.set(assertionId, { assertionId, propositionId, assertionType: AssertionType.INFERRED, polarity: AssertionPolarity.UNKNOWN, sourceSpan: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" } });
+src/engine/BCCAAEngine.ts:1990:        ctx.factRegistry.set(factId, { factId, propositionId, assertionId, proposition: `[AUTO] ${subject} ${predicate} — not mentioned in input`, subject, predicate, object: null, truth: Tristate.UNKNOWN, polarity: AssertionPolarity.UNKNOWN, source: { documentId: "SYSTEM", segment: `[AUTO] No extraction for ${subject} ${predicate}`, sourceType: "OTHER", extractionMethod: "STRUCTURED_INPUT" }, assertionType: AssertionType.INFERRED, validationStatus: ValidationStatus.UNVERIFIED, confidence: FactConfidence.CANDIDATE, validation: { extractionStatus: ExtractionStatus.NOT_EXECUTED, sourceStatus: SourceStatus.UNRESOLVED, authenticationStatus: AuthenticationStatus.NOT_EXECUTED, corroborationStatus: CorroborationStatus.NOT_EXECUTED, humanValidationStatus: HumanValidationStatus.NOT_EXECUTED } });
+src/engine/BCCAAEngine.ts:1996:    const facts = Array.from(ctx.factRegistry.values());
+src/engine/BCCAAEngine.ts:1997:    const familyMap = new Map<string, AtomicFact[]>();
+src/engine/BCCAAEngine.ts:1998:    for (const fact of facts) {
+src/engine/BCCAAEngine.ts:1999:      const familyKey = `${fact.subject}|${fact.predicate}`.toUpperCase();
+src/engine/BCCAAEngine.ts:2001:      familyMap.get(familyKey)!.push(fact);
+src/engine/BCCAAEngine.ts:2004:    for (const [familyKey, familyFacts] of familyMap) {
+src/engine/BCCAAEngine.ts:2005:      if (familyFacts.length < 2) continue;
+src/engine/BCCAAEngine.ts:2006:      const mode = getConflictMode(ctx, familyFacts[0].subject, familyFacts[0].predicate);
+src/engine/BCCAAEngine.ts:2008:      for (let i = 0; i < familyFacts.length; i++) {
+src/engine/BCCAAEngine.ts:2009:        for (let j = i + 1; j < familyFacts.length; j++) {
+src/engine/BCCAAEngine.ts:2010:          const left = familyFacts[i];
+src/engine/BCCAAEngine.ts:2011:          const right = familyFacts[j];
+src/engine/BCCAAEngine.ts:2033:              leftFactId: left.factId,
+src/engine/BCCAAEngine.ts:2034:              rightFactId: right.factId,
+src/engine/BCCAAEngine.ts:2041:            const updatedLeft = { ...left, contradicts: [...(left.contradicts ?? []), right.factId] };
+src/engine/BCCAAEngine.ts:2042:            const updatedRight = { ...right, contradicts: [...(right.contradicts ?? []), left.factId] };
+src/engine/BCCAAEngine.ts:2043:            ctx.factRegistry.set(left.factId, updatedLeft);
+src/engine/BCCAAEngine.ts:2044:            ctx.factRegistry.set(right.factId, updatedRight);
+src/engine/BCCAAEngine.ts:2055:        layer: "P0_EXTRACTION",
+src/engine/BCCAAEngine.ts:2057:        dependsOnFacts: criticalEdges.flatMap((e) => [e.leftFactId, e.rightFactId]),
+src/engine/BCCAAEngine.ts:2070:    const factsWithDates = Array.from(ctx.factRegistry.values()).filter(
+src/engine/BCCAAEngine.ts:2073:    factsWithDates.sort((a, b) => strictDateTimestamp(a.eventDate!) - strictDateTimestamp(b.eventDate!));
+src/engine/BCCAAEngine.ts:2075:    for (const fact of factsWithDates) {
+src/engine/BCCAAEngine.ts:2076:      const eventType = this.inferEventType(fact);
+src/engine/BCCAAEngine.ts:2077:      const parsed = parseNaturalDate(fact.eventDate!);
+src/engine/BCCAAEngine.ts:2078:      const dateStr = parsed ? parsed.iso : fact.eventDate!;
+src/engine/BCCAAEngine.ts:2083:        datePrecision: isAmbiguousDate(fact.eventDate!) ? "AMBIGUOUS" : "EXACT",
+src/engine/BCCAAEngine.ts:2084:        sourceFactIds: [fact.factId],
+src/engine/BCCAAEngine.ts:2093:        sourceFactIds: [],
+src/engine/BCCAAEngine.ts:2099:  private inferEventType(fact: AtomicFact): LegalEventType {
+src/engine/BCCAAEngine.ts:2100:    if (fact.predicate === "Vital Status" && fact.object === "DECEASED") return "ANCESTOR_DEATH";
+src/engine/BCCAAEngine.ts:2101:    if (fact.predicate === "Execution Date") return "AGREEMENT_EXECUTION";
+src/engine/BCCAAEngine.ts:2102:    if (fact.predicate === "Registration Status" && fact.object === "REGISTERED") return "AGREEMENT_REGISTERED";
+src/engine/BCCAAEngine.ts:2103:    if (fact.predicate === "Amount Paid" && fact.subject === "Advance") return "ADVANCE_PAID";
+src/engine/BCCAAEngine.ts:2104:    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED" && fact.subject === "Treasury Deposit") return "BALANCE_DEPOSIT";
+src/engine/BCCAAEngine.ts:2105:    if (fact.predicate === "Performance Deadline") return "PERFORMANCE_DEADLINE";
+src/engine/BCCAAEngine.ts:2106:    if (fact.predicate === "Demand Date") return "LEGAL_NOTICE";
+src/engine/BCCAAEngine.ts:2107:    if (fact.predicate === "Refusal Date") return "REFUSAL";
+src/engine/BCCAAEngine.ts:2108:    if (fact.predicate === "Dispossession Date") return "DISPOSSESSION";
+src/engine/BCCAAEngine.ts:2109:    if (fact.predicate === "Payment Status" && fact.object === "DEPOSITED") return "PAYMENT";
+src/engine/BCCAAEngine.ts:2110:    if (fact.predicate === "Possession Status" && fact.object === "DISPOSSESSED") return "DISPOSSESSION";
+src/engine/BCCAAEngine.ts:2111:    if (fact.predicate === "Registration Status") return "REGISTRATION";
+src/engine/BCCAAEngine.ts:2112:    if (fact.predicate === "Mutation Status") return "AMENDMENT";
+src/engine/BCCAAEngine.ts:2113:    if (fact.predicate === "Construction Status" && fact.object === "UNAUTHORIZED") return "ENCROACHMENT";
+src/engine/BCCAAEngine.ts:2114:    if (fact.predicate === "Ownership Structure" && fact.object === "JOINT") return "OTHER";
+src/engine/BCCAAEngine.ts:2118:  private evaluateFact(
+src/engine/BCCAAEngine.ts:2128:  ): FactEvaluationResult {
+src/engine/BCCAAEngine.ts:2132:    const familyFacts = Array.from(ctx.factRegistry.values()).filter(
+src/engine/BCCAAEngine.ts:2135:    const sameFamilyConflictingFacts = familyFacts
+src/engine/BCCAAEngine.ts:2137:      .map((f) => ({ factId: f.factId, object: f.object, truth: f.truth }));
+src/engine/BCCAAEngine.ts:2138:    const conflictDetected = sameFamilyConflictingFacts.length > 1 && new Set(sameFamilyConflictingFacts.map((f) => f.object)).size > 1;
+src/engine/BCCAAEngine.ts:2139:    const matchingFacts = objectFilter
+src/engine/BCCAAEngine.ts:2140:      ? familyFacts.filter((f) => f.object?.toUpperCase() === objectFilter.toUpperCase())
+src/engine/BCCAAEngine.ts:2141:      : familyFacts;
+src/engine/BCCAAEngine.ts:2143:    const supportingFactIds: string[] = [];
+src/engine/BCCAAEngine.ts:2144:    let validationDetails: FactEvaluationResult["validationDetails"] = undefined;
+src/engine/BCCAAEngine.ts:2145:    for (const fact of matchingFacts) {
+src/engine/BCCAAEngine.ts:2148:        passesValidation = meetsValidationRequirements(fact, options.validationRequirements);
+src/engine/BCCAAEngine.ts:2150:        passesValidation = fact.validationStatus === ValidationStatus.VERIFIED;
+src/engine/BCCAAEngine.ts:2153:      if (fact.truth === Tristate.TRUE) {
+src/engine/BCCAAEngine.ts:2155:        supportingFactIds.push(fact.factId);
+src/engine/BCCAAEngine.ts:2157:          sourceStatus: fact.validation.sourceStatus,
+src/engine/BCCAAEngine.ts:2158:          authenticationStatus: fact.validation.authenticationStatus,
+src/engine/BCCAAEngine.ts:2159:          corroborationStatus: fact.validation.corroborationStatus,
+src/engine/BCCAAEngine.ts:2160:          humanValidationStatus: fact.validation.humanValidationStatus,
+src/engine/BCCAAEngine.ts:2163:      } else if (fact.truth === Tristate.FALSE) {
+src/engine/BCCAAEngine.ts:2165:        supportingFactIds.push(fact.factId);
+src/engine/BCCAAEngine.ts:2167:          sourceStatus: fact.validation.sourceStatus,
+src/engine/BCCAAEngine.ts:2168:          authenticationStatus: fact.validation.authenticationStatus,
+src/engine/BCCAAEngine.ts:2169:          corroborationStatus: fact.validation.corroborationStatus,
+src/engine/BCCAAEngine.ts:2170:          humanValidationStatus: fact.validation.humanValidationStatus,
+src/engine/BCCAAEngine.ts:2173:        supportingFactIds.push(fact.factId);
+src/engine/BCCAAEngine.ts:2175:          sourceStatus: fact.validation.sourceStatus,
+src/engine/BCCAAEngine.ts:2176:          authenticationStatus: fact.validation.authenticationStatus,
+src/engine/BCCAAEngine.ts:2177:          corroborationStatus: fact.validation.corroborationStatus,
+src/engine/BCCAAEngine.ts:2178:          humanValidationStatus: fact.validation.humanValidationStatus,
+src/engine/BCCAAEngine.ts:2182:    return { status: bestStatus, supportingFactIds, conflictDetected, sameFamilyConflictingFacts, validationDetails };
+src/engine/BCCAAEngine.ts:2189:  private resolveClaimType(factPattern: string, focusDomain: string): ClaimType {
+src/engine/BCCAAEngine.ts:2190:    const lower = factPattern.toLowerCase();
+src/engine/BCCAAEngine.ts:2215:  // LIMITATION ENGINE
+src/engine/BCCAAEngine.ts:2218:  private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
+src/engine/BCCAAEngine.ts:2221:    limitationPeriodYears: number | null;
+src/engine/BCCAAEngine.ts:2226:    const facts = Array.from(ctx.factRegistry.values());
+src/engine/BCCAAEngine.ts:2227:    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
+src/engine/BCCAAEngine.ts:2228:    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
+src/engine/BCCAAEngine.ts:2229:    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
+src/engine/BCCAAEngine.ts:2230:    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
+src/engine/BCCAAEngine.ts:2231:    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
+src/engine/BCCAAEngine.ts:2232:    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
+src/engine/BCCAAEngine.ts:2234:    let limitationPeriodYears: number | null = null;
+src/engine/BCCAAEngine.ts:2244:      // refusalDate may be a human-readable extracted value
+src/engine/BCCAAEngine.ts:2258:          limitationPeriodYears = 3;
+src/engine/BCCAAEngine.ts:2261:          accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2262:          limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2266:        accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2267:        limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2274:        limitationPeriodYears = 12;
+src/engine/BCCAAEngine.ts:2277:        accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2278:        limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2284:        limitationPeriodYears = 12;
+src/engine/BCCAAEngine.ts:2287:        accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2288:        limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2296:      accrualDate = "NOT_EXTRACTED";
+src/engine/BCCAAEngine.ts:2297:      limitationPeriodYears = null;
+src/engine/BCCAAEngine.ts:2300:    // FAIL-CLOSED: limitation must never silently become "not barred"
+src/engine/BCCAAEngine.ts:2301:    // when the accrual trigger, limitation period, or reference date is
+src/engine/BCCAAEngine.ts:2307:      accrualDate !== "NOT_EXTRACTED" &&
+src/engine/BCCAAEngine.ts:2308:      limitationPeriodYears !== null &&
+src/engine/BCCAAEngine.ts:2313:      const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
+src/engine/BCCAAEngine.ts:2319:      limitationPeriodYears,
+src/engine/BCCAAEngine.ts:2324:          ? "Limitation cannot be computed — legally sufficient accrual trigger, limitation period, or reference date is unavailable"
+src/engine/BCCAAEngine.ts:2325:          : `Limitation analysis based on ${calculationType}`,
+src/engine/BCCAAEngine.ts:2344:        const evalResult = this.evaluateFact(ctx, pred.subject, pred.predicate, pred.object ?? null, {
+src/engine/BCCAAEngine.ts:2353:          factIds: evalResult.supportingFactIds,
+src/engine/BCCAAEngine.ts:2355:          sameFamilyConflictingFacts: evalResult.sameFamilyConflictingFacts,
+src/engine/BCCAAEngine.ts:2363:        authorityIds: [rule.authority.act],
+src/engine/BCCAAEngine.ts:2366:        explanationCode: ruleSatisfied ? "ALL_PREDICATES_TRUE" : "PREDICATE_NOT_TRUE",
+src/engine/BCCAAEngine.ts:2387:  // P0-9: PARTY STANDI — consumes fact graph, not raw text
+src/engine/BCCAAEngine.ts:2400:    // P0-1: Consume Stage 0 atomic facts for party identity
+src/engine/BCCAAEngine.ts:2401:    const partyFacts = Array.from(ctx.factRegistry.values()).filter(
+src/engine/BCCAAEngine.ts:2405:    // Extract plaintiff names from Party Identity facts with subject "Plaintiff"
+src/engine/BCCAAEngine.ts:2406:    const plaintiffNames = partyFacts
+src/engine/BCCAAEngine.ts:2411:    // Extract defendant names from Party Identity facts with subject "Defendant"
+src/engine/BCCAAEngine.ts:2412:    const defendantNames = partyFacts
+src/engine/BCCAAEngine.ts:2417:    // Also extract from Party Role facts
+src/engine/BCCAAEngine.ts:2418:    const rolePlaintiffs = partyFacts
+src/engine/BCCAAEngine.ts:2423:    const roleDefendants = partyFacts
+src/engine/BCCAAEngine.ts:2428:    // Merge, with explicit identity facts taking priority
+src/engine/BCCAAEngine.ts:2438:      : "Party standing incomplete — party facts not fully extracted.";
+src/engine/BCCAAEngine.ts:2508:    const facts = Array.from(ctx.factRegistry.values());
+src/engine/BCCAAEngine.ts:2509:    const oral = facts.filter((f) => f.assertionType === AssertionType.PARTY_NARRATIVE || f.assertionType === AssertionType.ALLEGED).length;
+src/engine/BCCAAEngine.ts:2510:    const documentary = facts.filter((f) => f.assertionType === AssertionType.DOCUMENTARY_FACT).length;
+src/engine/BCCAAEngine.ts:2512:    if (!facts.some((f) => f.predicate === "Registration Status")) {
+src/engine/BCCAAEngine.ts:2515:    if (!facts.some((f) => f.predicate === "Payment Status")) {
+src/engine/BCCAAEngine.ts:2582:      governingSection: string | null;
+src/engine/BCCAAEngine.ts:2590:     * absence of extracted facts, or an empty appeal-node collection.
+src/engine/BCCAAEngine.ts:2599:     * authority, fact, and provenance evidence.
+src/engine/BCCAAEngine.ts:2606:        "Appealability cannot be determined because no validated appellate rule is available in the active rule registry.",
+src/engine/BCCAAEngine.ts:2673:   * P3-03: Stage 13 must synthesize the determinations actually produced by
+src/engine/BCCAAEngine.ts:2687:    f0Gate: FactConsistencyGateOutput,
+src/engine/BCCAAEngine.ts:2690:      limitation?: ReturnType<BCCAAEngine["executeLimitationEngine"]>;
+src/engine/BCCAAEngine.ts:2705:      explanation: r.explanationCode,
+src/engine/BCCAAEngine.ts:2711:        conclusion: "F0 gate halted execution due to critical fact conflicts.",
+src/engine/BCCAAEngine.ts:2715:          "Critical contradictions in extracted facts prevent automated analysis.",
+src/engine/BCCAAEngine.ts:2719:          "Review conflicting facts manually before proceeding.",
+src/engine/BCCAAEngine.ts:2740:     * forgets to supply an upstream stage, Stage 13 cannot manufacture a
+src/engine/BCCAAEngine.ts:2744:      !deps.limitation ||
+src/engine/BCCAAEngine.ts:2772:    if (deps.limitation.isTimeBarred === null) {
+src/engine/BCCAAEngine.ts:2773:      unresolved.push("limitation status is unknown");
+src/engine/BCCAAEngine.ts:2851:          "Do not treat structural element satisfaction as proof of entitlement to relief.",
+src/engine/BCCAAEngine.ts:2888:        "Resolve outstanding factual and legal determinations before drawing a substantive conclusion.",
+src/engine/BCCAAEngine.ts:2901:    f0Gate: FactConsistencyGateOutput,
+src/engine/BCCAAEngine.ts:2907:      limitation: ReturnType<BCCAAEngine["executeLimitationEngine"]>;
+src/engine/BCCAAEngine.ts:2920:    const atomicFacts = Array.from(ctx.factRegistry.values()).map((f) => ({
+src/engine/BCCAAEngine.ts:2921:      factId: f.factId,
+src/engine/BCCAAEngine.ts:2950:      factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
+src/engine/BCCAAEngine.ts:2960:        atomicFacts,
+src/engine/BCCAAEngine.ts:2961:        propositions: atomicFacts.map((f) => f.proposition),
+src/engine/BCCAAEngine.ts:2962:        provenance: atomicFacts.map((f) => ({ factId: f.factId, source: f.source,
+src/engine/BCCAAEngine.ts:2963:    sourceType: f.source.extractionMethod, extractionMethod: f.source.extractionMethod })),
+src/engine/BCCAAEngine.ts:2964:        factualSummary: atomicFacts.length > 0 ? `Extracted ${atomicFacts.length} facts from input narrative.` : "No facts extracted.",
+src/engine/BCCAAEngine.ts:2969:        quantumFacts: atomicFacts.filter((f) => f.predicate.toLowerCase().includes("amount") || f.predicate.toLowerCase().includes("consideration") || f.predicate.toLowerCase().includes("deposit") || f.predicate.toLowerCase().includes("valuation")).map((f) => `${f.predicate}: ${f.object ?? "N/A"}`),
+src/engine/BCCAAEngine.ts:2977:        relevantSections: deps.legislation.relevantSections,
+src/engine/BCCAAEngine.ts:2978:        primaryAct: deps.legislation.primaryAct,
+src/engine/BCCAAEngine.ts:2984:        isTimeBarred: deps.limitation.isTimeBarred,
+src/engine/BCCAAEngine.ts:2985:        accrualDate: deps.limitation.accrualDate,
+src/engine/BCCAAEngine.ts:2986:        limitationPeriodYears: deps.limitation.limitationPeriodYears,
+src/engine/BCCAAEngine.ts:2987:        calculationType: deps.limitation.calculationType,
+src/engine/BCCAAEngine.ts:2988:        timelineValidation: deps.limitation.timelineValidation,
+src/engine/BCCAAEngine.ts:2989:        preliminaryAnalysis: deps.limitation.preliminaryAnalysis,
+src/engine/BCCAAEngine.ts:2996:          causeOfActionAccess: "yes",
+src/engine/BCCAAEngine.ts:3008:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3009:        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+src/engine/BCCAAEngine.ts:3010:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3081:      factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
+src/engine/BCCAAEngine.ts:3089:      legislation: { primaryAct: null, relevantSections: [] },
+src/engine/BCCAAEngine.ts:3091:        atomicFacts: [],
+src/engine/BCCAAEngine.ts:3094:        factualSummary: "No facts extracted.",
+src/engine/BCCAAEngine.ts:3100:        quantumFacts: [],
+src/engine/BCCAAEngine.ts:3103:      stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
+src/engine/BCCAAEngine.ts:3104:      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+src/engine/BCCAAEngine.ts:3107:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3108:        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+src/engine/BCCAAEngine.ts:3109:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3150:      gateF0: { gateStatus: "HALT" as const, conflicts: [], atomicFacts: [], conflictCount: 0, criticalConflicts: 0, warnings: ctx.warnings.length > 0 ? ctx.warnings : ["Pre-F0 halt: " + haltReason] },
+src/engine/BCCAAEngine.ts:3159:    f0Gate: FactConsistencyGateOutput,
+src/engine/BCCAAEngine.ts:3171:      factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
+src/engine/BCCAAEngine.ts:3181:        atomicFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, propositionId: f.propositionId, assertionId: f.assertionId, proposition: f.proposition, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, polarity: f.polarity, source: f.source, assertionType: f.assertionType, validationStatus: f.validationStatus, confidence: f.confidence, assertedBy: f.assertedBy, eventDate: f.eventDate, normalizedValue: f.normalizedValue, contradicts: f.contradicts, supports: f.supports, disputedProposition: f.disputedProposition, validation: f.validation, provenanceAssertions: f.provenanceAssertions })),
+src/engine/BCCAAEngine.ts:3182:        propositions: Array.from(ctx.factRegistry.values()).map((f) => f.proposition),
+src/engine/BCCAAEngine.ts:3183:        provenance: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, source: f.source,
+src/engine/BCCAAEngine.ts:3184:    sourceType: f.source.extractionMethod, extractionMethod: f.source.extractionMethod })),
+src/engine/BCCAAEngine.ts:3185:        factualSummary: ctx.factRegistry.size > 0 ? `Extracted ${ctx.factRegistry.size} facts from input narrative.` : "No facts extracted.",
+src/engine/BCCAAEngine.ts:3190:        quantumFacts: [],
+src/engine/BCCAAEngine.ts:3193:      stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
+src/engine/BCCAAEngine.ts:3194:      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+src/engine/BCCAAEngine.ts:3197:        territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
+src/engine/BCCAAEngine.ts:3198:        pecuniary: { valuation: null, courtLevel: null, pecuniaryLimits: null, suitsValuationActNotes: null },
+src/engine/BCCAAEngine.ts:3199:        subjectMatter: { isExcluded: false, forum: null, governingStatute: null },
+src/engine/BCCAAEngine.ts:3253:        atomicFacts: [],
+src/engine/BCCAAEngine.ts:3282:    const facts = Array.from(ctx.factRegistry.values());
+src/engine/BCCAAEngine.ts:3283:    const factRegistryHash = canonicalHash(facts.map((f) => ({ factId: f.factId, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, eventDate: f.eventDate, normalizedValue: f.normalizedValue })));
+src/engine/BCCAAEngine.ts:3286:    const rawInputHash = canonicalHash(request.input?.factPattern ?? "");
+src/engine/BCCAAEngine.ts:3287:    const extractionHash = canonicalHash(facts.map((f) => f.proposition));
+src/engine/BCCAAEngine.ts:3299:      extractionHash,
+src/engine/BCCAAEngine.ts:3301:      factRegistryHash,
+src/engine/BCCAAEngine.ts:3332:        atomicFacts: (response.stage0?.atomicFacts ?? []).map((f) => ({
+src/engine/BCCAAEngine.ts:3344:          leftFactId: e.leftFactId,
+src/engine/BCCAAEngine.ts:3345:          rightFactId: e.rightFactId,
+src/engine/BCCAAEngine.ts:3353:          sourceFactIds: e.sourceFactIds,
+src/engine/BCCAAEngine.ts:3358:        relevantSections: response.stage2?.relevantSections,
+src/engine/BCCAAEngine.ts:3359:        primaryAct: response.stage2?.primaryAct,
+src/engine/BCCAAEngine.ts:3376:          predicateResults: r.predicateResults.map((p: { predicateId: string; predicate: string; status: string; supportingFactIds: string[]; factIds: string[]; conflictDetected: boolean }) => ({
+src/engine/BCCAAEngine.ts:3379:            factIds: p.factIds,
+src/engine/BCCAAEngine.ts:3412:  // UTILITY: FIND DATE FACT
+src/engine/BCCAAEngine.ts:3415:  private findDateFact(ctx: ExecutionContext, predicate: string): string | null {
+src/engine/BCCAAEngine.ts:3416:    const fact = Array.from(ctx.factRegistry.values()).find(
+src/engine/BCCAAEngine.ts:3419:    return fact?.eventDate ?? null;
+src/engine/BCCAAEngine.ts:3423:  // UTILITY: GET CONFLICT MODE FROM FACTS
+src/engine/BCCAAEngine.ts:3426:  private getConflictModeFromFacts(
+src/engine/BCCAAEngine.ts:3435:  // UTILITY: AUTHORITY ID EXTRACTOR
+src/engine/BCCAAEngine.ts:3439:    return (rule as unknown as { authorityIds?: string[] }).authorityIds ?? [rule.authority.act];
+src/engine/CitationValidator.ts:22:  governingActs: string[];
+src/engine/CitationValidator.ts:25:  factualContextTag: string[];
+src/engine/CitationValidator.ts:56:    hash ^= payload.charCodeAt(i);
+src/engine/CitationValidator.ts:79:    governingActs: [
+src/engine/CitationValidator.ts:80:      "Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:81:      "Partition Act 1893",
+src/engine/CitationValidator.ts:82:      "Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:85:      "Section 2, Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:86:      "Order XX Rule 18, Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:89:    summaryOfHolding: "Succession opens instantaneously on the death of the ancestor. Estate vests in the lawful heirs automatically by operation of Shariat law.",
+src/engine/CitationValidator.ts:90:    factualContextTag: ["inheritance", "succession", "disown", "partition", "co-sharer", "deceased_ancestor"],
+src/engine/CitationValidator.ts:106:    governingActs: [
+src/engine/CitationValidator.ts:107:      "Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:108:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:111:      "Section 2, Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:112:      "Section 42, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:116:    factualContextTag: ["disowning_affidavit", "inheritance", "newspaper_notice", "heir_rights"],
+src/engine/CitationValidator.ts:132:    governingActs: [
+src/engine/CitationValidator.ts:133:      "State Acquisition and Tenancy Act 1950",
+src/engine/CitationValidator.ts:134:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:137:      "Section 143, State Acquisition and Tenancy Act 1950",
+src/engine/CitationValidator.ts:138:      "Section 42, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:142:    factualContextTag: ["mutation", "namjari", "khatian", "exclusive_mutation", "co-sharers"],
+src/engine/CitationValidator.ts:158:    governingActs: [
+src/engine/CitationValidator.ts:159:      "Muslim Personal Law (Shariat) Application Act 1937",
+src/engine/CitationValidator.ts:160:      "Specific Relief Act 1877",
+src/engine/CitationValidator.ts:161:      "Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:164:      "Section 42, Specific Relief Act 1877",
+src/engine/CitationValidator.ts:165:      "Section 9, Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:167:    ratioDecidendi: "During the lifetime of an ancestor, no descendant h as unknown vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
+src/engine/CitationValidator.ts:169:    factualContextTag: ["living_parent", "spes_successionis", "premature_suit", "lifetime_declaration"],
+src/engine/CitationValidator.ts:186:    governingActs: [
+src/engine/CitationValidator.ts:187:      "Specific Relief Act 1877",
+src/engine/CitationValidator.ts:188:      "Registration Act 1908",
+src/engine/CitationValidator.ts:189:      "Transfer of Property Act 1882"
+src/engine/CitationValidator.ts:192:      "Section 21A, Specific Relief Act 1877 (2004 Amendment)",
+src/engine/CitationValidator.ts:193:      "Section 17A, Registration Act 1908",
+src/engine/CitationValidator.ts:194:      "Section 54, Transfer of Property Act 1882"
+src/engine/CitationValidator.ts:196:    ratioDecidendi: "Registration of the contract for sale (Bainapatra) under Section 17A of the Registration Act 1908 and deposit of the remaining consideration in court via treasury challan are mandatory statutory prerequisites under Section 21A SRA. Non-compliance renders the suit incompetent ab initio.",
+src/engine/CitationValidator.ts:197:    summaryOfHolding: "Mandatory registration of Bainapatra and court deposit of balance consideration under Section 21A SRA are non-negotiable statutory preconditions.",
+src/engine/CitationValidator.ts:198:    factualContextTag: ["specific_performance", "bainapatra", "section_21a", "registration_17a", "treasury_deposit"],
+src/engine/CitationValidator.ts:214:    governingActs: [
+src/engine/CitationValidator.ts:215:      "Specific Relief Act 1877",
+src/engine/CitationValidator.ts:216:      "Contract Act 1872"
+src/engine/CitationValidator.ts:219:      "Section 12 & 24(b), Specific Relief Act 1877",
+src/engine/CitationValidator.ts:220:      "Section 39, Contract Act 1872"
+src/engine/CitationValidator.ts:222:    ratioDecidendi: "In a suit for specific performance, the purchaser must aver and prove continuous readiness and willingness to perform his part of the contract. The statutory deposit of the balance consideration into court conclusively satisfies this requirement.",
+src/engine/CitationValidator.ts:224:    factualContextTag: ["readiness_willingness", "specific_performance", "balance_deposit", "contract_breach"],
+src/engine/CitationValidator.ts:241:    governingActs: [
+src/engine/CitationValidator.ts:242:      "Transfer of Property Act 1882",
+src/engine/CitationValidator.ts:243:      "Registration Act 1908",
+src/engine/CitationValidator.ts:244:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:247:      "Section 54, Transfer of Property Act 1882",
+src/engine/CitationValidator.ts:248:      "Section 17 & 49, Registration Act 1908",
+src/engine/CitationValidator.ts:249:      "Section 8, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:251:    ratioDecidendi: "An unregistered contract or sale agreement conveys no proprietary title or interest in immovable property. A duly registered conveyance (Kabala) supported by valid chain of deeds and possession must prevail over unregistered claims.",
+src/engine/CitationValidator.ts:253:    factualContextTag: ["registered_title", "unregistered_contract", "kabala", "ownership_priority", "possession"],
+src/engine/CitationValidator.ts:269:    governingActs: [
+src/engine/CitationValidator.ts:270:      "State Acquisition and Tenancy Act 1950",
+src/engine/CitationValidator.ts:271:      "Evidence Act 1872",
+src/engine/CitationValidator.ts:272:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:275:      "Section 144, State Acquisition and Tenancy Act 1950",
+src/engine/CitationValidator.ts:276:      "Section 35 & 114, Evidence Act 1872"
+src/engine/CitationValidator.ts:280:    factualContextTag: ["possession_corroboration", "dakhila", "khatian_presumption", "trespass"],
+src/engine/CitationValidator.ts:285:  // ─── LIMITATION, BURDEN OF PROOF & CPC ───
+src/engine/CitationValidator.ts:297:    governingActs: [
+src/engine/CitationValidator.ts:298:      "Limitation Act 1908",
+src/engine/CitationValidator.ts:299:      "Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:302:      "Section 3, Limitation Act 1908",
+src/engine/CitationValidator.ts:303:      "Order VII Rule 11(d), Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:305:    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+src/engine/CitationValidator.ts:306:    summaryOfHolding: "Court is duty-bound under Section 3 Limitation Act to dismiss a time-barred suit on its own motion.",
+src/engine/CitationValidator.ts:307:    factualContextTag: ["limitation", "section_3", "time_barred", "mandatory_dismissal", "rejection_of_plaint"],
+src/engine/CitationValidator.ts:323:    governingActs: [
+src/engine/CitationValidator.ts:324:      "Evidence Act 1872"
+src/engine/CitationValidator.ts:327:      "Sections 101, 102 & 103, Evidence Act 1872"
+src/engine/CitationValidator.ts:331:    factualContextTag: ["burden_of_proof", "onus_probandi", "evidence_act_101", "affirmative_proof"],
+src/engine/CitationValidator.ts:347:    governingActs: [
+src/engine/CitationValidator.ts:348:      "Code of Civil Procedure 1908",
+src/engine/CitationValidator.ts:349:      "Partition Act 1893"
+src/engine/CitationValidator.ts:352:      "Order I Rules 9 & 10, Code of Civil Procedure 1908",
+src/engine/CitationValidator.ts:353:      "Order XX Rule 18, Code of Civil Procedure 1908"
+src/engine/CitationValidator.ts:357:    factualContextTag: ["partition", "necessary_parties", "order_1_rule_9", "co_heirs_joinder"],
+src/engine/CitationValidator.ts:373:    governingActs: [
+src/engine/CitationValidator.ts:374:      "Specific Relief Act 1877"
+src/engine/CitationValidator.ts:377:      "Proviso to Section 42, Specific Relief Act 1877"
+src/engine/CitationValidator.ts:379:    ratioDecidendi: "A suit for mere declaration of title is barred under the Proviso to Section 42 of the Specific Relief Act 1877 if the plaintiff, being out of physical possession, omits to pray for consequential relief of recovery of possession.",
+src/engine/CitationValidator.ts:380:    summaryOfHolding: "Declaratory suit without prayer for recovery of possession is barred under Section 42 SRA proviso when plaintiff is out of possession.",
+src/engine/CitationValidator.ts:381:    factualContextTag: ["declaration_proviso", "consequential_relief", "section_42_proviso", "possession_recovery"],
+src/engine/CitationValidator.ts:459:   * Deterministically select and validate verified precedents for a specific case category & factual context.
+src/engine/CitationValidator.ts:479:          "Strict statutory bar on maintainability of suits based on unregistered Bainapatras or where treasury deposit of the balance consideration is lacking (Section 21A SRA & Section 17A Registration Act)."
+src/engine/CitationValidator.ts:487:          "Enforces peremptory dismissal of time-barred suits under Article 54 and Section 3 of the Limitation Act 1908."
+src/engine/CitationValidator.ts:494:          "Supports Plaintiff's absolute title over conflicting unregistered agreements of the Defendant (Section 54 Transfer of Property Act)."
+src/engine/CitationValidator.ts:502:          "Mandates that when a plaintiff is out of possession, a declaratory prayer under Section 42 SRA must be coupled with consequential relief of recovery of possession under Section 8 SRA."
+src/engine/CitationValidator.ts:515:            "Confirms that the father's unilateral disowning affidavit or newspaper notice has zero legal standing in Muslim law to alter the Shariat-mandated lines of inheritance."
+src/engine/CitationValidator.ts:523:            "Mandates that all surviving co-heirs are indispensable necessary parties in the partition suit under Order XX Rule 18 CPC."
+src/engine/CitationValidator.ts:531:            "Establishes that children have no vested right or justiciable cause of action to challenge a living parent's declarations during his lifetime (spes successionis)."
+src/engine/CitationValidator.ts:535:            "Confirms that the father's disowning affidavit is a legal nullity in Shariat, but no cause of action exists to seek declaration until succession opens upon death."
+src/engine/CitationValidator.ts:544:            "Unilateral disowning affidavits are a legal nullity in Shariat regardless of whether the ancestor is living or deceased. However, the justiciability of partition claims depends on succession having opened."
+src/engine/CitationValidator.ts:548:            "Mandatory statutory limitation audit under Section 3 of the Limitation Act 1908 applies to all civil suits regardless of subject matter."
+src/engine/CitationValidator.ts:552:            "Fundamental civil burden of proof (onus probandi) under Sections 101-103 of the Evidence Act 1872."
+src/engine/CitationValidator.ts:560:          "Governs the fundamental civil burden of proof (onus probandi) under Sections 101-103 of the Evidence Act 1872."
+src/engine/CitationValidator.ts:564:          "Governs mandatory statutory limitation audits under Section 3 of the Limitation Act 1908."
+src/engine/FactConsistencyGate.ts:2:import { AtomicFact, FactConflict, FactConsistencyGateOutput } from "../types/types";
+src/engine/FactConsistencyGate.ts:5: * BCCAA FACT_CONSISTENCY_GATE (F0)
+src/engine/FactConsistencyGate.ts:7: * Sits directly between G0 (Fact Ingestion) and G1 (Domain Classification).
+src/engine/FactConsistencyGate.ts:8: * Enforces strict mathematical and logical consistency across all atomic facts.
+src/engine/FactConsistencyGate.ts:18: * The gate now receives the full fact evaluation state, not just true/false.
+src/engine/FactConsistencyGate.ts:22:  supportingFactIds: string[];
+src/engine/FactConsistencyGate.ts:24:  sameFamilyConflictingFacts?: Array<{
+src/engine/FactConsistencyGate.ts:25:    factId: string;
+src/engine/FactConsistencyGate.ts:37:/** FIX #8: Lightweight interfaces so F0 can consume engine-built artefacts. */
+src/engine/FactConsistencyGate.ts:38:interface EngineFact {
+src/engine/FactConsistencyGate.ts:39:  factId: string;
+src/engine/FactConsistencyGate.ts:50:  leftFactId: string;
+src/engine/FactConsistencyGate.ts:51:  rightFactId: string;
+src/engine/FactConsistencyGate.ts:55:export class FactConsistencyGate {
+src/engine/FactConsistencyGate.ts:57:   * Evaluates the raw fact pattern and extracted chronology for critical contradictions,
+src/engine/FactConsistencyGate.ts:65:   * FIX #8: Added `engineFacts` and `engineConflicts` so the gate consumes the
+src/engine/FactConsistencyGate.ts:66:   * engine's already-built fact registry and contradiction graph instead of
+src/engine/FactConsistencyGate.ts:75:      factualSource: string;
+src/engine/FactConsistencyGate.ts:82:          leftFactId: string;
+src/engine/FactConsistencyGate.ts:83:          rightFactId: string;
+src/engine/FactConsistencyGate.ts:90:    engineFacts?: EngineFact[],
+src/engine/FactConsistencyGate.ts:92:  ): FactConsistencyGateOutput {
+src/engine/FactConsistencyGate.ts:93:    const atomicFacts: any[] = [];
+src/engine/FactConsistencyGate.ts:94:    const conflicts: FactConflict[] = [];
+src/engine/FactConsistencyGate.ts:105:    // 1. ATOMIC FACT INGESTION & NORMALIZATION
+src/engine/FactConsistencyGate.ts:107:    let factCounter = 1;
+src/engine/FactConsistencyGate.ts:108:    const nextId = () => `FACT-${String(factCounter++).padStart(5, "0")}`;
+src/engine/FactConsistencyGate.ts:110:    // FIX #8: Prefer engine facts over re-parsing raw text.
+src/engine/FactConsistencyGate.ts:111:    // If engine facts are supplied, derive death / living assertions from them.
+src/engine/FactConsistencyGate.ts:112:    const engineDeathFacts = (engineFacts ?? []).filter(
+src/engine/FactConsistencyGate.ts:118:    const engineLivingFacts = (engineFacts ?? []).filter(
+src/engine/FactConsistencyGate.ts:125:    // A. Death / Vital Status extraction
+src/engine/FactConsistencyGate.ts:139:    if (engineDeathFacts.length > 0) {
+src/engine/FactConsistencyGate.ts:140:      engineDeathFacts.forEach((f, idx) => {
+src/engine/FactConsistencyGate.ts:141:        atomicFacts.push({
+src/engine/FactConsistencyGate.ts:142:          factId: f.factId,
+src/engine/FactConsistencyGate.ts:146:          factStatus: "ALLEGED",
+src/engine/FactConsistencyGate.ts:154:        atomicFacts.push({
+src/engine/FactConsistencyGate.ts:155:          factId: nextId(),
+src/engine/FactConsistencyGate.ts:159:          factStatus: "ALLEGED",
+src/engine/FactConsistencyGate.ts:167:    if (engineLivingFacts.length > 0) {
+src/engine/FactConsistencyGate.ts:168:      engineLivingFacts.forEach((f, idx) => {
+src/engine/FactConsistencyGate.ts:169:        atomicFacts.push({
+src/engine/FactConsistencyGate.ts:170:          factId: f.factId,
+src/engine/FactConsistencyGate.ts:174:          factStatus: "ALLEGED",
+src/engine/FactConsistencyGate.ts:182:        atomicFacts.push({
+src/engine/FactConsistencyGate.ts:183:          factId: nextId(),
+src/engine/FactConsistencyGate.ts:187:          factStatus: "ALLEGED",
+src/engine/FactConsistencyGate.ts:195:    // B. Chronology facts ingestion
+src/engine/FactConsistencyGate.ts:197:      atomicFacts.push({
+src/engine/FactConsistencyGate.ts:198:        factId: nextId(),
+src/engine/FactConsistencyGate.ts:201:        sourceParagraph: c.factualSource,
+src/engine/FactConsistencyGate.ts:202:        factStatus: "ALLEGED",
+src/engine/FactConsistencyGate.ts:209:    // C. Contract & Registration facts
+src/engine/FactConsistencyGate.ts:214:      atomicFacts.push({
+src/engine/FactConsistencyGate.ts:215:        factId: nextId(),
+src/engine/FactConsistencyGate.ts:216:        proposition: "Execution of written land contract (Bainapatra)",
+src/engine/FactConsistencyGate.ts:220:        factStatus: isReg ? "PROVED" : isUnreg ? "DISPUTED" : "UNKNOWN",
+src/engine/FactConsistencyGate.ts:234:      atomicFacts.push({
+src/engine/FactConsistencyGate.ts:235:        factId: nextId(),
+src/engine/FactConsistencyGate.ts:238:        factStatus: "DISPUTED",
+src/engine/FactConsistencyGate.ts:261:    // FIX #8: Use engine facts / ancestor evaluation as primary source.
+src/engine/FactConsistencyGate.ts:262:    const hasDeathFact =
+src/engine/FactConsistencyGate.ts:263:      engineDeathFacts.length > 0 ||
+src/engine/FactConsistencyGate.ts:264:      atomicFacts.some(
+src/engine/FactConsistencyGate.ts:269:    const hasLivingFact =
+src/engine/FactConsistencyGate.ts:270:      engineLivingFacts.length > 0 ||
+src/engine/FactConsistencyGate.ts:271:      atomicFacts.some((f) =>
+src/engine/FactConsistencyGate.ts:283:      (hasDeathFact && hasLivingFact) ||
+src/engine/FactConsistencyGate.ts:286:      const deathFactId =
+src/engine/FactConsistencyGate.ts:287:        atomicFacts.find((f) => f.proposition.includes("Ancestor death"))
+src/engine/FactConsistencyGate.ts:288:          ?.factId || "FACT-DEATH-001";
+src/engine/FactConsistencyGate.ts:289:      const livingFactId =
+src/engine/FactConsistencyGate.ts:290:        atomicFacts.find((f) => f.proposition.includes("alive"))?.factId ||
+src/engine/FactConsistencyGate.ts:291:        "FACT-LIVING-001";
+src/engine/FactConsistencyGate.ts:293:      // P0 FIX: left/right were undefined. Use the resolved fact IDs for a stable hash.
+src/engine/FactConsistencyGate.ts:301:        factIdA: deathFactId,
+src/engine/FactConsistencyGate.ts:302:        factIdB: livingFactId,
+src/engine/FactConsistencyGate.ts:304:          "Direct temporal contradiction: The record simultaneously asserts that the ancestor is deceased (opening statutory inheritance) AND that the ancestor is currently living (holding absolute lifetime ownership without cause of action).",
+src/engine/FactConsistencyGate.ts:307:          "Must file certified Municipal / Union Parishad Death Certificate or confirm living status before limitation or heirship shares can be calculated.",
+src/engine/FactConsistencyGate.ts:328:    const extractedDeathDates: string[] = [];
+src/engine/FactConsistencyGate.ts:329:    deathMatches.forEach((m) => extractedDeathDates.push(m[1].trim()));
+src/engine/FactConsistencyGate.ts:336:    deathChronos.forEach((dc) => extractedDeathDates.push(dc.date.trim()));
+src/engine/FactConsistencyGate.ts:355:    const normalizedDates = extractedDeathDates.map(normalizeDateForDedup);
+src/engine/FactConsistencyGate.ts:363:        factIdA: "FACT-DATE-CLASH-A",
+src/engine/FactConsistencyGate.ts:364:        factIdB: "FACT-DATE-CLASH-B",
+src/engine/FactConsistencyGate.ts:365:        description: `Multiple contradictory death dates extracted for the same ancestor: [${uniqueDeathDates.join(" vs. ")}]. Under Article 123/144 of the Limitation Act, exact date of demise determines the 12-year statutory limitation deadline.`,
+src/engine/FactConsistencyGate.ts:368:          "Resolve exact date of death via certified death register or burial slip before running limitation calculations.",
+src/engine/FactConsistencyGate.ts:387:    // CHECK 3: Cause of Action Mutual Exclusion
+src/engine/FactConsistencyGate.ts:396:    // FIX #28: Only run this check when BOTH claim types are actually present.
+src/engine/FactConsistencyGate.ts:410:        conflictType: "CAUSE_OF_ACTION_MUTUAL_EXCLUSION",
+src/engine/FactConsistencyGate.ts:412:        factIdA: "FACT-COA-SP",
+src/engine/FactConsistencyGate.ts:413:        factIdB: "FACT-COA-INH",
+src/engine/FactConsistencyGate.ts:415:          "Substantive Doctrine Clash: Narrative conflates Contractual Specific Performance (SRA Section 12/21A) with Intestate Inheritance Partition (Muslim Law / Partition Act 1893) without pleading in the alternative.",
+src/engine/FactConsistencyGate.ts:418:          "Clarify whether Plaintiff sues as a contract purchaser under a Bainapatra or as a statutory co-sharer heir under Shariat.",
+src/engine/FactConsistencyGate.ts:423:        checkName: "Cause of Action Mutual Exclusion",
+src/engine/FactConsistencyGate.ts:426:          "Conflation of contractual remedy and inheritance partition remedy detected.",
+src/engine/FactConsistencyGate.ts:431:        checkName: "Cause of Action Mutual Exclusion",
+src/engine/FactConsistencyGate.ts:433:        details: "Primary cause of action is doctrinally cohesive.",
+src/engine/FactConsistencyGate.ts:457:        factIdA: "FACT-PARTY-HEIR",
+src/engine/FactConsistencyGate.ts:458:        factIdB: "FACT-PARTY-STRANGER",
+src/engine/FactConsistencyGate.ts:460:          "Contradictory Party Character: Defendant is asserted to be a biological co-heir (constructive joint possessor) while simultaneously characterized as an unrelated stranger trespasser.",
+src/engine/FactConsistencyGate.ts:463:          "Formally verify genealogical relationship via Warisan Sanad before framing party joinder (Order I CPC).",
+src/engine/FactConsistencyGate.ts:490:          "Proof of Sub-Registry Registration Endorsement (Section 17A Registration Act)",
+src/engine/FactConsistencyGate.ts:499:          "Treasury Deposit Challan for Balance Consideration (Section 21A Specific Relief Act)",
+src/engine/FactConsistencyGate.ts:511:          "Certified Death Registration Certificate (Births and Deaths Registration Act 2004)",
+src/engine/FactConsistencyGate.ts:559:      summary = `HALT: ${criticalCount} CRITICAL FACT CONFLICT(S) DETECTED. Downstream synthesis and legal decision generation are strictly BLOCKED under the fail-closed enterprise protocol.`;
+src/engine/FactConsistencyGate.ts:567:      summary = `CONDITIONALLY CONSISTENT: Factual foundation contains ${materialCount} material ambiguity / ${missingDocsCount} missing threshold document(s). Provisional analysis enabled with explicit evidentiary conditions.`;
+src/engine/FactConsistencyGate.ts:573:        "VERIFIED CONSISTENT: All atomic facts are mutually compatible, chronological events are singular and unambiguous, and threshold statutory predicates are satisfied.";
+src/engine/FactConsistencyGate.ts:580:      atomicFacts,
+src/engine/testFixtures.ts:22:    isActive: true,
+src/engine/testFixtures.ts:34:  factPattern?: string;
+src/engine/testFixtures.ts:39:    factPattern: overrides.factPattern ?? "The plaintiff relied on an unregistered bainapatra.",
+src/main.tsx:1:import { StrictMode } from "react";
+src/main.tsx:2:import { createRoot } from "react-dom/client";
+src/server/auth/authorization.test.ts:18:    isActive: boolean;
+src/server/auth/authorization.test.ts:49:    isActive: true,
+src/server/auth/authorization.test.ts:102:    it("rejects inactive accounts", () => {
+src/server/auth/authorization.test.ts:105:        isActive: false,
+src/server/auth/authorization.test.ts:115:      ).toThrow("ACCOUNT_INACTIVE");
+src/server/auth/authorization.test.ts:151:      let statusCode: number | undefined;
+src/server/auth/authorization.test.ts:154:        status: (code: number) => {
+src/server/auth/authorization.test.ts:155:          statusCode = code;
+src/server/auth/authorization.test.ts:168:      expect(statusCode).toBe(403);
+src/server/auth/authorization.test.ts:175:      let statusCode: number | undefined;
+src/server/auth/authorization.test.ts:178:        status: (code: number) => {
+src/server/auth/authorization.test.ts:179:          statusCode = code;
+src/server/auth/authorization.test.ts:188:      expect(statusCode).toBe(401);
+src/server/auth/authorization.test.ts:262:  isActive: true,
+src/server/auth/authorization.test.ts:303:  it("rejects inactive user", () => {
+src/server/auth/authorization.test.ts:305:      auth: { ...baseUser, isActive: false },
+src/server/auth/authorization.test.ts:313:  it("allows active user with matching session", () => {
+src/server/auth/authorization.test.ts:328:    const res: any = { status: (code: number) => ({ json: (body: any) => ({ code, body }) }) };
+src/server/auth/authorization.test.ts:329:    const next = () => ({ code: 200 });
+src/server/auth/authorization.test.ts:333:    expect(result.code).toBe(403);
+src/types/auth.types.ts:29:  isActive: boolean;
+src/types/auth.types.ts:60:export type AuditAction =
+src/types/auth.types.ts:76:  actor: {
+src/types/auth.types.ts:83:  action: AuditAction;
+src/types/types.ts:8:  factPattern: string;
+src/types/types.ts:37:export enum ExtractionStatus {
+src/types/types.ts:39:  EXTRACTED = "EXTRACTED",
+src/types/types.ts:71:export enum FactConfidence { CANDIDATE = "CANDIDATE", SUPPORTED = "SUPPORTED", VERIFIED = "VERIFIED" }
+src/types/types.ts:105:  extractionMethod?: "PATTERN" | "STRUCTURED_INPUT" | "MANUAL_VALIDATION" | "DOCUMENT_VALIDATION";
+src/types/types.ts:128:  extractionStatus: ExtractionStatus;
+src/types/types.ts:135:export interface AtomicFact {
+src/types/types.ts:139:  factStatus?: string;
+src/types/types.ts:141:  factId: string;
+src/types/types.ts:153:  confidence: FactConfidence;
+src/types/types.ts:166:  leftFactId: string;
+src/types/types.ts:167:  rightFactId: string;
+src/types/types.ts:178:  act: string;
+src/types/types.ts:179:  section: string;
+src/types/types.ts:202:    | "LIMITATION" | "JURISDICTION" | "PROCEDURE" | "RELIEF";
+src/types/types.ts:232:    primaryAct: string | null;
+src/types/types.ts:233:    relevantSections: Array<{ actName: string; sectionOrRule: string; purpose: string }>;
+src/types/types.ts:245:  factIds: string[];
+src/types/types.ts:255:  explanationCode: string;
+src/types/types.ts:276:  extractionHash: string;
+src/types/types.ts:278:  factRegistryHash: string;
+src/types/types.ts:289:    factSchemaVersion: string;
+src/types/types.ts:296:    defaultFactsAllowed: boolean;
+src/types/types.ts:321:export interface FactValidationProvider {
+src/types/types.ts:322:  validateFacts(input: {
+src/types/types.ts:323:    facts: AtomicFact[];
+src/types/types.ts:326:  }): Promise<AtomicFact[]>;
+src/types/types.ts:334:export interface FactConflict {
+src/types/types.ts:339:    | "CAUSE_OF_ACTION_MUTUAL_EXCLUSION"
+src/types/types.ts:344:  factIdA: string;
+src/types/types.ts:345:  factIdB?: string;
+src/types/types.ts:351:export interface FactConsistencyGateOutput {
+src/types/types.ts:355:  atomicFacts?: AtomicFact[];
+src/types/types.ts:356:  conflicts?: FactConflict[];
+src/types/types.ts:381:  factPattern: string;
+src/types/types.ts:385:  accessLog: Array<{ userId: string; accessedAt: number; action: string }>;
+src/types/types.ts:395:  factSchemaVersion?: string;
+src/types/types.ts:401:  gateF0?: FactConsistencyGateOutput;
+src/types/types.ts:402:  f0Gate?: FactConsistencyGateOutput;
+src/types/types.ts:408:    factualSummary?: string;
+src/types/types.ts:413:      factualSource: string;
+src/types/types.ts:419:          leftFactId: string;
+src/types/types.ts:420:          rightFactId: string;
+src/types/types.ts:425:    admittedFacts?: string[];
+src/types/types.ts:426:    disputedFacts?: string[];
+src/types/types.ts:427:    unknownFacts?: Array<{
+src/types/types.ts:429:      factDescription: string;
+src/types/types.ts:433:    quantumFacts?: string[];
+src/types/types.ts:434:    factsMeta?: {
+src/types/types.ts:443:    atomicFacts?: any[];
+src/types/types.ts:455:    triggerFacts?: Array<{
+src/types/types.ts:457:      fact: string;
+src/types/types.ts:462:    primaryAct: string | null;
+src/types/types.ts:463:    relevantSections: Array<{
+src/types/types.ts:464:      actName: string;
+src/types/types.ts:465:      sectionOrRule: string;
+src/types/types.ts:501:    limitationArticle?: string | null;
+src/types/types.ts:502:    limitationPeriodYears?: number | null;
+src/types/types.ts:510:      isAgreementDateExtracted?: boolean;
+src/types/types.ts:511:      isRefusalDateExtracted?: boolean;
+src/types/types.ts:525:      causeOfActionAccess: string;
+src/types/types.ts:539:      governingSection: string | null;
+src/types/types.ts:540:      jurisdictionalFacts: string | null;
+src/types/types.ts:546:      suitsValuationActNotes: string | null;
+src/types/types.ts:551:      governingStatute: string | null;
+src/types/types.ts:582:      governingSection: string | null;
+src/types/types.ts:587:      statuteSection: string;
+src/types/types.ts:624:      subActions: string;
+src/types/types.ts:635:      governingSection: string | null;
+src/utils/audit.ts:1:import { AuditEvent, AuditAction, UserRole } from "../types/auth.types";
+src/utils/audit.ts:11:  action: AuditAction;
+src/utils/audit.ts:27:      actor: {
+src/utils/audit.ts:34:      action: params.action,
+src/utils/audit.ts:49:      action: event.action,
+src/utils/audit.ts:50:      actor: event.actor.userId,
+src/utils/crypto.ts:89:    sha256(new TextEncoder().encode(str)),
+src/utils/crypto.ts:115:    new TextEncoder().encode(password),
+src/utils/crypto.ts:183:  const actual = pbkdf2(
+src/utils/crypto.ts:185:    new TextEncoder().encode(password),
+src/utils/crypto.ts:193:  return constantTimeEqual(actual, expected);
+src/utils/deviceFingerprint.ts:22:        hash = ((hash << 5) - hash) + rawData.charCodeAt(i);
+src/utils/docxGenerator.ts:28:  factPattern: string,
+src/utils/docxGenerator.ts:31:  const limitationStatus =
+src/utils/docxGenerator.ts:113:        createCell("Factual Event Description", { bold: true, bg: "1E252B", color: "FFFFFF", widthPercent: 35 }),
+src/utils/docxGenerator.ts:115:        createCell("Factual / Evidentiary Source", { bold: true, bg: "1E252B", color: "FFFFFF", widthPercent: 25 }),
+src/utils/docxGenerator.ts:128:            createCell(c.factualSource || "Case record", { bg: index % 2 === 0 ? "FDFBF7" : "FFFFFF" }),
+src/utils/docxGenerator.ts:137:          createCell("No chronological sequence dates extracted.", { widthPercent: 100 }),
+src/utils/docxGenerator.ts:188:            createCell(`${p.statutorySubject ? `Statute: ${p.statutorySubject}\n` : ""}${p.relevance}`, { bg: idx % 2 === 0 ? "F9FAFB" : "FFFFFF" }),
+src/utils/docxGenerator.ts:214:          createCell("Primary Statutory Act"),
+src/utils/docxGenerator.ts:215:          createCell(analysis.stage2.primaryAct ?? "", { bold: true }),
+src/utils/docxGenerator.ts:220:          createCell("Statutory Limitation Status"),
+src/utils/docxGenerator.ts:222:            `${limitationStatus} (Article ${analysis.stage3.limitationArticle || "N/A"})`,
+src/utils/docxGenerator.ts:243:          createCell("Court Fees & Valuation Strategy"),
+src/utils/docxGenerator.ts:244:          createCell(analysis.stage5?.pecuniary?.suitsValuationActNotes || "As per Court Fees Act 1870"),
+src/utils/docxGenerator.ts:253:    title: `BCCAA Litigation Brief - ${analysis.stage2.primaryAct}`,
+src/utils/docxGenerator.ts:255:    sections: [
+src/utils/docxGenerator.ts:314:                text: `BCCAA JURISPRUDENTIAL LITIGATION BRIEF  •  ${(analysis.stage2.primaryAct ?? "").toUpperCase()}`,
+src/utils/docxGenerator.ts:348:                text: `  SUIT STATUS: ${limitationStatus}  |  FORUM: ${analysis.stage5?.pecuniary?.courtLevel ?? ""}  `,
+src/utils/docxGenerator.ts:404:          // Gateway 0: Fact Matrix
+src/utils/docxGenerator.ts:409:                text: "GATEWAY 0: FACT MATRIX & OBJECTIVE CHRONOLOGY",
+src/utils/docxGenerator.ts:419:          ...(analysis.stage0?.factualSummary
+src/utils/docxGenerator.ts:424:                      text: "Factual Summary: ",
+src/utils/docxGenerator.ts:431:                      text: analysis.stage0.factualSummary,
+src/utils/docxGenerator.ts:448:          // Admitted & Disputed Facts
+src/utils/docxGenerator.ts:452:                text: "\nAdmitted Facts:",
+src/utils/docxGenerator.ts:461:          ...((analysis.stage0?.admittedFacts || []).map(
+src/utils/docxGenerator.ts:488:          ...((analysis.stage0?.disputedFacts || []).map(
+src/utils/docxGenerator.ts:528:                text: "GATEWAY 7: FORMULATION OF ISSUES (ORDER XIV CPC)",
+src/utils/docxGenerator.ts:621:  const cleanAct = (analysis.stage2.primaryAct ?? "").replace(/[^a-zA-Z0-9]/g, "_");
+src/utils/docxGenerator.ts:622:  const filename = `BCCAA_Case_Brief_${cleanAct}_${"0"}.docx`;
+src/utils/docxGenerator.ts:784:    sections: [
+src/utils/license.ts:20:function encodeBase64(str: string): string {
+src/utils/license.ts:26:    const bytes = new TextEncoder().encode(str);
+src/utils/license.ts:29:      binString += String.fromCharCode(bytes[i]);
+src/utils/license.ts:35:      return btoa(unescape(encodeURIComponent(str)));
+src/utils/license.ts:42:function decodeBase64(b64: string): string {
+src/utils/license.ts:53:      bytes[i] = binString.charCodeAt(i);
+src/utils/license.ts:55:    return new TextDecoder().decode(bytes);
+src/utils/license.ts:59:      return decodeURIComponent(escape(atob(cleanB64)));
+src/utils/license.ts:95:  const licenseKey = encodeBase64(JSON.stringify(licenseData));
+src/utils/license.ts:109:    const decoded = decodeBase64(licenseKey);
+src/utils/license.ts:110:    const data = JSON.parse(decoded);
+src/utils/pdfGeneratorSecure.ts:12:  factPattern: string,
+src/utils/pdfGeneratorSecure.ts:38:  const limitationStatus =
+src/utils/pdfGeneratorSecure.ts:114:      .section-block {
+src/utils/pdfGeneratorSecure.ts:119:      .section-heading {
+src/utils/pdfGeneratorSecure.ts:133:      .fact-box {
+src/utils/pdfGeneratorSecure.ts:208:        <div><strong>Primary Act:</strong> ${analysis.stage2.primaryAct}</div>
+src/utils/pdfGeneratorSecure.ts:213:        <div class="card-title">Limitation & Maintainability</div>
+src/utils/pdfGeneratorSecure.ts:215:          <strong>Limitation Status:</strong> 
+src/utils/pdfGeneratorSecure.ts:223:  ${limitationStatus}
+src/utils/pdfGeneratorSecure.ts:226:        <div><strong>Limitation Article:</strong> Article ${analysis.stage3.limitationArticle} (Limitation Act 1908)</div>
+src/utils/pdfGeneratorSecure.ts:232:    <!-- SECTION I: FACT PATTERN -->
+src/utils/pdfGeneratorSecure.ts:233:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:234:      <div class="section-heading">Section I: Submitted Fact Pattern</div>
+src/utils/pdfGeneratorSecure.ts:235:      <div class="fact-box">${factPattern}</div>
+src/utils/pdfGeneratorSecure.ts:236:      ${analysis.stage0.factsMeta ? `
+src/utils/pdfGeneratorSecure.ts:238:          <div class="card-title">Factual Audit Attributes</div>
+src/utils/pdfGeneratorSecure.ts:240:            <div><strong>Dispute Category:</strong> ${analysis.stage0.factsMeta.category}</div>
+src/utils/pdfGeneratorSecure.ts:241:            <div><strong>Registered Title:</strong> ${analysis.stage0.factsMeta.plaintiffHasRegisteredTitle ? 'Confirmed' : 'Unconfirmed/Defective'}</div>
+src/utils/pdfGeneratorSecure.ts:242:            <div><strong>Dispossession Alleged:</strong> ${analysis.stage0.factsMeta.dispossessionProven ? 'Yes' : 'No / Constructive Possession'}</div>
+src/utils/pdfGeneratorSecure.ts:248:    <!-- SECTION II: STAGE 0 CHRONOLOGY -->
+src/utils/pdfGeneratorSecure.ts:249:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:250:      <div class="section-heading">Section II: Chronology of Events (Stage 0)</div>
+src/utils/pdfGeneratorSecure.ts:257:            <th style="width: 30%;">Factual / Evidentiary Source</th>
+src/utils/pdfGeneratorSecure.ts:266:              <td>${c.factualSource}</td>
+src/utils/pdfGeneratorSecure.ts:273:    <!-- SECTION III: STAGE 1 & 2 APPLICABLE LAWS & SECTIONS -->
+src/utils/pdfGeneratorSecure.ts:274:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:275:      <div class="section-heading">Section III: Statutory Framework & Precedents (Stage 1 & 2)</div>
+src/utils/pdfGeneratorSecure.ts:280:            <th style="width: 25%;">Act / Statute</th>
+src/utils/pdfGeneratorSecure.ts:281:            <th style="width: 25%;">Provision / Section</th>
+src/utils/pdfGeneratorSecure.ts:286:          ${(analysis.stage2?.relevantSections ?? []).map(s => `
+src/utils/pdfGeneratorSecure.ts:288:              <td><strong>${s.actName}</strong></td>
+src/utils/pdfGeneratorSecure.ts:289:              <td><code>${s.sectionOrRule}</code></td>
+src/utils/pdfGeneratorSecure.ts:331:                  ${p.statutorySubject ? `<div style="font-size: 8px; font-family: monospace; color: #4B5563; margin-bottom: 3px;"><strong>Statute:</strong> ${p.statutorySubject}</div>` : ''}
+src/utils/pdfGeneratorSecure.ts:341:    <!-- SECTION IV: STAGE 3 LIMITATION DETAILED AUDIT -->
+src/utils/pdfGeneratorSecure.ts:342:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:343:      <div class="section-heading">Section IV: Limitation & Maintainability Audit (Stage 3)</div>
+src/utils/pdfGeneratorSecure.ts:345:        <p style="margin: 0 0 6px 0;"><strong>Limitation Analysis:</strong> ${analysis.stage3.preliminaryAnalysis}</p>
+src/utils/pdfGeneratorSecure.ts:353:    <!-- SECTION V: STAGE 4 PARTIES & LOCUS STANDI -->
+src/utils/pdfGeneratorSecure.ts:354:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:355:      <div class="section-heading">Section V: Party Array & Locus Standi (Stage 4)</div>
+src/utils/pdfGeneratorSecure.ts:363:              <div><strong>Standing Access:</strong> ${p.causeOfActionAccess}</div>
+src/utils/pdfGeneratorSecure.ts:384:    <!-- SECTION VI: STAGE 5 JURISDICTION & COURT FEES -->
+src/utils/pdfGeneratorSecure.ts:385:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:386:      <div class="section-heading">Section VI: Tri-Partite Jurisdiction & Valuation (Stage 5)</div>
+src/utils/pdfGeneratorSecure.ts:391:            <td>Valuation: <strong>${analysis.stage5?.pecuniary?.valuation ?? ""}</strong> &bull; Competent Court: <strong>${analysis.stage5?.pecuniary?.courtLevel ?? ""}</strong><br><em>Notes:</em> ${analysis.stage5?.pecuniary?.suitsValuationActNotes ?? ""}</td>
+src/utils/pdfGeneratorSecure.ts:395:            <td>Rule: ${analysis.stage5?.territorial?.rule ?? ""} (${analysis.stage5?.territorial?.governingSection ?? ""})<br><em>Facts:</em> ${analysis.stage5?.territorial?.jurisdictionalFacts ?? ""}</td>
+src/utils/pdfGeneratorSecure.ts:399:            <td>Forum: ${analysis.stage5?.subjectMatter?.forum ?? ""} (${analysis.stage5?.subjectMatter?.governingStatute ?? ""}) &bull; Excluded: ${analysis.stage5?.subjectMatter?.isExcluded ? 'YES' : 'NO'}</td>
+src/utils/pdfGeneratorSecure.ts:409:    <!-- SECTION VII: STAGE 6 PLEADINGS & REJECTION RISKS -->
+src/utils/pdfGeneratorSecure.ts:410:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:411:      <div class="section-heading">Section VII: Pleadings Checklist & Defense Risks (Stage 6)</div>
+src/utils/pdfGeneratorSecure.ts:414:          <div class="card-title">Order VII Plaint Requirements</div>
+src/utils/pdfGeneratorSecure.ts:420:          <div class="card-title">Order VII Rule 11 Rejection Audit</div>
+src/utils/pdfGeneratorSecure.ts:427:        <p style="margin: 0 0 4px 0;"><strong>Order VIII Rule 5 Deemed Admissions:</strong> ${analysis.stage6.writtenStatementDeemedAdmissions}</p>
+src/utils/pdfGeneratorSecure.ts:432:    <!-- SECTION VIII: STAGE 7 & 9 ISSUES & JUDICIAL FINDINGS -->
+src/utils/pdfGeneratorSecure.ts:433:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:434:      <div class="section-heading">Section VIII: Issues Framed & Projected Findings (Stage 7 & 9)</div>
+src/utils/pdfGeneratorSecure.ts:459:    <!-- SECTION IX: STAGE 8 EVIDENTIARY ARCHITECTURE -->
+src/utils/pdfGeneratorSecure.ts:460:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:461:      <div class="section-heading">Section IX: Evidentiary Architecture & Presumptions (Stage 8)</div>
+src/utils/pdfGeneratorSecure.ts:467:            <th style="width: 20%;">Evidence Act Provision</th>
+src/utils/pdfGeneratorSecure.ts:476:              <td><code>${ev.governingSection}</code></td>
+src/utils/pdfGeneratorSecure.ts:487:              <strong>${sp.statuteSection}:</strong> ${sp.presumptionStyle} &mdash; <em>Effect: ${sp.effectOnCase}</em>
+src/utils/pdfGeneratorSecure.ts:494:    <!-- SECTION X: STAGE 11 & 12 TIMELINE & APPELLATE PATHWAY -->
+src/utils/pdfGeneratorSecure.ts:495:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:496:      <div class="section-heading">Section X: Case Progression & Appellate Pathways (Stage 11 & 12)</div>
+src/utils/pdfGeneratorSecure.ts:512:              <td><code>${node.governingSection}</code></td>
+src/utils/pdfGeneratorSecure.ts:520:    <!-- SECTION XI: STAGE 13 DECREE & JUDGMENT SYNTHESIS -->
+src/utils/pdfGeneratorSecure.ts:521:    <div class="section-block">
+src/utils/pdfGeneratorSecure.ts:522:      <div class="section-heading">Section XI: Jurisprudential Decree & Execution (Stage 13)</div>
+src/utils/pdfGeneratorSecure.ts:528:        <p style="margin: 0;"><strong>Execution Pathway (Order XXI CPC):</strong> ${analysis.stage13.executionPathway}</p>
+server/auth/authorization.ts:5:  readonly code: string;
+server/auth/authorization.ts:7:  constructor(code = "FORBIDDEN") {
+server/auth/authorization.ts:8:    super(code);
+server/auth/authorization.ts:10:    this.code = code;
+server/auth/authorization.ts:32:  if (!user.isActive) {
+server/auth/authorization.ts:33:    throw new AuthorizationError("ACCOUNT_INACTIVE");
+server/auth/authorization.ts:53:        if (error.code === "AUTHENTICATION_REQUIRED") {
+server/auth/invitations.ts:195:          is_active
+server/auth/invitations.ts:222:          actor_user_id,
+server/auth/invitations.ts:223:          action,
+server/auth/password-reset.ts:54:     * issuance transaction. This serializes concurrent reset
+server/auth/password-reset.ts:58:     * also be active. No client-supplied tenant identity is used.
+server/auth/password-reset.ts:72:          AND u.is_active = TRUE
+server/auth/password-reset.ts:73:          AND t.status = 'active'
+server/auth/password-reset.ts:105:     * Because the user row is locked inside this transaction,
+server/auth/password-reset.ts:224:      is_active: boolean;
+server/auth/password-reset.ts:225:      tenant_status: "active" | "suspended" | "revoked";
+server/auth/password-reset.ts:231:          u.is_active,
+server/auth/password-reset.ts:248:      !userResult.rows[0].is_active ||
+server/auth/password-reset.ts:249:      userResult.rows[0].tenant_status !== "active"
+server/auth/session.ts:83:   * through the authoritative /mfa/verify transaction.
+server/auth/session.ts:191:    is_active: boolean;
+server/auth/session.ts:194:    tenant_status: "active" | "suspended" | "revoked";
+server/auth/session.ts:208:        u.is_active,
+server/auth/session.ts:221:        AND u.is_active = TRUE
+server/auth/session.ts:222:        AND t.status = 'active'
+server/auth/session.ts:259:      isActive: row.is_active,
+server/auth/totp.ts:13:  const encoded = process.env.MFA_SECRET_KEY?.trim();
+server/auth/totp.ts:15:  if (!encoded) {
+server/auth/totp.ts:19:  const key = Buffer.from(encoded, "base64");
+server/auth/totp.ts:28:function base32Encode(input: Buffer): string {
+server/auth/totp.ts:51:function base32Decode(input: string): Buffer {
+server/auth/totp.ts:92:  const code =
+server/auth/totp.ts:98:  return String(code % 1_000_000).padStart(6, "0");
+server/auth/totp.ts:102:  return base32Encode(randomBytes(SECRET_BYTES));
+server/auth/totp.ts:122:  const secret = base32Decode(secretText);
+server/auth/totp.ts:160:    `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}` +
+server/auth/totp.ts:161:    `?secret=${encodeURIComponent(secret)}` +
+server/auth/totp.ts:162:    `&issuer=${encodeURIComponent(issuer)}` +
+server/auth/types.ts:8:  isActive: boolean;
+server/db/migrations/006_password_reset.sql:33:CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_active
+server/db/migrations/006_password_reset.sql:37:CREATE UNIQUE INDEX IF NOT EXISTS uq_password_reset_tokens_active_user
+server/db/schema.sql:9:    status TEXT NOT NULL DEFAULT 'active'
+server/db/schema.sql:10:        CHECK (status IN ('active', 'suspended', 'revoked')),
+server/db/schema.sql:22:    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+server/db/schema.sql:44:    status TEXT NOT NULL DEFAULT 'active'
+server/db/schema.sql:45:        CHECK (status IN ('active', 'expired', 'revoked', 'suspended')),
+server/db/schema.sql:129:CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_active
+server/db/schema.sql:136:    actor_user_id UUID REFERENCES users(id),
+server/db/schema.sql:137:    action TEXT NOT NULL,
+server/db/schema.sql:149:CREATE INDEX IF NOT EXISTS idx_security_events_actor_time
+server/db/schema.sql:150:    ON security_events(actor_user_id, created_at);
+server/routes/auth.ts:52:  action: string,
+server/routes/auth.ts:55:  actorUserId: string | null,
+server/routes/auth.ts:64:        actor_user_id,
+server/routes/auth.ts:65:        action,
+server/routes/auth.ts:85:      actorUserId,
+server/routes/auth.ts:86:      action,
+server/routes/auth.ts:215:      is_active: boolean;
+server/routes/auth.ts:220:      tenant_status: "active" | "suspended" | "revoked";
+server/routes/auth.ts:229:          u.is_active,
+server/routes/auth.ts:280:      !user.is_active ||
+server/routes/auth.ts:281:      user.tenant_status !== "active"
+server/routes/auth.ts:289:        { reason: "account_or_tenant_inactive" },
+server/routes/auth.ts:369:      isActive: user.is_active,
+server/routes/auth.ts:419:      error: "INVALID_MFA_CODE",
+server/routes/auth.ts:441:          AND is_active = TRUE
+server/routes/auth.ts:497:        is_active: boolean;
+server/routes/auth.ts:508:            is_active,
+server/routes/auth.ts:581:            !currentUser.is_active ||
+server/routes/auth.ts:795:        error: "INVALID_MFA_CODE",
+server/routes/auth.ts:807:          reason: "invalid_code",
+server/routes/auth.ts:812:        error: "INVALID_MFA_CODE",

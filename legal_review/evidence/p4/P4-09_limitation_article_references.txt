@@ -1,0 +1,25 @@
+src/components/LegalAnalysisPanel.tsx:91:The primary statutory framework governing this suit is the **${primaryAct}**, supplemented by the Specific Relief Act 1877 and the Limitation Act 1908.
+src/components/LegalAnalysisPanel.tsx:120:- **Fixed Partition Fee**: If the plaintiffs plead constructive joint possession, claim fixed court fees under Schedule II Article 17(vi).
+src/components/LegalReliabilityStandardModal.tsx:29:    { title: "Candidate Statute Identification", desc: "Suggesting candidate legislative frameworks (e.g., Specific Relief Act 1877, Limitation Act 1908)." },
+src/components/LegalReliabilityStandardModal.tsx:38:    { title: "Limitation Expiry", desc: "Must be calculated using exact arithmetic on Limitation Act 1908 Schedule I Articles & Sections 3–28." },
+src/components/LegalReliabilityStandardModal.tsx:149:                    <li>• Limitation date calculations (Limitation Act 1908)</li>
+src/components/MissingEvidenceAlert.tsx:33:      impact: "Mandatory statutory verification under the Limitation Act 1908 requires concrete dates. In court, a plaint failing to show the exact date the cause of action arose is liable to rejection under Order VII Rule 11 CPC."
+src/components/MissingEvidenceAlert.tsx:109:        impact: "This creates critical ambiguity for limitation. Recovery under Section 9 SRA must be filed within 6 months, and title-based recovery under Article 142/143 of the Limitation Act must be filed within 12 years of ouster. Without these details, the maintainability remains unverified."
+src/components/MissingEvidenceAlert.tsx:142:          impact: "To prove that succession has opened and compute the exact limitation period under Article 123/144 of the Limitation Act, the exact date of death of the ancestor must be pleaded in the Plaint. Lacking this creates room for the defense to argue limitation bars or dispute the opening of succession."
+src/components/TimelineValidation.tsx:64:              Article 123/144 statutory partition audit under the Limitation Act 1908 (Bangladesh)
+src/components/TimelineValidation.tsx:157:                  15 Jan 2026 (Article 123/144 runs)
+src/components/TimelineValidation.tsx:189:            Succession vests automatically at death. The 12-year partition limitation clock (Article 123/144) is squarely triggered by the demise of the ancestor, making the suit completely within time and fully justiciable. No pre-death parent-son disowning notice can affect or bar this vested right.
+src/components/TimelineValidation.tsx:209:            Article 54 statutory audit under the Limitation Act 1908 (Bangladesh)
+src/components/TimelineValidation.tsx:275:              ? "Extracted as the explicit refusal date. This serves as the precise statutory trigger point under Article 54." 
+src/components/TimelineValidation.tsx:372:          <span>Statutory Limitation Rule (Article 54 Analysis):</span>
+src/components/TimelineValidation.tsx:392:            Without any dates in the narrative, the limitation period is uncomputable. The court will reject your suit at the threshold under Order VII Rule 11 CPC for failing to disclose when the cause of action arose and proving it falls within the mandatory 1-year window of Article 54.
+src/components/TimelineValidation.tsx:402:            The chronology is fully backed by real, parsed dates. The resulting 1-year Article 54 calculation has high legal validity and can be directly used in Drafting the Cause of Action paragraph of the Plaint.
+src/engine/CitationValidator.ts:298:      "Limitation Act 1908",
+src/engine/CitationValidator.ts:302:      "Section 3, Limitation Act 1908",
+src/engine/CitationValidator.ts:305:    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+src/engine/CitationValidator.ts:306:    summaryOfHolding: "Court is duty-bound under Section 3 Limitation Act to dismiss a time-barred suit on its own motion.",
+src/engine/CitationValidator.ts:487:          "Enforces peremptory dismissal of time-barred suits under Article 54 and Section 3 of the Limitation Act 1908."
+src/engine/CitationValidator.ts:548:            "Mandatory statutory limitation audit under Section 3 of the Limitation Act 1908 applies to all civil suits regardless of subject matter."
+src/engine/CitationValidator.ts:564:          "Governs mandatory statutory limitation audits under Section 3 of the Limitation Act 1908."
+src/engine/FactConsistencyGate.ts:365:        description: `Multiple contradictory death dates extracted for the same ancestor: [${uniqueDeathDates.join(" vs. ")}]. Under Article 123/144 of the Limitation Act, exact date of demise determines the 12-year statutory limitation deadline.`,
+src/utils/pdfGeneratorSecure.ts:226:        <div><strong>Limitation Article:</strong> Article ${analysis.stage3.limitationArticle} (Limitation Act 1908)</div>
