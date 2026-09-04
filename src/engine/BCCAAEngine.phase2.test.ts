@@ -525,7 +525,7 @@ describe("P1-STRESS: Determinism and boundary stress", () => {
       submissionDate: "2024-01-15",
     }));
     expect(r.stage3).toBeDefined();
-    expect(r.stage3.accrualDate === "NOT_EXTRACTED" || r.stage3.accrualDate === "2020-08-20").toBe(true);
+    expect(r.stage3.accrualDate === null || r.stage3.accrualDate === "NOT_EXTRACTED" || r.stage3.accrualDate === "2020-08-20").toBe(true);
   });
 
   it("future date in fact pattern does not produce negative limitation", async () => {

@@ -162,35 +162,99 @@ function selectTemporalVersion(
   )[0];
 }
 
+function factSatisfiesPredicate(
+  fact: LimitationFact,
+  predicate: {
+    predicate: string;
+    object?: string;
+    requiredState?: LimitationFact["state"];
+  },
+): boolean {
+  if (fact.predicate !== predicate.predicate) {
+    return false;
+  }
+
+  if (
+    predicate.object !== undefined &&
+    fact.object !== predicate.object
+  ) {
+    return false;
+  }
+
+  if (
+    predicate.requiredState !== undefined &&
+    fact.state !== predicate.requiredState
+  ) {
+    return false;
+  }
+
+  /*
+   * A legal applicability predicate is not established merely because
+   * an extracted candidate exists. Verified facts are required when
+   * the predicate is used to establish a limitation rule.
+   */
+  if (fact.verified !== true) {
+    return false;
+  }
+
+  return true;
+}
+
 function getAccrualDate(
   rule: LimitationRule,
   facts: readonly LimitationFact[],
 ): string | null {
-  const predicateByTrigger: Record<LimitationRule["accrualTrigger"], string> = {
-    REFUSAL_DATE: "Refusal Date",
-    DISPOSSESSION_DATE: "Dispossession Date",
-    RIGHT_TO_SUE_DATE: "Right to Sue Date",
-    DEATH_DATE: "Vital Status",
-    DEMAND_DATE: "Demand Date",
-  };
+  /*
+   * Article 113 has two legally distinct accrual alternatives:
+   * - fixed performance date => Performance Date
+   * - no fixed performance date => Refusal Date
+   *
+   * The registry therefore remains the legal source of truth for the
+   * alternatives, while this resolver applies the selected factual branch.
+   */
+  let predicates: readonly string[];
 
-  const predicate = predicateByTrigger[rule.accrualTrigger];
+  if (rule.article === "ARTICLE_113") {
+    const fixedDateFact = facts.find(
+      (fact) =>
+        fact.predicate === "Fixed Performance Date" &&
+        fact.verified === true,
+    );
+
+    if (!fixedDateFact || fixedDateFact.object === undefined) {
+      return null;
+    }
+
+    if (fixedDateFact.object === "YES") {
+      predicates = ["Performance Date"];
+    } else if (fixedDateFact.object === "NO") {
+      predicates = ["Refusal Date"];
+    } else {
+      return null;
+    }
+  } else {
+    const predicateByTrigger: Record<
+      LimitationRule["accrualTrigger"],
+      string
+    > = {
+      FIXED_PERFORMANCE_DATE: "Performance Date",
+      REFUSAL_DATE: "Refusal Date",
+      KNOWLEDGE_DATE: "Knowledge Date",
+      DISPOSSESSION_DATE: "Dispossession Date",
+      RIGHT_TO_SUE_DATE: "Right to Sue Date",
+      DEMAND_DATE: "Demand Date",
+    };
+
+    predicates = [predicateByTrigger[rule.accrualTrigger]];
+  }
 
   const candidates = facts
-    .filter((fact) => {
-      if (fact.eventDate === undefined) {
-        return false;
-      }
-
-      if (rule.accrualTrigger === "DEATH_DATE") {
-        return (
-          fact.predicate === predicate &&
-          fact.object === "DECEASED"
-        );
-      }
-
-      return fact.predicate === predicate;
-    })
+    .filter(
+      (fact) =>
+        predicates.includes(fact.predicate) &&
+        fact.eventDate !== undefined &&
+        fact.verified === true,
+    )
     .map((fact) => fact.eventDate!)
     .filter((date) => parseISODate(date) !== null)
     .sort();
@@ -198,20 +262,78 @@ function getAccrualDate(
   return candidates[0] ?? null;
 }
 
+function predicateIsSatisfied(
+  predicate: {
+    predicate: string;
+    object?: string;
+    requiredState?: LimitationFact["state"];
+  },
+  facts: readonly LimitationFact[],
+): boolean {
+  return facts.some((fact) =>
+    factSatisfiesPredicate(fact, predicate),
+  );
+}
+
 function missingRequiredPredicates(
   rule: LimitationRule,
   facts: readonly LimitationFact[],
 ): string[] {
-  return rule.applicability.requiredPredicates.filter(
-    (requiredPredicate) =>
-      !facts.some(
-        (fact) =>
-          fact.predicate === requiredPredicate &&
-          fact.eventDate !== undefined &&
-          parseISODate(fact.eventDate) !== null,
-      ),
+  const required = rule.applicability.requiredPredicates ?? [];
+
+  return required
+    .filter(
+      (predicate) =>
+        !predicateIsSatisfied(predicate, facts),
+    )
+    .map((predicate) =>
+      predicate.object
+        ? `${predicate.predicate}=${predicate.object}`
+        : predicate.predicate,
+    );
+}
+
+function alternativePredicateGroupSatisfied(
+  group: readonly {
+    predicate: string;
+    object?: string;
+    requiredState?: LimitationFact["state"];
+  }[],
+  facts: readonly LimitationFact[],
+): boolean {
+  return group.every((predicate) =>
+    predicateIsSatisfied(predicate, facts),
   );
 }
+
+function applicabilityAlternativeGroupsMissing(
+  rule: LimitationRule,
+  facts: readonly LimitationFact[],
+): string[] {
+  const groups =
+    rule.applicability.alternativePredicateGroups ?? [];
+
+  if (groups.length === 0) {
+    return [];
+  }
+
+  /*
+   * At least one complete alternative group must be established.
+   * UNKNOWN or unverified facts cannot satisfy an alternative.
+   */
+  const satisfied = groups.some((group) =>
+    alternativePredicateGroupSatisfied(group, facts),
+  );
+
+  if (satisfied) {
+    return [];
+  }
+
+  return [
+    "No legally sufficient limitation applicability alternative established",
+  ];
+}
+
 
 /**
  * Pure limitation evaluation.
@@ -265,7 +387,16 @@ export function evaluateLimitation(
     input.facts,
   );
 
-  if (missingPredicates.length > 0) {
+  const missingAlternativeGroups =
+    applicabilityAlternativeGroupsMissing(
+      input.rule,
+      input.facts,
+    );
+
+  if (
+    missingPredicates.length > 0 ||
+    missingAlternativeGroups.length > 0
+  ) {
     return {
       ...base,
       status: "INDETERMINATE",
@@ -273,7 +404,12 @@ export function evaluateLimitation(
       accrualDate: null,
       calculationType: "missing_applicability_facts",
       errors: [
-        `Required limitation facts unavailable: ${missingPredicates.join(", ")}`,
+        ...(missingPredicates.length > 0
+          ? [
+              `Required limitation facts unavailable: ${missingPredicates.join(", ")}`,
+            ]
+          : []),
+        ...missingAlternativeGroups,
       ],
     };
   }

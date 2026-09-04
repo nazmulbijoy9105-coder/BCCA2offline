@@ -13,6 +13,12 @@ export interface EngineInput {
   factPattern: string;
   focusDomain?: string;
   submissionDate?: string;
+
+  /**
+   * Explicit legal institution/reference date for limitation computation.
+   * This MUST NOT be inferred from submissionDate or the runtime clock.
+   */
+  limitationReferenceDate?: string;
 }
 
 export enum AssertionType {
