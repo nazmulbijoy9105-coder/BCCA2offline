@@ -9,7 +9,8 @@ export type LimitationArticle =
   | "ARTICLE_116"
   | "ARTICLE_120"
   | "ARTICLE_142"
-  | "ARTICLE_144";
+  | "ARTICLE_144"
+  | "ARTICLE_149";
 
 export type LimitationAccrualTrigger =
   | "FIXED_PERFORMANCE_DATE"

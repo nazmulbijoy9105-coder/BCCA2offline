@@ -5,24 +5,11 @@ import type {
 
 /**
  * Development limitation registry.
- *
  * Legal-rule source of truth for limitation metadata.
  *
- * IMPORTANT:
- * - Claim type is candidate routing only.
- * - Applicability must be established from facts.
- * - Temporal versions are explicit.
- * - No inheritance/death rule is treated as a universal 12-year rule.
- * - Article 120 is residual and must not win over a more specific article.
- *
- * NOTE (P5-15): ARTICLE_149 (60-year Government suit) is SUSPENDED pending
- * statutory re-verification of the Bangladesh amendment landscape. It has
- * been replaced in the type union and registry by ARTICLE_144 as a
- * conservative 12-year Government-suit placeholder. Articles 114, 115, 116
- * are added as possession-family 12-year rules. All four new entries are
- * marked TODO-FORENSIC and must be re-verified against the Limitation Act
- * 1908 (Bangladesh amendment) before promotion out of the development
- * registry.
+ * P5-15.11 Forensic Gate:
+ * Array ordered by Article number. ARTICLE_149 is retained at the bottom
+ * for historical audit but explicitly marked SUSPENDED.
  */
 const LIMITATION_RULES: readonly LimitationRule[] = [
   {
@@ -38,27 +25,15 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "CANCELLATION_OR_SET_ASIDE",
-        },
-        {
-          predicate: "Instrument",
-        },
-        {
-          predicate: "Cancellation Entitlement Facts",
-        },
-        {
-          predicate: "Knowledge Date",
-        },
+        { predicate: "Relief", object: "CANCELLATION_OR_SET_ASIDE" },
+        { predicate: "Instrument" },
+        { predicate: "Cancellation Entitlement Facts" },
+        { predicate: "Knowledge Date" },
       ],
     },
     accrualTrigger: "KNOWLEDGE_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 3,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 3 },
     ],
   },
 
@@ -75,27 +50,15 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "FORGERY_DECLARATION",
-        },
-        {
-          predicate: "Instrument",
-        },
-        {
-          predicate: "Issue Or Registration Event",
-        },
-        {
-          predicate: "Knowledge Date",
-        },
+        { predicate: "Relief", object: "FORGERY_DECLARATION" },
+        { predicate: "Instrument" },
+        { predicate: "Issue Or Registration Event" },
+        { predicate: "Knowledge Date" },
       ],
     },
     accrualTrigger: "KNOWLEDGE_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 3,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 3 },
     ],
   },
 
@@ -106,53 +69,30 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     description:
       "Suit for specific performance of a contract. Current period is one year from the fixed performance date, or where no time is fixed, from notice of refusal.",
     applicability: {
-      claimTypes: [
-        "SPECIFIC_PERFORMANCE",
-      ],
+      claimTypes: ["SPECIFIC_PERFORMANCE"],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "SPECIFIC_PERFORMANCE",
-        },
-        {
-          predicate: "Contract",
-        },
+        { predicate: "Relief", object: "SPECIFIC_PERFORMANCE" },
+        { predicate: "Contract" },
       ],
       alternativePredicateGroups: [
         [
-          {
-            predicate: "Performance Date",
-          },
-          {
-            predicate: "Fixed Performance Date",
-            object: "YES",
-          },
+          { predicate: "Performance Date" },
+          { predicate: "Fixed Performance Date", object: "YES" },
         ],
         [
-          {
-            predicate: "Refusal Date",
-          },
-          {
-            predicate: "Fixed Performance Date",
-            object: "NO",
-          },
+          { predicate: "Refusal Date" },
+          { predicate: "Fixed Performance Date", object: "NO" },
         ],
       ],
     },
     accrualTrigger: "FIXED_PERFORMANCE_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        effectiveTo: "2005-06-30",
-        limitationPeriodYears: 3,
-      },
-      {
-        effectiveFrom: "2005-07-01",
-        limitationPeriodYears: 1,
-      },
+      { effectiveFrom: "1908-01-01", effectiveTo: "2005-06-30", limitationPeriodYears: 3 },
+      { effectiveFrom: "2005-07-01", limitationPeriodYears: 1 },
     ],
   },
 
+  // >>> INSERT NEW ARTICLE_114 HERE
   {
     ruleId: "BD-LIM-ARTICLE-114",
     article: "ARTICLE_114",
@@ -166,27 +106,18 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "RECOVERY_OF_POSSESSION",
-        },
-        {
-          predicate: "Plaintiff Possessory Entitlement",
-        },
-        {
-          predicate: "Dispossession Date",
-        },
+        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
+        { predicate: "Plaintiff Possessory Entitlement" },
+        { predicate: "Dispossession Date" },
       ],
     },
     accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 12,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
     ],
   },
 
+  // >>> INSERT NEW ARTICLE_115 HERE
   {
     ruleId: "BD-LIM-ARTICLE-115",
     article: "ARTICLE_115",
@@ -200,28 +131,18 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "RECOVERY_OF_POSSESSION",
-        },
-        {
-          predicate: "Plaintiff Capacity",
-          object: "REMAINDERMAN_OR_REVERSIONER",
-        },
-        {
-          predicate: "Dispossession Date",
-        },
+        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
+        { predicate: "Plaintiff Capacity", object: "REMAINDERMAN_OR_REVERSIONER" },
+        { predicate: "Dispossession Date" },
       ],
     },
     accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 12,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
     ],
   },
 
+  // >>> INSERT NEW ARTICLE_116 HERE
   {
     ruleId: "BD-LIM-ARTICLE-116",
     article: "ARTICLE_116",
@@ -234,25 +155,14 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "RECOVERY_OF_POSSESSION",
-        },
-        {
-          predicate: "Plaintiff Capacity",
-          object: "LANDLORD",
-        },
-        {
-          predicate: "Dispossession Date",
-        },
+        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
+        { predicate: "Plaintiff Capacity", object: "LANDLORD" },
+        { predicate: "Dispossession Date" },
       ],
     },
     accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 12,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
     ],
   },
 
@@ -273,18 +183,13 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "FORGERY_DECLARATION",
       ],
       requiredPredicates: [
-        {
-          predicate: "Right to Sue Date",
-        },
+        { predicate: "Right to Sue Date" },
       ],
       residualRule: true,
     },
     accrualTrigger: "RIGHT_TO_SUE_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 6,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 6 },
     ],
   },
 
@@ -300,27 +205,18 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "DECLARATION_AND_POSSESSION",
       ],
       requiredPredicates: [
-        {
-          predicate: "Relief",
-          object: "RECOVERY_OF_POSSESSION",
-        },
-        {
-          predicate: "Plaintiff Possessory Entitlement",
-        },
-        {
-          predicate: "Dispossession Date",
-        },
+        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
+        { predicate: "Plaintiff Possessory Entitlement" },
+        { predicate: "Dispossession Date" },
       ],
     },
     accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 12,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
     ],
   },
 
+  // >>> INSERT NEW ARTICLE_144 HERE
   {
     ruleId: "BD-LIM-ARTICLE-144",
     article: "ARTICLE_144",
@@ -334,25 +230,39 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        {
-          predicate: "Plaintiff Capacity",
-          object: "GOVERNMENT",
-        },
-        {
-          predicate: "Relief",
-          object: "RECOVERY_OF_POSSESSION",
-        },
-        {
-          predicate: "Dispossession Date",
-        },
+        { predicate: "Plaintiff Capacity", object: "GOVERNMENT" },
+        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
+        { predicate: "Dispossession Date" },
       ],
     },
     accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
-      {
-        effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 12,
-      },
+      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
+    ],
+  },
+
+  // existing ARTICLE_149 (SUSPENDED - retained for audit history)
+  {
+    ruleId: "BD-LIM-ARTICLE-149-SUSPENDED",
+    article: "ARTICLE_149",
+    statute: "LIMITATION_ACT_1908",
+    description:
+      "SUSPENDED P5-15.10: Suit by or on behalf of the Government: sixty years, subject to the statutory qualification applicable to the underlying cause.",
+    applicability: {
+      claimTypes: [
+        "GENERAL_CIVIL",
+        "GOVERNMENT_SUIT",
+      ],
+      requiredPredicates: [
+        { predicate: "Plaintiff Capacity", object: "GOVERNMENT" },
+        { predicate: "Right to Sue Date" },
+      ],
+      // Excluded from active candidate selection via residual/exclusion flags if needed
+      residualRule: false,
+    },
+    accrualTrigger: "RIGHT_TO_SUE_DATE",
+    temporalVersions: [
+      { effectiveFrom: "1908-01-01", effectiveTo: "2024-01-01", limitationPeriodYears: 60 },
     ],
   },
 ];
