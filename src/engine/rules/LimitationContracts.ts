@@ -1,4 +1,5 @@
 import type { Tristate } from "../../types/types";
+import type { StatuteSource } from "../citations/StatuteContracts";
 
 export type LimitationArticle =
   | "ARTICLE_91"
@@ -43,7 +44,12 @@ export type LimitationApplicability = {
 export type LimitationRule = {
   ruleId: string;
   article: LimitationArticle;
-  statute: "LIMITATION_ACT_1908";
+  /**
+   * P6-01: Linked to authoritative statute source ID.
+   * No rule may reference a statute string that is not registered 
+   * in the StatuteRegistry.
+   */
+  statute: StatuteSource["sourceId"];
   description: string;
   applicability: LimitationApplicability;
   accrualTrigger: LimitationAccrualTrigger;
