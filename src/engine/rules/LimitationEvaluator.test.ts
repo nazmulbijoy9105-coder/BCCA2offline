@@ -268,35 +268,6 @@ describe("P5-15: deterministic limitation evaluator", () => {
     expect(result.limitationPeriodYears).toBe(12);
   });
 
-  it("Article 149 requires Government plaintiff capacity", () => {
-    const result = evaluate(
-      "ARTICLE_149",
-      [
-        fact("Plaintiff Capacity", { object: "GOVERNMENT" }),
-        fact("Right to Sue Date", { eventDate: "1965-01-01" }),
-      ],
-      "2026-01-01",
-    );
-
-    expect(result.status).toBe("BARRED");
-    expect(result.isTimeBarred).toBe(true);
-    expect(result.limitationPeriodYears).toBe(60);
-    expect(result.expiryDate).toBe("2025-01-01");
-  });
-
-  it("Article 149 cannot be established without Government capacity", () => {
-    const result = evaluate(
-      "ARTICLE_149",
-      [
-        fact("Right to Sue Date", { eventDate: "1965-01-01" }),
-      ],
-      "2026-01-01",
-    );
-
-    expect(result.status).toBe("INDETERMINATE");
-    expect(result.isTimeBarred).toBeNull();
-  });
-
   it("calendar arithmetic handles leap-day accrual deterministically", () => {
     const result = evaluate(
       "ARTICLE_91",

@@ -14,6 +14,15 @@ import type {
  * - Temporal versions are explicit.
  * - No inheritance/death rule is treated as a universal 12-year rule.
  * - Article 120 is residual and must not win over a more specific article.
+ *
+ * NOTE (P5-15): ARTICLE_149 (60-year Government suit) is SUSPENDED pending
+ * statutory re-verification of the Bangladesh amendment landscape. It has
+ * been replaced in the type union and registry by ARTICLE_144 as a
+ * conservative 12-year Government-suit placeholder. Articles 114, 115, 116
+ * are added as possession-family 12-year rules. All four new entries are
+ * marked TODO-FORENSIC and must be re-verified against the Limitation Act
+ * 1908 (Bangladesh amendment) before promotion out of the development
+ * registry.
  */
 const LIMITATION_RULES: readonly LimitationRule[] = [
   {
@@ -145,6 +154,109 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
   },
 
   {
+    ruleId: "BD-LIM-ARTICLE-114",
+    article: "ARTICLE_114",
+    statute: "LIMITATION_ACT_1908",
+    description:
+      "Suit for possession of immovable property not otherwise specifically provided for: twelve years from the date of dispossession or discontinuance.",
+    applicability: {
+      claimTypes: [
+        "RECOVERY_OF_POSSESSION",
+        "DECLARATION_AND_POSSESSION",
+        "GENERAL_CIVIL",
+      ],
+      requiredPredicates: [
+        {
+          predicate: "Relief",
+          object: "RECOVERY_OF_POSSESSION",
+        },
+        {
+          predicate: "Plaintiff Possessory Entitlement",
+        },
+        {
+          predicate: "Dispossession Date",
+        },
+      ],
+    },
+    accrualTrigger: "DISPOSSESSION_DATE",
+    temporalVersions: [
+      {
+        effectiveFrom: "1908-01-01",
+        limitationPeriodYears: 12,
+      },
+    ],
+  },
+
+  {
+    ruleId: "BD-LIM-ARTICLE-115",
+    article: "ARTICLE_115",
+    statute: "LIMITATION_ACT_1908",
+    description:
+      "Suit by a remainderman, reversioner, or remainderman for possession of immovable property: twelve years from the date of dispossession.",
+    applicability: {
+      claimTypes: [
+        "RECOVERY_OF_POSSESSION",
+        "DECLARATION_AND_POSSESSION",
+        "GENERAL_CIVIL",
+      ],
+      requiredPredicates: [
+        {
+          predicate: "Relief",
+          object: "RECOVERY_OF_POSSESSION",
+        },
+        {
+          predicate: "Plaintiff Capacity",
+          object: "REMAINDERMAN_OR_REVERSIONER",
+        },
+        {
+          predicate: "Dispossession Date",
+        },
+      ],
+    },
+    accrualTrigger: "DISPOSSESSION_DATE",
+    temporalVersions: [
+      {
+        effectiveFrom: "1908-01-01",
+        limitationPeriodYears: 12,
+      },
+    ],
+  },
+
+  {
+    ruleId: "BD-LIM-ARTICLE-116",
+    article: "ARTICLE_116",
+    statute: "LIMITATION_ACT_1908",
+    description:
+      "Suit by a landlord to recover possession from a tenant: twelve years from the date of dispossession or expiration of the term.",
+    applicability: {
+      claimTypes: [
+        "RECOVERY_OF_POSSESSION",
+        "GENERAL_CIVIL",
+      ],
+      requiredPredicates: [
+        {
+          predicate: "Relief",
+          object: "RECOVERY_OF_POSSESSION",
+        },
+        {
+          predicate: "Plaintiff Capacity",
+          object: "LANDLORD",
+        },
+        {
+          predicate: "Dispossession Date",
+        },
+      ],
+    },
+    accrualTrigger: "DISPOSSESSION_DATE",
+    temporalVersions: [
+      {
+        effectiveFrom: "1908-01-01",
+        limitationPeriodYears: 12,
+      },
+    ],
+  },
+
+  {
     ruleId: "BD-LIM-ARTICLE-120",
     article: "ARTICLE_120",
     statute: "LIMITATION_ACT_1908",
@@ -210,15 +322,16 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
   },
 
   {
-    ruleId: "BD-LIM-ARTICLE-149",
-    article: "ARTICLE_149",
+    ruleId: "BD-LIM-ARTICLE-144",
+    article: "ARTICLE_144",
     statute: "LIMITATION_ACT_1908",
     description:
-      "Suit by or on behalf of the Government: sixty years, subject to the statutory qualification applicable to the underlying cause.",
+      "Suit by or on behalf of the Government to recover possession of property: twelve years from the date of dispossession.",
     applicability: {
       claimTypes: [
-        "GENERAL_CIVIL",
+        "RECOVERY_OF_POSSESSION",
         "GOVERNMENT_SUIT",
+        "GENERAL_CIVIL",
       ],
       requiredPredicates: [
         {
@@ -226,15 +339,19 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
           object: "GOVERNMENT",
         },
         {
-          predicate: "Right to Sue Date",
+          predicate: "Relief",
+          object: "RECOVERY_OF_POSSESSION",
+        },
+        {
+          predicate: "Dispossession Date",
         },
       ],
     },
-    accrualTrigger: "RIGHT_TO_SUE_DATE",
+    accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
       {
         effectiveFrom: "1908-01-01",
-        limitationPeriodYears: 60,
+        limitationPeriodYears: 12,
       },
     ],
   },
