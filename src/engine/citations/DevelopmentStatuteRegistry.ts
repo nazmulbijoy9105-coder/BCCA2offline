@@ -2,6 +2,7 @@ import type {
   StatuteRegistry,
   StatuteSource,
 } from "./StatuteContracts";
+import { LIMITATION_ACT_1908_CORPUS } from "./LimitationAct1908Corpus";
 
 /**
  * Development Statute Registry.
@@ -36,5 +37,12 @@ export class DevelopmentStatuteRegistry implements StatuteRegistry {
 
   getStatuteById(sourceId: string): StatuteSource | null {
     return STATUTE_CORPUS.find((s) => s.sourceId === sourceId) ?? null;
+  }
+
+  /**
+   * P6-01: Returns the structured legal corpus for deterministic rule mapping.
+   */
+  getLimitationAct1908Corpus() {
+    return LIMITATION_ACT_1908_CORPUS;
   }
 }
