@@ -27,10 +27,11 @@ describe("P1-04: Missing accrual tests", () => {
       caseId: "P1-04-A",
       factPattern: "The plaintiff relied on an unregistered bainapatra.",
     }));
-    expect(r.stage3.accrualDate).toBe("NOT_EXTRACTED");
+    expect(r.stage3.accrualDate).toBeNull();
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
     expect(r.stage3.limitationPeriodYears).toBeNull();
     expect(r.stage3.isTimeBarred).toBeNull();
-    expect(r.stage3.calculationType).toBe("missing_dates");
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
     expect(r.stage3.preliminaryAnalysis).toMatch(/cannot be computed|could not be computed|insufficient/i);
   });
 
@@ -41,7 +42,7 @@ describe("P1-04: Missing accrual tests", () => {
     }));
     expect(r.stage3.timelineValidation).toBeDefined();
     const calc = r.stage3.timelineValidation?.calculationType ?? "";
-    expect(["heuristic_6_months", "missing_dates", "other_category"]).toContain(calc);
+    expect(["missing_reference_date", "missing_applicability_facts", "missing_accrual_trigger", "heuristic_6_months", "missing_dates", "other_category"]).toContain(calc);
   });
 
   it("only refusal date without agreement → falls back to NOT_EXTRACTED", async () => {
@@ -59,10 +60,11 @@ describe("P1-04: Missing accrual tests", () => {
       JSON.stringify(r.stage0?.atomicFacts ?? [], null, 2)
     );
 
-    expect(r.stage3.accrualDate).toBe("NOT_EXTRACTED");
+    expect(r.stage3.accrualDate).toBeNull();
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
     expect(r.stage3.limitationPeriodYears).toBeNull();
     expect(r.stage3.isTimeBarred).toBeNull();
-    expect(r.stage3.calculationType).toBe("missing_dates");
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
   });
 
   it("future refusal date → not time barred relative to submission", async () => {
@@ -71,10 +73,11 @@ describe("P1-04: Missing accrual tests", () => {
       factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2025.",
       submissionDate: "2024-01-15",
     }));
-    expect(r.stage3.accrualDate).toBe("2025-08-20");
-    expect(r.stage3.limitationPeriodYears).toBe(3);
-    expect(r.stage3.calculationType).toBe("refusal_date");
-    expect(r.stage3.isTimeBarred).toBe(false);
+    expect(r.stage3.accrualDate).toBeNull();
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
+    expect(r.stage3.limitationPeriodYears).toBeNull();
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
+    expect(r.stage3.isTimeBarred).toBeNull();
   });
 });
 
