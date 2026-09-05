@@ -302,7 +302,7 @@ export const CANONICAL_PRECEDENT_REGISTRY: Record<string, AuthoritativePrecedent
       limitationActSection3,
       "Order VII Rule 11(d), Code of Civil Procedure 1908"
     ],
-    ratioDecidendi: `Section 3 of the ${limitationActTitle} is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+    ratioDecidendi: `Section 3 of the ${limitationActTitle} is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.`,
     summaryOfHolding: "Court is duty-bound under Section 3 Limitation Act to dismiss a time-barred suit on its own motion.",
     factualContextTag: ["limitation", "section_3", "time_barred", "mandatory_dismissal", "rejection_of_plaint"],
     bindingAuthority: "BINDING_APPELLATE_DIVISION",
