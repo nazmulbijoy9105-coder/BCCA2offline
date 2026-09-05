@@ -28,9 +28,11 @@ import { FactConsistencyGate } from "./FactConsistencyGate";
 import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
 import { assertCorpusVersion } from "./citations/CorpusVersionLock";
 
+import { assertCorpusHash } from "./citations/CorpusHasher";
 // P6-11: Enforce corpus integrity and version lock at engine startup
 assertCorpusIntegrity();
 assertCorpusVersion("1.0");
+assertCorpusHash("51799959e7c060d06239b67c4db2163341639cad4c0da7860363ea1a43d7d779"); // P6-12: Pin expected SHA-256 hash
 import {
   Tristate,
 } from "./rules/RuleContracts";
