@@ -2,6 +2,10 @@ import React from "react";
 import { AlertTriangle, ShieldAlert, Info, FileText } from "lucide-react";
 import { CaseAnalysisResponse } from "../types/types";
 
+import { getStatuteProvenance } from "../engine/citations/SourceProvenanceResolver";
+
+const limitationProvenance = getStatuteProvenance("LIMITATION_ACT_1908");
+const limitationActTitle = limitationProvenance?.title ?? "The Limitation Act, 1908";
 interface MissingEvidenceAlertProps {
   analysis: CaseAnalysisResponse;
 }
@@ -30,7 +34,7 @@ export default function MissingEvidenceAlert({ analysis }: MissingEvidenceAlertP
       type: "warning",
       title: "Accrual Date of Cause of Action Unspecified",
       description: "No specific calendar dates were detected in the dispute narrative. The engine has constructed a relative timeline based on logical fallbacks.",
-      impact: "Mandatory statutory verification under the Limitation Act 1908 requires concrete dates. In court, a plaint failing to show the exact date the cause of action arose is liable to rejection under Order VII Rule 11 CPC."
+      impact: `Mandatory statutory verification under the ${limitationActTitle} requires concrete dates. In court, a plaint failing to show the exact date the cause of action arose is liable to rejection under Order VII Rule 11 CPC.`
     });
   }
 

@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { ShieldCheck, Scale, CheckCircle2, XCircle, ArrowRight, BookOpen, AlertTriangle, Layers, Cpu, Database, Eye } from "lucide-react";
 
+import { getStatuteProvenance } from "../engine/citations/SourceProvenanceResolver";
+
+const limitationProvenance = getStatuteProvenance("LIMITATION_ACT_1908");
+const limitationActTitle = limitationProvenance?.title ?? "The Limitation Act, 1908";
 interface LegalReliabilityStandardModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,7 +30,7 @@ export default function LegalReliabilityStandardModal({ isOpen, onClose }: Legal
   const aiPermissions = [
     { title: "Fact Extraction", desc: "Extracting chronological events, dates, monetary considerations, and named parties from pleadings." },
     { title: "Semantic Classification", desc: "Clustering legal narratives into candidate procedural categories (e.g. partition, specific performance, declaration)." },
-    { title: "Candidate Statute Identification", desc: "Suggesting candidate legislative frameworks (e.g., Specific Relief Act 1877, Limitation Act 1908)." },
+    { title: "Candidate Statute Identification", desc: `Suggesting candidate legislative frameworks (e.g., Specific Relief Act 1877, ${limitationActTitle}).` },
     { title: "Candidate Precedent Retrieval", desc: "Querying canonical Supreme Court precedents index matching factual keywords." },
     { title: "Issue Suggestions", desc: "Proposing framed issues of fact and law for Order XIV CPC consideration." },
     { title: "Missing-Fact Detection", desc: "Identifying missing mutation khatians, CS/RS records, or date gaps in chain of title." },
@@ -35,7 +39,7 @@ export default function LegalReliabilityStandardModal({ isOpen, onClose }: Legal
 
   const deterministicRules = [
     { title: "Maintainability Determination", desc: "Must be computed via statutory bars (e.g., s.42 SRA proviso, s.21A SRA registration requirement, Order VII Rule 11 CPC)." },
-    { title: "Limitation Expiry", desc: "Must be calculated using exact arithmetic on Limitation Act 1908 Schedule I Articles & Sections 3–28." },
+    { title: "Limitation Expiry", desc: `Must be calculated using exact arithmetic on ${limitationActTitle} Schedule I Articles & Sections 3–28.` },
     { title: "Pecuniary & Territorial Jurisdiction", desc: "Must strictly apply Civil Courts Act 1887 limits (e.g. Assistant Judge vs. Senior Assistant vs. Joint District Judge) and Sections 15–20 CPC." },
     { title: "Legal Heir Status & Fractional Shares", desc: "Must be computed deterministically using Hanafi Sunni / Muslim Personal Law Faraizi algorithms." },
     { title: "Validity/Invalidity of Instruments", desc: "Must be tested against Registration Act 1908 s.17/49 and Evidence Act 1872 documentary rules." },
@@ -146,7 +150,7 @@ export default function LegalReliabilityStandardModal({ isOpen, onClose }: Legal
                   </div>
                   <ul className="text-xs space-y-1.5 text-rose-950 font-sans">
                     <li>• Maintainability and cause of action determinations</li>
-                    <li>• Limitation date calculations (Limitation Act 1908)</li>
+                    <li>• Limitation date calculations (${limitationActTitle})</li>
                     <li>• Pecuniary/territorial jurisdiction assignment (Civil Courts Act 1887)</li>
                     <li>• Quranic fractional inheritance shares (Faraizi tables)</li>
                     <li>• Final decree formulation without human-in-the-loop review</li>
