@@ -1,3 +1,9 @@
+import { DevelopmentStatuteRegistry } from "./citations/DevelopmentStatuteRegistry";
+
+const limitationStatuteRegistry = new DevelopmentStatuteRegistry();
+const limitationActTitle = limitationStatuteRegistry.getStatuteById("LIMITATION_ACT_1908")?.statuteTitle ?? "The Limitation Act, 1908";
+const limitationActSection3 = `Section 3, ${limitationActTitle}`;
+
 /**
  * BCCAA Legal Platform — Deterministic Citation Verification & Validation Layer
  * 
