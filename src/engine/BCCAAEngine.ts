@@ -25,6 +25,12 @@ import { AuthUser } from "../types/auth.types";
 import { generateSecureId, generateHash } from "../utils/crypto";
 import { CitationValidator } from "./CitationValidator";
 import { FactConsistencyGate } from "./FactConsistencyGate";
+import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
+import { assertCorpusVersion } from "./citations/CorpusVersionLock";
+
+// P6-11: Enforce corpus integrity and version lock at engine startup
+assertCorpusIntegrity();
+assertCorpusVersion("1.0");
 import {
   Tristate,
 } from "./rules/RuleContracts";
