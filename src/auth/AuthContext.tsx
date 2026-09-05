@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 isAuthenticated: true,
                 isLoading: false,
                 error: null,
-                licenseValid: false,
+                licenseValid: true,
                 mfaRequired: user.mfaEnabled,
                 mfaVerified: !user.mfaEnabled,
               });

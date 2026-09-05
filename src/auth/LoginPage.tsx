@@ -122,7 +122,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-
+                  <label className="block text-[10px] font-bold font-mono text-[#1E252B] uppercase tracking-widest">License Key</label>
                   <input type="text" value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)}
                     className="w-full text-[10px] font-mono p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" />
                 </div>
