@@ -2,6 +2,10 @@ import React from "react";
 import { CalendarRange, CheckCircle, AlertTriangle, ShieldAlert, Info } from "lucide-react";
 import { CaseAnalysisResponse } from "../types/types";
 
+import { getStatuteProvenance } from "../engine/citations/SourceProvenanceResolver";
+
+const limitationProvenance = getStatuteProvenance("LIMITATION_ACT_1908");
+const limitationActTitle = limitationProvenance?.title ?? "The Limitation Act, 1908";
 interface TimelineValidationProps {
   timeline: NonNullable<CaseAnalysisResponse["stage3"]["timelineValidation"]>;
   isTimeBarred: boolean | null;
@@ -61,7 +65,7 @@ export default function TimelineValidation({ timeline, isTimeBarred, accrualDate
               Succession & Partition Timeline Verification
             </h4>
             <p className="text-[10px] text-[#4A5560]">
-              Article 123/144 statutory partition audit under the Limitation Act 1908 (Bangladesh)
+              Article 123/144 statutory partition audit under the ${limitationActTitle} (Bangladesh)
             </p>
           </div>
           <div>
@@ -206,7 +210,7 @@ export default function TimelineValidation({ timeline, isTimeBarred, accrualDate
             Limitation Timeline & Date Verification
           </h4>
           <p className="text-[10px] text-[#4A5560]">
-            Article 54 statutory audit under the Limitation Act 1908 (Bangladesh)
+            Article 54 statutory audit under the ${limitationActTitle} (Bangladesh)
           </p>
         </div>
         <div>

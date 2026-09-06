@@ -1,3 +1,9 @@
+import { DevelopmentStatuteRegistry } from "./citations/DevelopmentStatuteRegistry";
+
+const limitationStatuteRegistry = new DevelopmentStatuteRegistry();
+const limitationActTitle = limitationStatuteRegistry.getStatuteById("LIMITATION_ACT_1908")?.statuteTitle ?? "The Limitation Act, 1908";
+const limitationActSection3 = `Section 3, ${limitationActTitle}`;
+
 /**
  * BCCAA Legal Platform — Deterministic Citation Verification & Validation Layer
  * 
@@ -295,14 +301,14 @@ export const CANONICAL_PRECEDENT_REGISTRY: Record<string, AuthoritativePrecedent
     page: 289,
     bench: "Appellate Division of Bangladesh",
     governingActs: [
-      "Limitation Act 1908",
+      limitationActTitle,
       "Code of Civil Procedure 1908"
     ],
     statutorySubjects: [
-      "Section 3, Limitation Act 1908",
+      limitationActSection3,
       "Order VII Rule 11(d), Code of Civil Procedure 1908"
     ],
-    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+    ratioDecidendi: `Section 3 of the ${limitationActTitle} is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.`,
     summaryOfHolding: "Court is duty-bound under Section 3 Limitation Act to dismiss a time-barred suit on its own motion.",
     factualContextTag: ["limitation", "section_3", "time_barred", "mandatory_dismissal", "rejection_of_plaint"],
     bindingAuthority: "BINDING_APPELLATE_DIVISION",
@@ -484,7 +490,7 @@ export class CitationValidator {
         ),
         this.validate(
           "42 DLR (AD) 289",
-          "Enforces peremptory dismissal of time-barred suits under Article 54 and Section 3 of the Limitation Act 1908."
+          `Enforces peremptory dismissal of time-barred suits under Article 54 and Section 3 of the ${limitationActTitle}.`
         )
       );
     } else if (category === "DECLARATION_AND_POSSESSION") {
@@ -545,7 +551,7 @@ export class CitationValidator {
           ),
           this.validate(
             "42 DLR (AD) 289",
-            "Mandatory statutory limitation audit under Section 3 of the Limitation Act 1908 applies to all civil suits regardless of subject matter."
+            `Mandatory statutory limitation audit under Section 3 of the ${limitationActTitle} applies to all civil suits regardless of subject matter.`
           ),
           this.validate(
             "43 DLR (AD) 21",
@@ -561,7 +567,7 @@ export class CitationValidator {
         ),
         this.validate(
           "42 DLR (AD) 289",
-          "Governs mandatory statutory limitation audits under Section 3 of the Limitation Act 1908."
+          `Governs mandatory statutory limitation audits under Section 3 of the ${limitationActTitle}.`
         )
       );
     }

@@ -25,6 +25,14 @@ import { AuthUser } from "../types/auth.types";
 import { generateSecureId, generateHash } from "../utils/crypto";
 import { CitationValidator } from "./CitationValidator";
 import { FactConsistencyGate } from "./FactConsistencyGate";
+import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
+import { assertCorpusVersion } from "./citations/CorpusVersionLock";
+
+import { assertCorpusHash } from "./citations/CorpusHasher";
+// P6-11: Enforce corpus integrity and version lock at engine startup
+assertCorpusIntegrity();
+assertCorpusVersion("1.0");
+assertCorpusHash("67b1acb30dd8d5754c657466b210b05474913ed96aea406bc0d758b29ece9bbd"); // P6-12: Pin expected SHA-256 hash
 import {
   Tristate,
 } from "./rules/RuleContracts";
@@ -39,6 +47,17 @@ import type {
   RuleExecutionResult,
   RuleExecutionStatus,
 } from "./rules/RuleContracts";
+import {
+  DevelopmentLimitationRegistry,
+} from "./rules/DevelopmentLimitationRegistry";
+import {
+  evaluateLimitation,
+  type LimitationEvaluationResult,
+} from "./rules/LimitationEvaluator";
+import type {
+  LimitationFact,
+  LimitationRuleRegistry,
+} from "./rules/LimitationContracts";
 
 // ============================================================================
 // MANIFEST / HARD LIMITS
@@ -1085,6 +1104,7 @@ export interface AnalyzeRequest {
 
 export class BCCAAEngine {
   private readonly ruleRegistry: RuleRegistry;
+  private readonly limitationRuleRegistry: LimitationRuleRegistry;
   private readonly auditSink: AuditSink;
   private readonly licenseValidator: LicenseValidator;
   private readonly factValidationProvider: FactValidationProvider;
@@ -1093,6 +1113,7 @@ export class BCCAAEngine {
 
   constructor(deps?: {
     ruleRegistry?: RuleRegistry;
+    limitationRuleRegistry?: LimitationRuleRegistry;
     auditSink?: AuditSink;
     licenseValidator?: LicenseValidator;
     factValidationProvider?: FactValidationProvider;
@@ -1100,6 +1121,8 @@ export class BCCAAEngine {
   }) {
     this.corpusMode = deps?.corpusMode ?? ENGINE_MANIFEST.corpusMode;
     this.ruleRegistry = (deps?.ruleRegistry ?? new DevelopmentRuleRegistry()) as RuleRegistry;
+    this.limitationRuleRegistry =
+      deps?.limitationRuleRegistry ?? new DevelopmentLimitationRegistry();
     this.auditSink = deps?.auditSink ?? new DefaultAuditSink();
     this.licenseValidator = deps?.licenseValidator ?? new DefaultLicenseValidator();
     this.factValidationProvider =
@@ -1156,10 +1179,12 @@ export class BCCAAEngine {
 
     // Normalize without mutating caller's original object (already cloned above)
     request.input.factPattern = String(request.input.factPattern ?? "").trim();
-    // Fail-closed: missing submissionDate is left unset (falsy). Downstream,
-    // ctx.referenceDate resolves to 0 when submissionDate is absent, which
-    // correctly keeps isTimeBarred at null rather than computing off the
-    // runtime clock. Do NOT reintroduce a `|| new Date()` default here.
+    // Limitation is anchored ONLY to the explicit legal reference date.
+    // submissionDate is a general request field and MUST NOT be used as a
+    // silent substitute for the limitation institution/reference date.
+    //
+    // Missing or invalid limitationReferenceDate remains unresolved and is
+    // handled fail-closed by executeLimitationRules().
     // ────────────────────────────────────────────────────────────────────
 
     try {
@@ -1201,7 +1226,14 @@ export class BCCAAEngine {
   ): Promise<CaseAnalysisResponse> {
     const { input } = request;
     const claimType = this.resolveClaimType(input.factPattern, input.focusDomain ?? "");
-    ctx.referenceDate = input.submissionDate ? new Date(input.submissionDate).getTime() : 0;
+
+    const limitationReferenceDate = input.limitationReferenceDate;
+    if (limitationReferenceDate) {
+      const parsedLimitationReferenceDate = parseNaturalDate(
+        limitationReferenceDate,
+      );
+      ctx.referenceDate = parsedLimitationReferenceDate?.ts;
+    }
 
     this.extractAtomicFacts(ctx, input.factPattern, claimType);
     await this.applyFactValidation(ctx);
@@ -1268,7 +1300,7 @@ export class BCCAAEngine {
       return response;
     }
 
-    const limitation = this.executeLimitationEngine(ctx, claimType);
+    const limitation = this.executeLimitationRules(ctx, claimType);
     const elementGate = this.executeElementCompletenessGate(ctx, claimType);
     const standi = this.executePartyStandiRules(ctx, claimType, input.factPattern);
     const pleading = this.executePleadingRules(elementGate, input.factPattern);
@@ -2130,117 +2162,169 @@ export class BCCAAEngine {
   }
 
   // =======================================================================
-  // LIMITATION ENGINE
+  // P5-15 — REGISTRY-DRIVEN LIMITATION ENGINE
   // =======================================================================
 
-  private executeLimitationEngine(ctx: ExecutionContext, claimType: ClaimType): {
+  private executeLimitationRules(
+    ctx: ExecutionContext,
+    claimType: ClaimType,
+  ): {
     isTimeBarred: boolean | null;
     accrualDate: string | null;
     limitationPeriodYears: number | null;
     calculationType: string;
-    timelineValidation: { isValid: boolean; errors: string[]; warnings: string[]; calculationType?: string }
+    limitationArticle?: string | null;
+    timelineValidation: {
+      isValid: boolean;
+      errors: string[];
+      warnings: string[];
+      calculationType?: string;
+    };
     preliminaryAnalysis?: string;
   } {
-    const facts = Array.from(ctx.factRegistry.values());
-    const dates = facts.filter((f) => f.eventDate && isStrictDate(f.eventDate)).map((f) => f.eventDate!);
-    const refusalDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Refusal Date"));
-    const dispossessionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Dispossession Date"));
-    const demandDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Demand Date"));
-    const deathDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Vital Status" && f.object === "DECEASED"));
-    const executionDate = dates.find((d) => facts.some((f) => f.eventDate === d && f.predicate === "Execution Date"));
-    let accrualDate: string | null = null;
-    let limitationPeriodYears: number | null = null;
-    let calculationType = "other_category";
+    /*
+     * P5-15 architectural rule:
+     *
+     * ClaimType is candidate routing only.
+     * Legal applicability comes from the limitation registry.
+     * The legacy hardcoded 3/12-year branches are intentionally gone.
+     */
 
-    if (claimType === "SPECIFIC_PERFORMANCE") {
-      // P1-04 FAIL-CLOSED:
-      // A refusal date alone cannot establish the legally operative
-      // accrual trigger. Execution/agreement context must independently
-      // exist and the dates must be temporally distinct.
-      //
-      // IMPORTANT:
-      // refusalDate may be a human-readable extracted value
-      // ("20 August 2025"). Never expose that representation as the
-      // authoritative accrualDate. Normalize it through the existing
-      // strict date parser before assigning it to stage3.
-      if (refusalDate && executionDate) {
-        const refusalTs = strictDateTimestamp(refusalDate);
-        const executionTs = strictDateTimestamp(executionDate);
+    const referenceDateFact = ctx.referenceDate;
 
-        if (
-          refusalTs !== null &&
-          executionTs !== null &&
-          refusalTs !== executionTs
-        ) {
-          accrualDate = toISODate(refusalDate);
-          limitationPeriodYears = 3;
-          calculationType = "refusal_date";
-        } else {
-          accrualDate = "NOT_EXTRACTED";
-          limitationPeriodYears = null;
-          calculationType = "missing_dates";
-        }
-      } else {
-        accrualDate = "NOT_EXTRACTED";
-        limitationPeriodYears = null;
-        calculationType = "missing_dates";
+    if (!referenceDateFact) {
+      return {
+        isTimeBarred: null,
+        accrualDate: null,
+        limitationPeriodYears: null,
+        limitationArticle: null,
+        calculationType: "missing_reference_date",
+        timelineValidation: {
+          isValid: false,
+          errors: ["Explicit limitation reference date is unavailable"],
+          warnings: [],
+          calculationType: "missing_reference_date",
+        },
+        preliminaryAnalysis:
+          "Limitation cannot be computed — explicit limitation reference date is unavailable",
+      };
+    }
+
+    const referenceDate = new Date(referenceDateFact);
+    if (Number.isNaN(referenceDate.getTime())) {
+      return {
+        isTimeBarred: null,
+        accrualDate: null,
+        limitationPeriodYears: null,
+        limitationArticle: null,
+        calculationType: "invalid_reference_date",
+        timelineValidation: {
+          isValid: false,
+          errors: ["Explicit limitation reference date is invalid"],
+          warnings: [],
+          calculationType: "invalid_reference_date",
+        },
+        preliminaryAnalysis:
+          "Limitation cannot be computed — explicit limitation reference date is invalid",
+      };
+    }
+
+    const referenceISO = referenceDate.toISOString().slice(0, 10);
+
+    const limitationFacts: LimitationFact[] =
+      Array.from(ctx.factRegistry.values()).map((fact) => ({
+        predicate: fact.predicate,
+        object: fact.object ?? undefined,
+        eventDate: fact.eventDate ?? undefined,
+        state: fact.truth,
+        verified: fact.validationStatus === ValidationStatus.VERIFIED,
+      }));
+
+    const candidates = this.limitationRuleRegistry
+      .getCandidateRules(claimType)
+      .slice()
+      .sort((a, b) => {
+        if (a.applicability.residualRule && !b.applicability.residualRule) return 1;
+        if (!a.applicability.residualRule && b.applicability.residualRule) return -1;
+        return 0;
+      });
+
+    if (candidates.length === 0) {
+      return {
+        isTimeBarred: null,
+        accrualDate: null,
+        limitationPeriodYears: null,
+        limitationArticle: null,
+        calculationType: "no_candidate_rule",
+        timelineValidation: {
+          isValid: false,
+          errors: ["No limitation rule candidate exists for the claim type"],
+          warnings: [],
+          calculationType: "no_candidate_rule",
+        },
+        preliminaryAnalysis:
+          "Limitation cannot be computed — no limitation rule candidate exists",
+      };
+    }
+
+    let firstIndeterminate: LimitationEvaluationResult | null = null;
+
+    for (const rule of candidates) {
+      const result = evaluateLimitation({
+        rule,
+        facts: limitationFacts,
+        referenceDate: referenceISO,
+      });
+
+      if (result.status === "BARRED" || result.status === "NOT_BARRED") {
+        return {
+          isTimeBarred: result.isTimeBarred,
+          accrualDate: result.accrualDate,
+          limitationPeriodYears: result.limitationPeriodYears,
+          limitationArticle: result.limitationArticle,
+          calculationType: result.calculationType,
+          timelineValidation: {
+            isValid: true,
+            errors: result.errors,
+            warnings: result.warnings,
+            calculationType: result.calculationType,
+          },
+          preliminaryAnalysis:
+            result.status === "BARRED"
+              ? `Limitation determined under ${result.limitationArticle}`
+              : `Limitation determined under ${result.limitationArticle}`,
+        };
+      }
+
+      /*
+       * Do not silently fall through to a residual rule when a
+       * more-specific candidate has unresolved mandatory facts.
+       */
+      if (!rule.applicability.residualRule && !firstIndeterminate) {
+        firstIndeterminate = result;
       }
     }
-    else if (claimType === "DECLARATION_AND_POSSESSION") {
-      if (dispossessionDate) {
-        accrualDate = dispossessionDate;
-        limitationPeriodYears = 12;
-        calculationType = "dispossession_date";
-      } else {
-        accrualDate = "NOT_EXTRACTED";
-        limitationPeriodYears = null;
-        calculationType = "missing_dates";
-      }
-    } else if (claimType === "INHERITANCE_CONSULTATION") {
-      if (deathDate) {
-        accrualDate = deathDate;
-        limitationPeriodYears = 12;
-        calculationType = "death_date";
-      } else {
-        accrualDate = "NOT_EXTRACTED";
-        limitationPeriodYears = null;
-        calculationType = "missing_dates";
-      }
-    } else {
-      // P1-04 FAIL-CLOSED:
-      // Unknown/general claim categories have no legally established
-      // accrual trigger in this engine. Never promote an arbitrary
-      // chronological event into an authoritative accrual date.
-      accrualDate = "NOT_EXTRACTED";
-      limitationPeriodYears = null;
-      calculationType = "missing_dates";
-    }
-    // FAIL-CLOSED: limitation must never silently become "not barred"
-    // when the accrual trigger, limitation period, or reference date is
-    // unavailable. "false" is reserved for a computable non-barred result.
-    let isTimeBarred: boolean | null = null;
 
-    if (
-      accrualDate &&
-      accrualDate !== "NOT_EXTRACTED" &&
-      limitationPeriodYears !== null &&
-      ctx.referenceDate
-    ) {
-      const accrualTs = strictDateTimestamp(accrualDate);
-      const refTs = ctx.referenceDate;
-      const periodMs = limitationPeriodYears * 365.25 * 24 * 60 * 60 * 1000;
-      isTimeBarred = refTs > accrualTs + periodMs;
-    }
+    const unresolved = firstIndeterminate ?? evaluateLimitation({
+      rule: candidates[candidates.length - 1],
+      facts: limitationFacts,
+      referenceDate: referenceISO,
+    });
+
     return {
-      isTimeBarred,
-      accrualDate,
-      limitationPeriodYears,
-      calculationType,
-      timelineValidation: { isValid: true, errors: [], warnings: [], calculationType },
+      isTimeBarred: null,
+      accrualDate: unresolved.accrualDate,
+      limitationPeriodYears: unresolved.limitationPeriodYears,
+      limitationArticle: unresolved.limitationArticle,
+      calculationType: unresolved.calculationType,
+      timelineValidation: {
+        isValid: false,
+        errors: unresolved.errors,
+        warnings: unresolved.warnings,
+        calculationType: unresolved.calculationType,
+      },
       preliminaryAnalysis:
-        isTimeBarred === null
-          ? "Limitation cannot be computed — legally sufficient accrual trigger, limitation period, or reference date is unavailable"
-          : `Limitation analysis based on ${calculationType}`,
+        "Limitation is INDETERMINATE because the applicable limitation rule or mandatory facts remain unresolved",
     };
   }
 
@@ -2610,7 +2694,7 @@ export class BCCAAEngine {
     f0Gate: FactConsistencyGateOutput,
     claimType: ClaimType,
     deps: {
-      limitation?: ReturnType<BCCAAEngine["executeLimitationEngine"]>;
+      limitation?: ReturnType<BCCAAEngine["executeLimitationRules"]>;
       standi?: ReturnType<BCCAAEngine["executePartyStandiRules"]>;
       pleading?: ReturnType<BCCAAEngine["executePleadingRules"]>;
       issues?: ReturnType<BCCAAEngine["executeIssueFramingRules"]>;
@@ -2827,7 +2911,7 @@ export class BCCAAEngine {
       caseId: string;
       domain: string;
       legislation: ReturnType<RuleRegistry["getLegislationMapping"]>;
-      limitation: ReturnType<BCCAAEngine["executeLimitationEngine"]>;
+      limitation: ReturnType<BCCAAEngine["executeLimitationRules"]>;
       standi: ReturnType<BCCAAEngine["executePartyStandiRules"]>;
       pleading: ReturnType<BCCAAEngine["executePleadingRules"]>;
       issues: ReturnType<BCCAAEngine["executeIssueFramingRules"]>;
@@ -2906,6 +2990,7 @@ export class BCCAAEngine {
       stage3: {
         isTimeBarred: deps.limitation.isTimeBarred,
         accrualDate: deps.limitation.accrualDate,
+        limitationArticle: deps.limitation.limitationArticle,
         limitationPeriodYears: deps.limitation.limitationPeriodYears,
         calculationType: deps.limitation.calculationType,
         timelineValidation: deps.limitation.timelineValidation,

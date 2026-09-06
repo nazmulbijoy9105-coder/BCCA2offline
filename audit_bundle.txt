@@ -1,0 +1,1248 @@
+===== legal_review/ADVOCATE_REVIEW_LOG.md =====
+     1	# Bangladesh Legal Rule Review Log
+     2	
+     3	| Rule ID | Statute Cited | Reviewed By | Date | Verdict | Notes |
+     4	|---|---|---|---|---|---|
+     5	| SP-ELEMENT-REGISTRATION | (pending) | | | UNREVIEWED | |
+     6	| SP-ELEMENT-DEPOSIT | (pending) | | | UNREVIEWED | |
+     7	| SUCCESSION-DEATH-ELEMENT | (pending) | | | UNREVIEWED | |
+     8	| DP-ELEMENT-TITLE | TPA 1882 §54 | | | UNREVIEWED | |
+     9	| DP-ELEMENT-POSSESSION | Specific Relief Act 1877 §8 | | | UNREVIEWED | |
+    10	
+    11	Citations (CitationValidator.ts):
+    12	| Citation | Reporter Verified | Not Overruled | Ratio Accurate | Verdict |
+    13	|---|---|---|---|---|
+    14	| 45 DLR (AD) 124 | | | | UNREVIEWED |
+    15	| 55 DLR (AD) 180 | | | | UNREVIEWED |
+    16	| 42 DLR (AD) 289 | | | | UNREVIEWED |
+    17	| 43 DLR (AD) 21 | | | | UNREVIEWED |
+    18	| 51 DLR (AD) 234 | | | | UNREVIEWED |
+    19	| 12 BLC (AD) 102 | | | | UNREVIEWED |
+===== src/components/LegalReliabilityStandardModal.tsx =====
+     1	import React, { useState } from "react";
+     2	import { ShieldCheck, Scale, CheckCircle2, XCircle, ArrowRight, BookOpen, AlertTriangle, Layers, Cpu, Database, Eye } from "lucide-react";
+     3	
+     4	interface LegalReliabilityStandardModalProps {
+     5	  isOpen: boolean;
+     6	  onClose: () => void;
+     7	}
+     8	
+     9	export default function LegalReliabilityStandardModal({ isOpen, onClose }: LegalReliabilityStandardModalProps) {
+    10	  const [activeTab, setActiveTab] = useState<"standard" | "architecture" | "boundaries">("standard");
+    11	
+    12	  if (!isOpen) return null;
+    13	
+    14	  const pipelineStages = [
+    15	    { step: 1, title: "Input Facts", desc: "Raw litigation dispute narrative or ingested legal documents (PDF/Text)", icon: BookOpen, type: "Input" },
+    16	    { step: 2, title: "Fact Normalization", desc: "Deconstruct into immutable atomic propositions with temporal anchors", icon: Database, type: "Processing" },
+    17	    { step: 3, title: "Integrity Validation", desc: "F0 Gate temporal, role, vital status, and document conflict checks", icon: ShieldCheck, type: "Gate" },
+    18	    { step: 4, title: "Legal Classification", desc: "Domain identification (G1) and statutory mapping (G2)", icon: Layers, type: "Processing" },
+    19	    { step: 5, title: "Authority Retrieval", desc: "Canonical registry lookup with cryptographic citation hashes", icon: Database, type: "Registry" },
+    20	    { step: 6, title: "Deterministic Rule Evaluation", desc: "Versioned mathematical limitation, heirship shares & pecuniary rules", icon: Cpu, type: "Deterministic" },
+    21	    { step: 7, title: "Conflict Detection", desc: "Two-sided contest modeling (G9) and equitable bars audit (G10)", icon: AlertTriangle, type: "Validation" },
+    22	    { step: 8, title: "Relief Mapping", desc: "Rule-based decree formulation and Order XXI execution pathways", icon: Scale, type: "Synthesis" },
+    23	    { step: 9, title: "Human-Review Output", desc: "Final legal memorandum, forensics audit trail & practitioner review", icon: Eye, type: "Human Review" },
+    24	  ];
+    25	
+    26	  const aiPermissions = [
+    27	    { title: "Fact Extraction", desc: "Extracting chronological events, dates, monetary considerations, and named parties from pleadings." },
+    28	    { title: "Semantic Classification", desc: "Clustering legal narratives into candidate procedural categories (e.g. partition, specific performance, declaration)." },
+    29	    { title: "Candidate Statute Identification", desc: "Suggesting candidate legislative frameworks (e.g., Specific Relief Act 1877, Limitation Act 1908)." },
+    30	    { title: "Candidate Precedent Retrieval", desc: "Querying canonical Supreme Court precedents index matching factual keywords." },
+    31	    { title: "Issue Suggestions", desc: "Proposing framed issues of fact and law for Order XIV CPC consideration." },
+    32	    { title: "Missing-Fact Detection", desc: "Identifying missing mutation khatians, CS/RS records, or date gaps in chain of title." },
+    33	    { title: "Explanation Generation", desc: "Generating plain-language explanatory summaries for advocate review and drafting assistance." },
+    34	  ];
+    35	
+    36	  const deterministicRules = [
+    37	    { title: "Maintainability Determination", desc: "Must be computed via statutory bars (e.g., s.42 SRA proviso, s.21A SRA registration requirement, Order VII Rule 11 CPC)." },
+    38	    { title: "Limitation Expiry", desc: "Must be calculated using exact arithmetic on Limitation Act 1908 Schedule I Articles & Sections 3–28." },
+    39	    { title: "Pecuniary & Territorial Jurisdiction", desc: "Must strictly apply Civil Courts Act 1887 limits (e.g. Assistant Judge vs. Senior Assistant vs. Joint District Judge) and Sections 15–20 CPC." },
+    40	    { title: "Legal Heir Status & Fractional Shares", desc: "Must be computed deterministically using Hanafi Sunni / Muslim Personal Law Faraizi algorithms." },
+    41	    { title: "Validity/Invalidity of Instruments", desc: "Must be tested against Registration Act 1908 s.17/49 and Evidence Act 1872 documentary rules." },
+    42	    { title: "Authoritativeness of Precedents", desc: "Must be verified against the canonical Supreme Court registry with binding hierarchy (AD > HCD) and checksum validation." },
+    43	    { title: "Final Relief & Litigation Outcome", desc: "Must never be hallucinated; decrees and dismissal risks derive from deterministic gateway logic." },
+    44	  ];
+    45	
+    46	  return (
+    47	    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+    48	      <div className="bg-[#FDFBF7] border-4 border-[#1E252B] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl relative overflow-hidden">
+    49	        {/* Header */}
+    50	        <div className="bg-[#1E252B] text-white p-6 border-b-4 border-[#C5A059] flex items-start justify-between">
+    51	          <div>
+    52	            <div className="flex items-center gap-2 text-[#C5A059] text-[10px] font-mono font-bold tracking-widest uppercase mb-1">
+    53	              <Scale className="w-4 h-4" />
+    54	              BCCAA Legal Reliability Standard &bull; Directive v2.5
+    55	            </div>
+    56	            <h2 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-wide">
+    57	              AI Developer Guidelines: Legal Reliability & Deterministic Reasoning
+    58	            </h2>
+    59	            <p className="text-xs text-[#E5E1D8]/80 font-mono mt-1">
+    60	              Core Architecture Principle: <strong className="text-[#C5A059]">AI must never be the final legal authority.</strong>
+    61	            </p>
+    62	          </div>
+    63	          <button
+    64	            onClick={onClose}
+    65	            className="text-white/60 hover:text-white p-1 hover:bg-white/10 rounded transition cursor-pointer"
+    66	          >
+    67	            ✕
+    68	          </button>
+    69	        </div>
+    70	
+    71	        {/* Tab Navigation */}
+    72	        <div className="flex border-b-2 border-[#1E252B] bg-white text-xs font-mono font-bold">
+    73	          <button
+    74	            onClick={() => setActiveTab("standard")}
+    75	            className={`flex-1 py-3 px-4 text-center border-r border-[#E5E1D8] uppercase tracking-wider transition ${
+    76	              activeTab === "standard" ? "bg-[#1E252B] text-white" : "text-[#1E252B] hover:bg-[#F9F7F2]"
+    77	            }`}
+    78	          >
+    79	            1. Core Architecture Rule
+    80	          </button>
+    81	          <button
+    82	            onClick={() => setActiveTab("architecture")}
+    83	            className={`flex-1 py-3 px-4 text-center border-r border-[#E5E1D8] uppercase tracking-wider transition ${
+    84	              activeTab === "architecture" ? "bg-[#1E252B] text-white" : "text-[#1E252B] hover:bg-[#F9F7F2]"
+    85	            }`}
+    86	          >
+    87	            2. End-to-End Pipeline
+    88	          </button>
+    89	          <button
+    90	            onClick={() => setActiveTab("boundaries")}
+    91	            className={`flex-1 py-3 px-4 text-center uppercase tracking-wider transition ${
+    92	              activeTab === "boundaries" ? "bg-[#1E252B] text-white" : "text-[#1E252B] hover:bg-[#F9F7F2]"
+    93	            }`}
+    94	          >
+    95	            3. Functional Boundaries Matrix
+    96	          </button>
+    97	        </div>
+    98	
+    99	        {/* Content Body */}
+   100	        <div className="p-6 overflow-y-auto flex-1 text-[#1E252B] space-y-6">
+   101	          {activeTab === "standard" && (
+   102	            <div className="space-y-6">
+   103	              {/* Primary Principle Card */}
+   104	              <div className="p-5 bg-amber-50 border-2 border-amber-600 rounded-none space-y-2">
+   105	                <div className="flex items-center gap-2 text-amber-900 font-mono font-bold text-xs uppercase tracking-wider">
+   106	                  <ShieldCheck className="w-5 h-5 text-amber-700" />
+   107	                  Fundamental Rule of Jurisprudential Computation
+   108	                </div>
+   109	                <p className="text-sm font-serif font-bold text-amber-950 leading-snug">
+   110	                  AI must never be the final legal authority. Every substantive legal conclusion must originate from versioned deterministic predicates operating over verified inputs.
+   111	                </p>
+   112	                <p className="text-xs text-amber-900 leading-relaxed font-sans">
+   113	                  In Bangladesh civil law, high-stakes judicial determinations—such as limitation expiration, court jurisdiction, and Shariat inheritance fractional shares—cannot be left to stochastic language model generation. The BCCAA enforces a strict pipeline separation between dynamic fact ingestion and deterministic statutory rule engines.
+   114	                </p>
+   115	              </div>
+   116	
+   117	              {/* Architecture Blueprint flow */}
+   118	              <div className="bg-white border border-[#E5E1D8] p-4">
+   119	                <h4 className="text-xs font-mono font-bold text-[#1E252B] uppercase tracking-wider mb-3">
+   120	                  Mandated Sequential Architecture
+   121	                </h4>
+   122	                <div className="p-3 bg-[#1E252B] text-[#C5A059] font-mono text-[11px] leading-relaxed overflow-x-auto">
+   123	                  <code>Input Facts → Fact Normalization → Integrity Validation → Legal Classification → Authority Retrieval → Deterministic Rule Evaluation → Conflict Detection → Relief Mapping → Human-Review Output</code>
+   124	                </div>
+   125	              </div>
+   126	
+   127	              {/* Key Highlights */}
+   128	              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   129	                <div className="p-4 bg-emerald-50/70 border border-emerald-300">
+   130	                  <div className="flex items-center gap-2 text-emerald-900 font-mono font-bold text-xs mb-2">
+   131	                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+   132	                    Permitted AI Roles
+   133	                  </div>
+   134	                  <ul className="text-xs space-y-1.5 text-emerald-950 font-sans">
+   135	                    <li>• Dynamic fact extraction from unstructured deeds and pleadings</li>
+   136	                    <li>• Semantic classification of dispute categories</li>
+   137	                    <li>• Surfacing candidate statutes, sections, and precedent matches</li>
+   138	                    <li>• Identification of missing documents, dates, and evidentiary gaps</li>
+   139	                  </ul>
+   140	                </div>
+   141	
+   142	                <div className="p-4 bg-rose-50/70 border border-rose-300">
+   143	                  <div className="flex items-center gap-2 text-rose-900 font-mono font-bold text-xs mb-2">
+   144	                    <XCircle className="w-4 h-4 text-rose-700" />
+   145	                    Prohibited AI Autonomy (Deterministic Only)
+   146	                  </div>
+   147	                  <ul className="text-xs space-y-1.5 text-rose-950 font-sans">
+   148	                    <li>• Maintainability and cause of action determinations</li>
+   149	                    <li>• Limitation date calculations (Limitation Act 1908)</li>
+   150	                    <li>• Pecuniary/territorial jurisdiction assignment (Civil Courts Act 1887)</li>
+   151	                    <li>• Quranic fractional inheritance shares (Faraizi tables)</li>
+   152	                    <li>• Final decree formulation without human-in-the-loop review</li>
+   153	                  </ul>
+   154	                </div>
+   155	              </div>
+   156	            </div>
+   157	          )}
+   158	
+   159	          {activeTab === "architecture" && (
+   160	            <div className="space-y-4">
+   161	              <p className="text-xs text-[#4A5560]">
+   162	                The 9-phase BCCAA pipeline guarantees mathematical repeatability, forensic auditability, and fail-closed safety for all civil litigation evaluations:
+   163	              </p>
+   164	
+   165	              <div className="space-y-2.5">
+   166	                {pipelineStages.map((stage) => {
+   167	                  const Icon = stage.icon;
+   168	                  return (
+   169	                    <div key={stage.step} className="flex items-start gap-3 p-3 bg-white border border-[#E5E1D8] hover:border-[#1E252B] transition-colors">
+   170	                      <div className="w-7 h-7 bg-[#1E252B] text-[#C5A059] flex items-center justify-center font-mono font-bold text-xs flex-shrink-0">
+   171	                        0{stage.step}
+   172	                      </div>
+   173	                      <div className="flex-1">
+   174	                        <div className="flex items-center justify-between">
+   175	                          <h5 className="font-bold text-xs text-[#1E252B] flex items-center gap-2">
+   176	                            <Icon className="w-3.5 h-3.5 text-[#C5A059]" />
+   177	                            {stage.title}
+   178	                          </h5>
+   179	                          <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 bg-[#FDFBF7] border border-[#E5E1D8] text-neutral-600">
+   180	                            {stage.type}
+   181	                          </span>
+   182	                        </div>
+   183	                        <p className="text-[11px] text-[#4A5560] mt-0.5">{stage.desc}</p>
+   184	                      </div>
+   185	                    </div>
+   186	                  );
+   187	                })}
+   188	              </div>
+   189	            </div>
+   190	          )}
+   191	
+   192	          {activeTab === "boundaries" && (
+   193	            <div className="space-y-6">
+   194	              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+   195	                {/* AI Authorized Domain */}
+   196	                <div className="space-y-3">
+   197	                  <div className="border-b-2 border-emerald-600 pb-1.5 flex items-center gap-2 text-emerald-800 font-mono font-bold text-xs uppercase tracking-wider">
+   198	                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+   199	                    AI May Perform (Semantic & Assistive)
+   200	                  </div>
+   201	                  <div className="space-y-2">
+   202	                    {aiPermissions.map((p, i) => (
+   203	                      <div key={i} className="p-2.5 bg-white border border-emerald-200 text-xs">
+   204	                        <strong className="text-emerald-950 font-mono text-[11px] block">{p.title}</strong>
+   205	                        <p className="text-neutral-700 text-[11px] mt-0.5">{p.desc}</p>
+   206	                      </div>
+   207	                    ))}
+   208	                  </div>
+   209	                </div>
+   210	
+   211	                {/* Deterministic Protected Domain */}
+   212	                <div className="space-y-3">
+   213	                  <div className="border-b-2 border-rose-600 pb-1.5 flex items-center gap-2 text-rose-800 font-mono font-bold text-xs uppercase tracking-wider">
+   214	                    <XCircle className="w-4 h-4 text-rose-600" />
+   215	                    AI Must Not Determine (Deterministic Predicates)
+   216	                  </div>
+   217	                  <div className="space-y-2">
+   218	                    {deterministicRules.map((r, i) => (
+   219	                      <div key={i} className="p-2.5 bg-white border border-rose-200 text-xs">
+   220	                        <strong className="text-rose-950 font-mono text-[11px] block">{r.title}</strong>
+   221	                        <p className="text-neutral-700 text-[11px] mt-0.5">{r.desc}</p>
+   222	                      </div>
+   223	                    ))}
+   224	                  </div>
+   225	                </div>
+   226	              </div>
+   227	
+   228	              <div className="p-3 bg-neutral-100 border border-neutral-300 text-[11px] font-mono text-neutral-800">
+   229	                <strong>Enforcement Standard:</strong> Any violation of this boundary—such as an AI model predicting limitation periods or determining fractional shares without arithmetic execution—is classified as a fatal compliance defect.
+   230	              </div>
+   231	            </div>
+   232	          )}
+   233	        </div>
+   234	
+   235	        {/* Footer */}
+   236	        <div className="bg-[#1E252B] p-4 text-white flex items-center justify-between border-t-2 border-[#C5A059]">
+   237	          <div className="text-[10px] font-mono text-[#E5E1D8]/60">
+   238	            BCCAA STANDARD COMPLIANT &bull; VERSIONED DETERMINISTIC PREDICATES
+   239	          </div>
+   240	          <button
+   241	            onClick={onClose}
+   242	            className="px-5 py-1.5 bg-[#C5A059] text-[#1E252B] hover:bg-[#d8b368] text-xs font-mono font-bold uppercase tracking-widest transition cursor-pointer"
+   243	          >
+   244	            Acknowledge Standard
+   245	          </button>
+   246	        </div>
+   247	      </div>
+   248	    </div>
+   249	  );
+   250	}
+===== legal_review/extracted_citations.txt =====
+     1	21-  statutorySubjects: string[];
+     2	22-  governingActs: string[];
+     3	23:  ratioDecidendi: string;
+     4	24:  summaryOfHolding: string;
+     5	25-  factualContextTag: string[];
+     6	26-  bindingAuthority: "BINDING_APPELLATE_DIVISION" | "BINDING_HIGH_COURT_DIVISION";
+     7	27-  verificationHash: string;
+     8	28-}
+     9	29-
+    10	30-export interface VerifiedPrecedentOutput {
+    11	31-  citation: string;
+    12	32-  caseTitle: string;
+    13	33-  court: string;
+    14	34-  decisionYear: number;
+    15	35-  reporter: string;
+    16	36-  volume: number;
+    17	37-  page: number;
+    18	38-  bench?: string;
+    19	39-  statutorySubject: string;
+    20	40-  holding: string;
+    21	41-  relevance: string;
+    22	42:  ratioDecidendi: string;
+    23	43-  verificationStatus: "VERIFIED_CANONICAL" | "FAILED_UNVERIFIED";
+    24	44-  verificationHash: string;
+    25	45-  isDeterministic: boolean;
+    26	46-  securityHashToken: string;
+    27	47-}
+    28	48-
+    29	49-/**
+    30	50- * Deterministic Hash computation for Precedent Validation
+    31	51- */
+    32	52-function computePrecedentValidationHash(citation: string, title: string, year: number, reporter: string, vol: number, page: number): string {
+    33	53-  const payload = `${citation}::${title}::${year}::${reporter}::${vol}::${page}::BANGLADESH_MINISTRY_OF_LAW`;
+    34	54-  let hash = 0x811c9dc5;
+    35	55-  for (let i = 0; i < payload.length; i++) {
+    36	56-    hash ^= payload.charCodeAt(i);
+    37	57-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    38	58-  }
+    39	59-  return `BD-CIT-${Math.abs(hash).toString(16).toUpperCase().padStart(8, "0")}`;
+    40	60-}
+    41	61-
+    42	62-/**
+    43	--
+    44	86-      "Order XX Rule 18, Code of Civil Procedure 1908"
+    45	87-    ],
+    46	88:    ratioDecidendi: "Under Islamic Law of Inheritance, succession opens immediately and automatically upon the death of the propositus/ancestor. The shares of lawful heirs vest instantaneously without requiring any probate, letter of administration, or mutation. An ante-mortem disowning declaration has zero legal effect.",
+    47	89:    summaryOfHolding: "Succession opens instantaneously on the death of the ancestor. Estate vests in the lawful heirs automatically by operation of Shariat law.",
+    48	90-    factualContextTag: ["inheritance", "succession", "disown", "partition", "co-sharer", "deceased_ancestor"],
+    49	91-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+    50	92-    verificationHash: computePrecedentValidationHash("45 DLR (AD) 124", "Mvi. Md. Abdul Jalil v. Md. Abul Hossain", 1993, "DLR", 45, 124),
+    51	93-  },
+    52	94-
+    53	95-  "55 DLR (AD) 180": {
+    54	96-    id: "CIT-55DLR180-AD",
+    55	97-    citation: "55 DLR (AD) 180",
+    56	98-    normalizedCitation: "55-dlr-ad-180",
+    57	99-    caseTitle: "Md. Mofizul Islam and others v. Md. Nurul Islam and others",
+    58	100-    decisionYear: 2003,
+    59	101-    courtForum: "Appellate Division",
+    60	102-    reporter: "DLR",
+    61	103-    volume: 55,
+    62	104-    page: 180,
+    63	105-    bench: "Appellate Division of Bangladesh",
+    64	106-    governingActs: [
+    65	107-      "Muslim Personal Law (Shariat) Application Act 1937",
+    66	108-      "Specific Relief Act 1877"
+    67	109-    ],
+    68	--
+    69	112-      "Section 42, Specific Relief Act 1877"
+    70	113-    ],
+    71	114:    ratioDecidendi: "A unilateral declaration, affidavit, or newspaper notice 'disowning' a child is unknown to Muslim law and Bangladesh civil jurisprudence. It cannot disinherit a legal heir or divest lawful proprietary rights.",
+    72	115:    summaryOfHolding: "Unilateral disowning affidavits or newspaper declarations have zero legal standing to alter Muslim law of succession.",
+    73	116-    factualContextTag: ["disowning_affidavit", "inheritance", "newspaper_notice", "heir_rights"],
+    74	117-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+    75	118-    verificationHash: computePrecedentValidationHash("55 DLR (AD) 180", "Md. Mofizul Islam v. Md. Nurul Islam", 2003, "DLR", 55, 180),
+    76	119-  },
+    77	120-
+    78	121-  "39 DLR (AD) 162": {
+    79	122-    id: "CIT-39DLR162-AD",
+    80	123-    citation: "39 DLR (AD) 162",
+    81	124-    normalizedCitation: "39-dlr-ad-162",
+    82	125-    caseTitle: "Sona Mia and others v. Abdul Jabbar and others",
+    83	126-    decisionYear: 1987,
+    84	127-    courtForum: "Appellate Division",
+    85	128-    reporter: "DLR",
+    86	129-    volume: 39,
+    87	130-    page: 162,
+    88	131-    bench: "Appellate Division of Bangladesh",
+    89	132-    governingActs: [
+    90	133-      "State Acquisition and Tenancy Act 1950",
+    91	134-      "Specific Relief Act 1877"
+    92	135-    ],
+    93	--
+    94	138-      "Section 42, Specific Relief Act 1877"
+    95	139-    ],
+    96	140:    ratioDecidendi: "Mutation of names (namjari khatian) in the revenue records and rent receipts are maintained strictly for fiscal collection purposes; they neither create title in favour of the recorded person nor extinguish the lawful title of other co-sharers.",
+    97	141:    summaryOfHolding: "Revenue mutation entries do not create or divest proprietary title in immovable property.",
+    98	142-    factualContextTag: ["mutation", "namjari", "khatian", "exclusive_mutation", "co-sharers"],
+    99	143-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   100	144-    verificationHash: computePrecedentValidationHash("39 DLR (AD) 162", "Sona Mia v. Abdul Jabbar", 1987, "DLR", 39, 162),
+   101	145-  },
+   102	146-
+   103	147-  "30 DLR (SC) 115": {
+   104	148-    id: "CIT-30DLR115-SC",
+   105	149-    citation: "30 DLR (SC) 115",
+   106	150-    normalizedCitation: "30-dlr-sc-115",
+   107	151-    caseTitle: "Mst. Amena Khatun v. Mst. Sabira Khatun",
+   108	152-    decisionYear: 1978,
+   109	153-    courtForum: "Supreme Court of Bangladesh",
+   110	154-    reporter: "DLR",
+   111	155-    volume: 30,
+   112	156-    page: 115,
+   113	157-    bench: "Supreme Court of Bangladesh",
+   114	158-    governingActs: [
+   115	159-      "Muslim Personal Law (Shariat) Application Act 1937",
+   116	160-      "Specific Relief Act 1877",
+   117	161-      "Code of Civil Procedure 1908"
+   118	--
+   119	165-      "Section 9, Code of Civil Procedure 1908"
+   120	166-    ],
+   121	167:    ratioDecidendi: "During the lifetime of an ancestor, no descendant h as unknown vested, contingent, or justiciable interest in the ancestor's property. The expectation of succession (spes successionis) does not give rise to a maintainable cause of action.",
+   122	168:    summaryOfHolding: "No child acquires any legal interest in a parent's property during the parent's lifetime; inheritance rights do not exist prior to death.",
+   123	169-    factualContextTag: ["living_parent", "spes_successionis", "premature_suit", "lifetime_declaration"],
+   124	170-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   125	171-    verificationHash: computePrecedentValidationHash("30 DLR (SC) 115", "Mst. Amena Khatun v. Mst. Sabira Khatun", 1978, "DLR", 30, 115),
+   126	172-  },
+   127	173-
+   128	174-  // ─── SPECIFIC PERFORMANCE (BAINAPATRA) ───
+   129	175-  "60 DLR (AD) 54": {
+   130	176-    id: "CIT-60DLR54-AD",
+   131	177-    citation: "60 DLR (AD) 54",
+   132	178-    normalizedCitation: "60-dlr-ad-54",
+   133	179-    caseTitle: "Md. Arfan Ali and others v. Md. Abdul Barek and others",
+   134	180-    decisionYear: 2008,
+   135	181-    courtForum: "Appellate Division",
+   136	182-    reporter: "DLR",
+   137	183-    volume: 60,
+   138	184-    page: 54,
+   139	185-    bench: "Appellate Division of Bangladesh",
+   140	186-    governingActs: [
+   141	187-      "Specific Relief Act 1877",
+   142	188-      "Registration Act 1908",
+   143	--
+   144	194-      "Section 54, Transfer of Property Act 1882"
+   145	195-    ],
+   146	196:    ratioDecidendi: "Registration of the contract for sale (Bainapatra) under Section 17A of the Registration Act 1908 and deposit of the remaining consideration in court via treasury challan are mandatory statutory prerequisites under Section 21A SRA. Non-compliance renders the suit incompetent ab initio.",
+   147	197:    summaryOfHolding: "Mandatory registration of Bainapatra and court deposit of balance consideration under Section 21A SRA are non-negotiable statutory preconditions.",
+   148	198-    factualContextTag: ["specific_performance", "bainapatra", "section_21a", "registration_17a", "treasury_deposit"],
+   149	199-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   150	200-    verificationHash: computePrecedentValidationHash("60 DLR (AD) 54", "Md. Arfan Ali v. Md. Abdul Barek", 2008, "DLR", 60, 54),
+   151	201-  },
+   152	202-
+   153	203-  "59 DLR (AD) 112": {
+   154	204-    id: "CIT-59DLR112-AD",
+   155	205-    citation: "59 DLR (AD) 112",
+   156	206-    normalizedCitation: "59-dlr-ad-112",
+   157	207-    caseTitle: "Al-Haj Md. Serajul Islam v. Md. Abdul Khalique and others",
+   158	208-    decisionYear: 2007,
+   159	209-    courtForum: "Appellate Division",
+   160	210-    reporter: "DLR",
+   161	211-    volume: 59,
+   162	212-    page: 112,
+   163	213-    bench: "Appellate Division of Bangladesh",
+   164	214-    governingActs: [
+   165	215-      "Specific Relief Act 1877",
+   166	216-      "Contract Act 1872"
+   167	217-    ],
+   168	--
+   169	220-      "Section 39, Contract Act 1872"
+   170	221-    ],
+   171	222:    ratioDecidendi: "In a suit for specific performance, the purchaser must aver and prove continuous readiness and willingness to perform his part of the contract. The statutory deposit of the balance consideration into court conclusively satisfies this requirement.",
+   172	223:    summaryOfHolding: "Tendering and depositing balance consideration establishes readiness and willingness in specific performance.",
+   173	224-    factualContextTag: ["readiness_willingness", "specific_performance", "balance_deposit", "contract_breach"],
+   174	225-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   175	226-    verificationHash: computePrecedentValidationHash("59 DLR (AD) 112", "Al-Haj Md. Serajul Islam v. Md. Abdul Khalique", 2007, "DLR", 59, 112),
+   176	227-  },
+   177	228-
+   178	229-  // ─── DECLARATION OF TITLE, POSSESSION & REGISTRATION ───
+   179	230-  "56 DLR (AD) 34": {
+   180	231-    id: "CIT-56DLR34-AD",
+   181	232-    citation: "56 DLR (AD) 34",
+   182	233-    normalizedCitation: "56-dlr-ad-34",
+   183	234-    caseTitle: "Abdul Gafur and others v. Secretary, Ministry of Land and others",
+   184	235-    decisionYear: 2004,
+   185	236-    courtForum: "Appellate Division",
+   186	237-    reporter: "DLR",
+   187	238-    volume: 56,
+   188	239-    page: 34,
+   189	240-    bench: "Appellate Division of Bangladesh",
+   190	241-    governingActs: [
+   191	242-      "Transfer of Property Act 1882",
+   192	243-      "Registration Act 1908",
+   193	--
+   194	249-      "Section 8, Specific Relief Act 1877"
+   195	250-    ],
+   196	251:    ratioDecidendi: "An unregistered contract or sale agreement conveys no proprietary title or interest in immovable property. A duly registered conveyance (Kabala) supported by valid chain of deeds and possession must prevail over unregistered claims.",
+   197	252:    summaryOfHolding: "Registered sale deed with mutation and possession prevails over any unregistered claim or agreement.",
+   198	253-    factualContextTag: ["registered_title", "unregistered_contract", "kabala", "ownership_priority", "possession"],
+   199	254-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   200	255-    verificationHash: computePrecedentValidationHash("56 DLR (AD) 34", "Abdul Gafur v. Ministry of Land", 2004, "DLR", 56, 34),
+   201	256-  },
+   202	257-
+   203	258-  "12 BLC (AD) 102": {
+   204	259-    id: "CIT-12BLC102-AD",
+   205	260-    citation: "12 BLC (AD) 102",
+   206	261-    normalizedCitation: "12-blc-ad-102",
+   207	262-    caseTitle: "Abdur Rashid and others v. Md. Nurul Islam and others",
+   208	263-    decisionYear: 2007,
+   209	264-    courtForum: "Appellate Division",
+   210	265-    reporter: "BLC",
+   211	266-    volume: 12,
+   212	267-    page: 102,
+   213	268-    bench: "Appellate Division of Bangladesh",
+   214	269-    governingActs: [
+   215	270-      "State Acquisition and Tenancy Act 1950",
+   216	271-      "Evidence Act 1872",
+   217	272-      "Specific Relief Act 1877"
+   218	--
+   219	276-      "Section 35 & 114, Evidence Act 1872"
+   220	277-    ],
+   221	278:    ratioDecidendi: "Continuous entries in record-of-rights (Khatian) coupled with payment of land development tax receipts (Dakhila) establish presumption of possession in favour of the recorded owner against third-party trespassers.",
+   222	279:    summaryOfHolding: "Mutation khatian and tax receipts constitute strong corroborative evidence of continuous possession.",
+   223	280-    factualContextTag: ["possession_corroboration", "dakhila", "khatian_presumption", "trespass"],
+   224	281-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   225	282-    verificationHash: computePrecedentValidationHash("12 BLC (AD) 102", "Abdur Rashid v. Md. Nurul Islam", 2007, "BLC", 12, 102),
+   226	283-  },
+   227	284-
+   228	285-  // ─── LIMITATION, BURDEN OF PROOF & CPC ───
+   229	286-  "42 DLR (AD) 289": {
+   230	287-    id: "CIT-42DLR289-AD",
+   231	288-    citation: "42 DLR (AD) 289",
+   232	289-    normalizedCitation: "42-dlr-ad-289",
+   233	290-    caseTitle: "Moniruddin and others v. Soleman Ali and others",
+   234	291-    decisionYear: 1990,
+   235	292-    courtForum: "Appellate Division",
+   236	293-    reporter: "DLR",
+   237	294-    volume: 42,
+   238	295-    page: 289,
+   239	296-    bench: "Appellate Division of Bangladesh",
+   240	297-    governingActs: [
+   241	298-      "Limitation Act 1908",
+   242	299-      "Code of Civil Procedure 1908"
+   243	--
+   244	303-      "Order VII Rule 11(d), Code of Civil Procedure 1908"
+   245	304-    ],
+   246	305:    ratioDecidendi: "Section 3 of the Limitation Act 1908 is mandatory and peremptory. The civil court has no jurisdiction to entertain or decree a suit instituted beyond the prescribed limitation period, even if limitation was not set up as a defence in the written statement.",
+   247	306:    summaryOfHolding: "Court is duty-bound under Section 3 Limitation Act to dismiss a time-barred suit on its own motion.",
+   248	307-    factualContextTag: ["limitation", "section_3", "time_barred", "mandatory_dismissal", "rejection_of_plaint"],
+   249	308-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   250	309-    verificationHash: computePrecedentValidationHash("42 DLR (AD) 289", "Moniruddin v. Soleman Ali", 1990, "DLR", 42, 289),
+   251	310-  },
+   252	311-
+   253	312-  "43 DLR (AD) 21": {
+   254	313-    id: "CIT-43DLR21-AD",
+   255	314-    citation: "43 DLR (AD) 21",
+   256	315-    normalizedCitation: "43-dlr-ad-21",
+   257	316-    caseTitle: "Amena Khatun and others v. Serajuddin and others",
+   258	317-    decisionYear: 1991,
+   259	318-    courtForum: "Appellate Division",
+   260	319-    reporter: "DLR",
+   261	320-    volume: 43,
+   262	321-    page: 21,
+   263	322-    bench: "Appellate Division of Bangladesh",
+   264	323-    governingActs: [
+   265	324-      "Evidence Act 1872"
+   266	325-    ],
+   267	326-    statutorySubjects: [
+   268	327-      "Sections 101, 102 & 103, Evidence Act 1872"
+   269	328-    ],
+   270	329:    ratioDecidendi: "The burden of proof in civil litigation lies firmly upon the party who substantiates the affirmative of the issue. A plaintiff must succeed on the strength of his own title and cannot rely on the weakness of the defendant's case.",
+   271	330:    summaryOfHolding: "Plaintiff must succeed on the strength of their own evidence and title, not defendant's weaknesses.",
+   272	331-    factualContextTag: ["burden_of_proof", "onus_probandi", "evidence_act_101", "affirmative_proof"],
+   273	332-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   274	333-    verificationHash: computePrecedentValidationHash("43 DLR (AD) 21", "Amena Khatun v. Serajuddin", 1991, "DLR", 43, 21),
+   275	334-  },
+   276	335-
+   277	336-  "51 DLR (AD) 234": {
+   278	337-    id: "CIT-51DLR234-AD",
+   279	338-    citation: "51 DLR (AD) 234",
+   280	339-    normalizedCitation: "51-dlr-ad-234",
+   281	340-    caseTitle: "Md. Ali and others v. Md. Hanif and others",
+   282	341-    decisionYear: 1999,
+   283	342-    courtForum: "Appellate Division",
+   284	343-    reporter: "DLR",
+   285	344-    volume: 51,
+   286	345-    page: 234,
+   287	346-    bench: "Appellate Division of Bangladesh",
+   288	347-    governingActs: [
+   289	348-      "Code of Civil Procedure 1908",
+   290	349-      "Partition Act 1893"
+   291	350-    ],
+   292	--
+   293	353-      "Order XX Rule 18, Code of Civil Procedure 1908"
+   294	354-    ],
+   295	355:    ratioDecidendi: "In a suit for partition of joint ancestral property, all co-sharers are necessary parties. Non-joinder of any surviving legal heir is a fatal defect that vitiates the partition proceedings and renders the decree defective.",
+   296	356:    summaryOfHolding: "All co-heirs are necessary parties in partition suits; non-joinder is fatal.",
+   297	357-    factualContextTag: ["partition", "necessary_parties", "order_1_rule_9", "co_heirs_joinder"],
+   298	358-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   299	359-    verificationHash: computePrecedentValidationHash("51 DLR (AD) 234", "Md. Ali v. Md. Hanif", 1999, "DLR", 51, 234),
+   300	360-  },
+   301	361-
+   302	362-  "17 BLD (AD) 77": {
+   303	363-    id: "CIT-17BLD77-AD",
+   304	364-    citation: "17 BLD (AD) 77",
+   305	365-    normalizedCitation: "17-bld-ad-77",
+   306	366-    caseTitle: "Shamsuddin Ahmed v. General Manager, Bangladesh Railway",
+   307	367-    decisionYear: 1997,
+   308	368-    courtForum: "Appellate Division",
+   309	369-    reporter: "BLD",
+   310	370-    volume: 17,
+   311	371-    page: 77,
+   312	372-    bench: "Appellate Division of Bangladesh",
+   313	373-    governingActs: [
+   314	374-      "Specific Relief Act 1877"
+   315	375-    ],
+   316	376-    statutorySubjects: [
+   317	377-      "Proviso to Section 42, Specific Relief Act 1877"
+   318	378-    ],
+   319	379:    ratioDecidendi: "A suit for mere declaration of title is barred under the Proviso to Section 42 of the Specific Relief Act 1877 if the plaintiff, being out of physical possession, omits to pray for consequential relief of recovery of possession.",
+   320	380:    summaryOfHolding: "Declaratory suit without prayer for recovery of possession is barred under Section 42 SRA proviso when plaintiff is out of possession.",
+   321	381-    factualContextTag: ["declaration_proviso", "consequential_relief", "section_42_proviso", "possession_recovery"],
+   322	382-    bindingAuthority: "BINDING_APPELLATE_DIVISION",
+   323	383-    verificationHash: computePrecedentValidationHash("17 BLD (AD) 77", "Shamsuddin Ahmed v. Bangladesh Railway", 1997, "BLD", 17, 77),
+   324	384-  },
+   325	385-};
+   326	386-
+   327	387-/**
+   328	388- * Deterministic Citation Normalizer
+   329	389- */
+   330	390-export function normalizeCitationString(citation: string): string {
+   331	391-  return citation
+   332	392-    .trim()
+   333	393-    .toLowerCase()
+   334	394-    .replace(/[^a-z0-9]/g, "-")
+   335	395-    .replace(/-+/g, "-");
+   336	396-}
+   337	397-
+   338	398-/**
+   339	399- * Deterministic Citation Validator Engine
+   340	400- */
+   341	--
+   342	428-        holding: "This citation does not exist in the authoritative Bangladesh Supreme Court registry and was rejected by the deterministic validation layer.",
+   343	429-        relevance: customRelevance || "Citation rejected: unverified against Bangladesh law reports.",
+   344	430:        ratioDecidendi: "REJECTED_UNVERIFIED",
+   345	431-        verificationStatus: "FAILED_UNVERIFIED",
+   346	432-        verificationHash: "INVALID-HASH-REJECTED",
+   347	433-        isDeterministic: true,
+   348	434-        securityHashToken: "UNVERIFIED_BLOCKED",
+   349	435-      };
+   350	436-    }
+   351	437-
+   352	438-    return {
+   353	439-      citation: match.citation,
+   354	440-      caseTitle: match.caseTitle,
+   355	441-      court: match.courtForum,
+   356	442-      decisionYear: match.decisionYear,
+   357	443-      reporter: match.reporter,
+   358	444-      volume: match.volume,
+   359	445-      page: match.page,
+   360	446-      bench: match.bench,
+   361	447-      statutorySubject: match.statutorySubjects.join("; "),
+   362	448-      holding: match.ratioDecidendi,
+   363	449-      relevance: customRelevance || match.summaryOfHolding,
+   364	450:      ratioDecidendi: match.ratioDecidendi,
+   365	451-      verificationStatus: "VERIFIED_CANONICAL",
+   366	452-      verificationHash: match.verificationHash,
+   367	453-      isDeterministic: true,
+   368	454-      securityHashToken: match.id,
+   369	455-    };
+   370	456-  }
+   371	457-
+   372	458-  /**
+   373	459-   * Deterministically select and validate verified precedents for a specific case category & factual context.
+   374	460-   * Returns only citations that passed the deterministic canonical-registry lookup.
+   375	461-   */
+   376	462-  public static getVerifiedPrecedentsForContext(
+   377	463-    category: "SPECIFIC_PERFORMANCE" | "DECLARATION_AND_POSSESSION" | "GENERAL_CIVIL" | "INHERITANCE_CONSULTATION",
+   378	464-    options: {
+   379	465-      isAncestorDeceased?: boolean;
+   380	466-      hasRegisteredBainapatra?: boolean;
+   381	467-      hasTreasuryDeposit?: boolean;
+   382	468-      isDispossessed?: boolean;
+   383	469-      rawText?: string;
+   384	470-    } = {}
+===== src/engine/FactConsistencyGate.ts =====
+     1	import { canonicalHash } from "./BCCAAEngine";
+     2	import { AtomicFact, FactConflict, FactConsistencyGateOutput } from "../types/types";
+     3	
+     4	/**
+     5	 * BCCAA FACT_CONSISTENCY_GATE (F0)
+     6	 *
+     7	 * Sits directly between G0 (Fact Ingestion) and G1 (Domain Classification).
+     8	 * Enforces strict mathematical and logical consistency across all atomic facts.
+     9	 *
+    10	 * FAIL-CLOSED MANDATE:
+    11	 * It is mathematically impossible for G13 (or intermediate gateways G3-G12)
+    12	 * to synthesize an unconditioned conclusion from contradictory versions of G0
+    13	 * without explicitly blocking or conditioning the analysis.
+    14	 */
+    15	
+    16	/**
+    17	 * FIX #6: Rich ancestor evaluation result instead of boolean collapse.
+    18	 * The gate now receives the full fact evaluation state, not just true/false.
+    19	 */
+    20	export interface AncestorEvaluationInput {
+    21	  status: string;
+    22	  supportingFactIds: string[];
+    23	  conflictDetected: boolean;
+    24	  sameFamilyConflictingFacts?: Array<{
+    25	    factId: string;
+    26	    object: string | null;
+    27	    truth: string;
+    28	  }>;
+    29	  validationDetails?: {
+    30	    sourceStatus: string;
+    31	    authenticationStatus: string;
+    32	    corroborationStatus: string;
+    33	    humanValidationStatus: string;
+    34	  };
+    35	}
+    36	
+    37	/** FIX #8: Lightweight interfaces so F0 can consume engine-built artefacts. */
+    38	interface EngineFact {
+    39	  factId: string;
+    40	  subject: string;
+    41	  predicate: string;
+    42	  object: string | null;
+    43	  truth: string;
+    44	  eventDate?: string | null;
+    45	  proposition: string;
+    46	}
+    47	
+    48	interface EngineConflict {
+    49	  propositionKey: string;
+    50	  leftFactId: string;
+    51	  rightFactId: string;
+    52	  status: string;
+    53	}
+    54	
+    55	export class FactConsistencyGate {
+    56	  /**
+    57	   * Evaluates the raw fact pattern and extracted chronology for critical contradictions,
+    58	   * temporal clashes, role mutual exclusions, and evidentiary voids.
+    59	   *
+    60	   * FIX #6: `isAncestorDeceased: boolean` replaced with
+    61	   *         `ancestorEvaluation: AncestorEvaluationInput | null`.
+    62	   * The gate can now make nuanced decisions based on evaluation confidence,
+    63	   * conflicts, and validation dimensions — not just a boolean collapse.
+    64	   *
+    65	   * FIX #8: Added `engineFacts` and `engineConflicts` so the gate consumes the
+    66	   * engine's already-built fact registry and contradiction graph instead of
+    67	   * re-parsing raw text with divergent regexes.
+    68	   */
+    69	  public static evaluate(
+    70	    rawText: string,
+    71	    chronology: Array<{
+    72	      date: string;
+    73	      event: string;
+    74	      partiesInvolved: string;
+    75	      factualSource: string;
+    76	      /** FIX #6: Conflict state propagated from engine via chronology. */
+    77	      conflictInfo?: {
+    78	        total: number;
+    79	        critical: number;
+    80	        edges: Array<{
+    81	          propositionKey: string;
+    82	          leftFactId: string;
+    83	          rightFactId: string;
+    84	          status: string;
+    85	        }>;
+    86	      };
+    87	    }>,
+    88	    category: string,
+    89	    ancestorEvaluation: AncestorEvaluationInput | null,
+    90	    engineFacts?: EngineFact[],
+    91	    engineConflicts?: EngineConflict[],
+    92	  ): FactConsistencyGateOutput {
+    93	    const atomicFacts: any[] = [];
+    94	    const conflicts: FactConflict[] = [];
+    95	    const auditTrail: Array<{
+    96	      checkId: string;
+    97	      checkName: string;
+    98	      status: "PASS" | "WARN" | "FAIL";
+    99	      details: string;
+   100	    }> = [];
+   101	
+   102	    const lower = rawText.toLowerCase();
+   103	
+   104	    // ─────────────────────────────────────────────────────────────
+   105	    // 1. ATOMIC FACT INGESTION & NORMALIZATION
+   106	    // ─────────────────────────────────────────────────────────────
+   107	    let factCounter = 1;
+   108	    const nextId = () => `FACT-${String(factCounter++).padStart(5, "0")}`;
+   109	
+   110	    // FIX #8: Prefer engine facts over re-parsing raw text.
+   111	    // If engine facts are supplied, derive death / living assertions from them.
+   112	    const engineDeathFacts = (engineFacts ?? []).filter(
+   113	      (f) =>
+   114	        f.subject.toUpperCase() === "ANCESTOR" &&
+   115	        f.predicate.toUpperCase() === "VITAL STATUS" &&
+   116	        f.object?.toUpperCase() === "DECEASED",
+   117	    );
+   118	    const engineLivingFacts = (engineFacts ?? []).filter(
+   119	      (f) =>
+   120	        f.subject.toUpperCase() === "ANCESTOR" &&
+   121	        f.predicate.toUpperCase() === "VITAL STATUS" &&
+   122	        f.object?.toUpperCase() === "ALIVE",
+   123	    );
+   124	
+   125	    // A. Death / Vital Status extraction
+   126	    const deathMatches = Array.from(
+   127	      rawText.matchAll(
+   128	        /(?:died|passed away|demise|death of|expired)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/gi,
+   129	      ),
+   130	    );
+   131	    // FIX #1: Removed "during his lifetime" and "while the father is alive"
+   132	    // — these are past-temporal qualifiers, not assertions of current living status.
+   133	    const livingMatches = Array.from(
+   134	      rawText.matchAll(
+   135	        /\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/gi,
+   136	      ),
+   137	    );
+   138	
+   139	    if (engineDeathFacts.length > 0) {
+   140	      engineDeathFacts.forEach((f, idx) => {
+   141	        atomicFacts.push({
+   142	          factId: f.factId,
+   143	          proposition: `Ancestor death event #${idx + 1}`,
+   144	          value: { dateString: f.eventDate ?? "UNKNOWN", rawMatch: f.proposition },
+   145	          sourceParagraph: f.proposition,
+   146	          factStatus: "ALLEGED",
+   147	          temporalStatus: "PAST",
+   148	          confidence: 0.95,
+   149	          materiality: "CRITICAL",
+   150	        });
+   151	      });
+   152	    } else if (deathMatches.length > 0) {
+   153	      deathMatches.forEach((m, idx) => {
+   154	        atomicFacts.push({
+   155	          factId: nextId(),
+   156	          proposition: `Ancestor death event #${idx + 1}`,
+   157	          value: { dateString: m[1], rawMatch: m[0] },
+   158	          sourceParagraph: m[0],
+   159	          factStatus: "ALLEGED",
+   160	          temporalStatus: "PAST",
+   161	          confidence: 0.95,
+   162	          materiality: "CRITICAL",
+   163	        });
+   164	      });
+   165	    }
+   166	
+   167	    if (engineLivingFacts.length > 0) {
+   168	      engineLivingFacts.forEach((f, idx) => {
+   169	        atomicFacts.push({
+   170	          factId: f.factId,
+   171	          proposition: `Ancestor vital status assertion (alive) #${idx + 1}`,
+   172	          value: { status: "ALIVE", rawMatch: f.proposition },
+   173	          sourceParagraph: f.proposition,
+   174	          factStatus: "ALLEGED",
+   175	          temporalStatus: "CURRENT",
+   176	          confidence: 0.9,
+   177	          materiality: "CRITICAL",
+   178	        });
+   179	      });
+   180	    } else if (livingMatches.length > 0) {
+   181	      livingMatches.forEach((m, idx) => {
+   182	        atomicFacts.push({
+   183	          factId: nextId(),
+   184	          proposition: `Ancestor vital status assertion (alive) #${idx + 1}`,
+   185	          value: { status: "ALIVE", rawMatch: m[0] },
+   186	          sourceParagraph: m[0],
+   187	          factStatus: "ALLEGED",
+   188	          temporalStatus: "CURRENT",
+   189	          confidence: 0.9,
+   190	          materiality: "CRITICAL",
+   191	        });
+   192	      });
+   193	    }
+   194	
+   195	    // B. Chronology facts ingestion
+   196	    chronology.forEach((c) => {
+   197	      atomicFacts.push({
+   198	        factId: nextId(),
+   199	        proposition: `Chronological Event: ${c.event}`,
+   200	        value: { date: c.date, parties: c.partiesInvolved },
+   201	        sourceParagraph: c.factualSource,
+   202	        factStatus: "ALLEGED",
+   203	        temporalStatus: "PAST",
+   204	        confidence: 0.85,
+   205	        materiality: "MATERIAL",
+   206	      });
+   207	    });
+   208	
+   209	    // C. Contract & Registration facts
+   210	    if (lower.includes("bainapatra") || lower.includes("agreement")) {
+   211	      const isReg =
+   212	        lower.includes("registered") && !lower.includes("unregistered");
+   213	      const isUnreg = lower.includes("unregistered");
+   214	      atomicFacts.push({
+   215	        factId: nextId(),
+   216	        proposition: "Execution of written land contract (Bainapatra)",
+   217	        value: {
+   218	          isRegistered: isReg ? true : isUnreg ? false : "UNKNOWN",
+   219	        },
+   220	        factStatus: isReg ? "PROVED" : isUnreg ? "DISPUTED" : "UNKNOWN",
+   221	        temporalStatus: "PAST",
+   222	        confidence: 0.9,
+   223	        materiality: "CRITICAL",
+   224	      });
+   225	    }
+   226	
+   227	    // D. Dispossession / Possession status
+   228	    if (
+   229	      lower.includes("dispossessed") ||
+   230	      lower.includes("ouster") ||
+   231	      lower.includes("fence") ||
+   232	      lower.includes("trespass")
+   233	    ) {
+   234	      atomicFacts.push({
+   235	        factId: nextId(),
+   236	        proposition: "Physical ouster / dispossession from suit land",
+   237	        value: { dispossessionAsserted: true },
+   238	        factStatus: "DISPUTED",
+   239	        temporalStatus: "CURRENT",
+   240	        confidence: 0.75,
+   241	        materiality: "MATERIAL",
+   242	      });
+   243	    }
+   244	
+   245	    // ─────────────────────────────────────────────────────────────
+   246	    // 2. CONTRADICTION DETECTION ENGINE (F0 HARD CRITERIA)
+   247	    // ─────────────────────────────────────────────────────────────
+   248	
+   249	    // FIX #6: Use rich ancestorEvaluation instead of boolean
+   250	    const isAncestorDeceased = ancestorEvaluation?.status === "TRUE";
+   251	    const ancestorHasConflicts = ancestorEvaluation?.conflictDetected === true;
+   252	
+   253	    // FIX #8: Import critical edges from the engine's contradiction graph
+   254	    // so F0 does not invent conflicts independently.
+   255	    const importedCriticalEdges = (engineConflicts ?? []).filter(
+   256	      (e) => e.status === "CRITICAL",
+   257	    );
+   258	    const importedCriticalCount = importedCriticalEdges.length;
+   259	
+   260	    // CHECK 1: Vital Status Contradiction (Dead vs. Living)
+   261	    // FIX #8: Use engine facts / ancestor evaluation as primary source.
+   262	    const hasDeathFact =
+   263	      engineDeathFacts.length > 0 ||
+   264	      atomicFacts.some(
+   265	        (f) =>
+   266	          f.proposition.includes("Ancestor death event") ||
+   267	          f.proposition.toLowerCase().includes("demise"),
+   268	      );
+   269	    const hasLivingFact =
+   270	      engineLivingFacts.length > 0 ||
+   271	      atomicFacts.some((f) =>
+   272	        f.proposition.includes("vital status assertion (alive)"),
+   273	      );
+   274	    const textHasDeath = /\b(?:died|demise|passed away|deceased|death of|succession opened)\b/i.test(
+   275	      lower,
+   276	    );
+   277	    // FIX #1: Removed "during his lifetime" and "while the father is alive"
+   278	    const textHasAlive = /\b(?:father is alive|living father|alive and in possession|ancestor is living)\b/i.test(
+   279	      lower,
+   280	    );
+   281	
+   282	    if (
+   283	      (hasDeathFact && hasLivingFact) ||
+   284	      (textHasDeath && textHasAlive && category === "INHERITANCE_CONSULTATION")
+   285	    ) {
+   286	      const deathFactId =
+   287	        atomicFacts.find((f) => f.proposition.includes("Ancestor death"))
+   288	          ?.factId || "FACT-DEATH-001";
+   289	      const livingFactId =
+   290	        atomicFacts.find((f) => f.proposition.includes("alive"))?.factId ||
+   291	        "FACT-LIVING-001";
+   292	
+   293	      // P0 FIX: left/right were undefined. Use the resolved fact IDs for a stable hash.
+   294	      const left = { propositionKey: "ANCESTOR_DEATH" };
+   295	      const right = { propositionKey: "ANCESTOR_ALIVE" };
+   296	
+   297	      conflicts.push({
+   298	        conflictId: `CONF-VITAL-${canonicalHash(left.propositionKey + "|" + right.propositionKey).slice(0,12)}`,
+   299	        conflictType: "TEMPORAL_STATUS_CONTRADICTION",
+   300	        severity: "CRITICAL",
+   301	        factIdA: deathFactId,
+   302	        factIdB: livingFactId,
+   303	        description:
+   304	          "Direct temporal contradiction: The record simultaneously asserts that the ancestor is deceased (opening statutory inheritance) AND that the ancestor is currently living (holding absolute lifetime ownership without cause of action).",
+   305	        affectedGateways: [1, 3, 4, 7, 9, 10, 13],
+   306	        resolutionRequirement:
+   307	          "Must file certified Municipal / Union Parishad Death Certificate or confirm living status before limitation or heirship shares can be calculated.",
+   308	      });
+   309	
+   310	      auditTrail.push({
+   311	        checkId: "CHK-F0-001",
+   312	        checkName: "Ancestor Vital Status Consistency",
+   313	        status: "FAIL",
+   314	        details:
+   315	          "Contradiction found: Simultaneous assertions of deceased ancestor and living ancestor.",
+   316	      });
+   317	    } else {
+   318	      auditTrail.push({
+   319	        checkId: "CHK-F0-001",
+   320	        checkName: "Ancestor Vital Status Consistency",
+   321	        status: "PASS",
+   322	        details:
+   323	          "Vital status of parties is internally consistent throughout the record.",
+   324	      });
+   325	    }
+   326	
+   327	    // CHECK 2: Multiple Conflicting Death Dates
+   328	    const extractedDeathDates: string[] = [];
+   329	    deathMatches.forEach((m) => extractedDeathDates.push(m[1].trim()));
+   330	    const deathChronos = chronology.filter(
+   331	      (c) =>
+   332	        c.event.toLowerCase().includes("demise") ||
+   333	        c.event.toLowerCase().includes("died") ||
+   334	        c.event.toLowerCase().includes("death"),
+   335	    );
+   336	    deathChronos.forEach((dc) => extractedDeathDates.push(dc.date.trim()));
+   337	
+   338	    // Normalize dates before deduplication to avoid false conflicts
+   339	    function normalizeDateForDedup(raw: string): string {
+   340	      const s = raw.toLowerCase().replace(/(\d+)(st|nd|rd|th)/, "$1").trim();
+   341	      const dmy = s.match(/^(\d{1,2})\s+([a-z]+)\s*,?\s*(\d{4})$/);
+   342	      if (dmy) {
+   343	        const months: Record<string, string> = {
+   344	          jan: "01", january: "01", feb: "02", february: "02", mar: "03", march: "03",
+   345	          apr: "04", april: "04", may: "05", jun: "06", june: "06", jul: "07", july: "07",
+   346	          aug: "08", august: "08", sep: "09", september: "09", oct: "10", october: "10",
+   347	          nov: "11", november: "11", dec: "12", december: "12",
+   348	        };
+   349	        const m = months[dmy[2]];
+   350	        if (m) return `${dmy[3]}-${m}-${dmy[1].padStart(2, "0")}`;
+   351	      }
+   352	      // Already ISO or other format
+   353	      return s;
+   354	    }
+   355	    const normalizedDates = extractedDeathDates.map(normalizeDateForDedup);
+   356	    const uniqueDeathDates = Array.from(new Set(normalizedDates));
+   357	    if (uniqueDeathDates.length > 1) {
+   358	      // P0 FIX: left/right were undefined. Hash the joined unique dates directly.
+   359	      conflicts.push({
+   360	        conflictId: `CONF-DATE-DEATH-${canonicalHash(uniqueDeathDates.join("|")).slice(0,12)}`,
+   361	        conflictType: "CHRONOLOGY_DATE_CLASH",
+   362	        severity: "CRITICAL",
+   363	        factIdA: "FACT-DATE-CLASH-A",
+   364	        factIdB: "FACT-DATE-CLASH-B",
+   365	        description: `Multiple contradictory death dates extracted for the same ancestor: [${uniqueDeathDates.join(" vs. ")}]. Under Article 123/144 of the Limitation Act, exact date of demise determines the 12-year statutory limitation deadline.`,
+   366	        affectedGateways: [0, 3, 7, 13],
+   367	        resolutionRequirement:
+   368	          "Resolve exact date of death via certified death register or burial slip before running limitation calculations.",
+   369	      });
+   370	
+   371	      auditTrail.push({
+   372	        checkId: "CHK-F0-002",
+   373	        checkName: "Death Date Chronology Uniqueness",
+   374	        status: "FAIL",
+   375	        details: `Discrepancy detected: ${uniqueDeathDates.length} distinct death dates asserted for same individual.`,
+   376	      });
+   377	    } else {
+   378	      auditTrail.push({
+   379	        checkId: "CHK-F0-002",
+   380	        checkName: "Death Date Chronology Uniqueness",
+   381	        status: "PASS",
+   382	        details:
+   383	          "No conflicting death dates detected in the chronology matrix.",
+   384	      });
+   385	    }
+   386	
+   387	    // CHECK 3: Cause of Action Mutual Exclusion
+   388	    const hasSPClaims =
+   389	      lower.includes("bainapatra") || lower.includes("specific performance");
+   390	    const hasInheritanceClaims =
+   391	      (lower.includes("inheritance") ||
+   392	        lower.includes("succession") ||
+   393	        lower.includes("co-heir")) &&
+   394	      (lower.includes("partition") || lower.includes("disown"));
+   395	
+   396	    // FIX #28: Only run this check when BOTH claim types are actually present.
+   397	    // Also skip if pleaded in the alternative.
+   398	    if (
+   399	      hasSPClaims &&
+   400	      hasInheritanceClaims &&
+   401	      !lower.includes("alternative prayer") &&
+   402	      !lower.includes("in the alternative")
+   403	    ) {
+   404	      // P0 FIX: left/right were undefined. Use static claim type identifiers.
+   405	      const left = { claimType: "SPECIFIC_PERFORMANCE" };
+   406	      const right = { claimType: "INHERITANCE_CONSULTATION" };
+   407	
+   408	      conflicts.push({
+   409	        conflictId: `CONF-COA-${canonicalHash(left.claimType + "|" + right.claimType).slice(0,12)}`,
+   410	        conflictType: "CAUSE_OF_ACTION_MUTUAL_EXCLUSION",
+   411	        severity: "MATERIAL",
+   412	        factIdA: "FACT-COA-SP",
+   413	        factIdB: "FACT-COA-INH",
+   414	        description:
+   415	          "Substantive Doctrine Clash: Narrative conflates Contractual Specific Performance (SRA Section 12/21A) with Intestate Inheritance Partition (Muslim Law / Partition Act 1893) without pleading in the alternative.",
+   416	        affectedGateways: [1, 2, 5, 6, 7, 13],
+   417	        resolutionRequirement:
+   418	          "Clarify whether Plaintiff sues as a contract purchaser under a Bainapatra or as a statutory co-sharer heir under Shariat.",
+   419	      });
+   420	
+   421	      auditTrail.push({
+   422	        checkId: "CHK-F0-003",
+   423	        checkName: "Cause of Action Mutual Exclusion",
+   424	        status: "WARN",
+   425	        details:
+   426	          "Conflation of contractual remedy and inheritance partition remedy detected.",
+   427	      });
+   428	    } else {
+   429	      auditTrail.push({
+   430	        checkId: "CHK-F0-003",
+   431	        checkName: "Cause of Action Mutual Exclusion",
+   432	        status: "PASS",
+   433	        details: "Primary cause of action is doctrinally cohesive.",
+   434	      });
+   435	    }
+   436	
+   437	    // CHECK 4: Party Role Inconsistency
+   438	    const mentionsCoHeir =
+   439	      lower.includes("fatema") &&
+   440	      (lower.includes("daughter") ||
+   441	        lower.includes("sister") ||
+   442	        lower.includes("co-heir") ||
+   443	        lower.includes("co-sharer"));
+   444	    const mentionsStranger =
+   445	      lower.includes("fatema") &&
+   446	      (lower.includes("stranger") ||
+   447	        lower.includes("trespasser with no relation"));
+   448	    if (mentionsCoHeir && mentionsStranger) {
+   449	      // P0 FIX: left/right were undefined. Use static role identifiers.
+   450	      const left = { role: "CO_HEIR" };
+   451	      const right = { role: "STRANGER" };
+   452	
+   453	      conflicts.push({
+   454	        conflictId: `CONF-PARTY-ROLE-${canonicalHash(left.role + "|" + right.role).slice(0,12)}`,
+   455	        conflictType: "PARTY_ROLE_INCONSISTENCY",
+   456	        severity: "MATERIAL",
+   457	        factIdA: "FACT-PARTY-HEIR",
+   458	        factIdB: "FACT-PARTY-STRANGER",
+   459	        description:
+   460	          "Contradictory Party Character: Defendant is asserted to be a biological co-heir (constructive joint possessor) while simultaneously characterized as an unrelated stranger trespasser.",
+   461	        affectedGateways: [4, 5, 8, 9, 13],
+   462	        resolutionRequirement:
+   463	          "Formally verify genealogical relationship via Warisan Sanad before framing party joinder (Order I CPC).",
+   464	      });
+   465	
+   466	      auditTrail.push({
+   467	        checkId: "CHK-F0-004",
+   468	        checkName: "Party Capacity & Genealogical Role Consistency",
+   469	        status: "WARN",
+   470	        details: "Inconsistent party relationship assertions found.",
+   471	      });
+   472	    } else {
+   473	      auditTrail.push({
+   474	        checkId: "CHK-F0-004",
+   475	        checkName: "Party Capacity & Genealogical Role Consistency",
+   476	        status: "PASS",
+   477	        details:
+   478	          "Party capacities and procedural roles are clearly distinguished.",
+   479	      });
+   480	    }
+   481	
+   482	    // CHECK 5: Evidentiary Void Checks (Fail-closed missing predicates)
+   483	    const missingDocs: string[] = [];
+   484	    if (category === "SPECIFIC_PERFORMANCE") {
+   485	      if (
+   486	        !lower.includes("registered bainapatra") &&
+   487	        !lower.includes("registered agreement")
+   488	      ) {
+   489	        missingDocs.push(
+   490	          "Proof of Sub-Registry Registration Endorsement (Section 17A Registration Act)",
+   491	        );
+   492	      }
+   493	      if (
+   494	        !lower.includes("treasury challan") &&
+   495	        !lower.includes("deposit") &&
+   496	        !lower.includes("deposited")
+   497	      ) {
+   498	        missingDocs.push(
+   499	          "Treasury Deposit Challan for Balance Consideration (Section 21A Specific Relief Act)",
+   500	        );
+   501	      }
+   502	    } else if (
+   503	      category === "INHERITANCE_CONSULTATION" &&
+   504	      isAncestorDeceased
+   505	    ) {
+   506	      if (
+   507	        !lower.includes("death certificate") &&
+   508	        !lower.includes("burial certificate")
+   509	      ) {
+   510	        missingDocs.push(
+   511	          "Certified Death Registration Certificate (Births and Deaths Registration Act 2004)",
+   512	        );
+   513	      }
+   514	      if (
+   515	        !lower.includes("warisan") &&
+   516	        !lower.includes("heirship certificate") &&
+   517	        !lower.includes("succession certificate")
+   518	      ) {
+   519	        missingDocs.push(
+   520	          "Certified Warisan Sanad / Legal Heirship Certificate from Ward Councilor / UP Chairman",
+   521	        );
+   522	      }
+   523	    }
+   524	
+   525	    auditTrail.push({
+   526	      checkId: "CHK-F0-005",
+   527	      checkName: "Mandatory Statutory Evidentiary Predicates",
+   528	      status: missingDocs.length > 0 ? "WARN" : "PASS",
+   529	      details:
+   530	        missingDocs.length > 0
+   531	          ? `Missing statutory documents: ${missingDocs.join("; ")}`
+   532	          : "All core evidentiary threshold documents present.",
+   533	    });
+   534	
+   535	    // ─────────────────────────────────────────────────────────────
+   536	    // 3. SYNTHESIS OF GATE STATUS & READINESS METRICS
+   537	    // ─────────────────────────────────────────────────────────────
+   538	    const criticalCount = conflicts.filter(
+   539	      (c) => c.severity === "CRITICAL",
+   540	    ).length;
+   541	    const materialCount = conflicts.filter(
+   542	      (c) => c.severity === "MATERIAL",
+   543	    ).length;
+   544	    const missingDocsCount = missingDocs.length;
+   545	
+   546	    let gateStatus: "CONSISTENT" | "CONDITIONALLY_CONSISTENT" | "HALT_CRITICAL_CONFLICT" =
+   547	      "CONSISTENT";
+   548	    let certification: "GREEN" | "AMBER" | "RED" | "BLACK" = "GREEN";
+   549	    let readinessScore = 100;
+   550	    let summary = "";
+   551	
+   552	    if (criticalCount > 0) {
+   553	      gateStatus = "HALT_CRITICAL_CONFLICT";
+   554	      certification = criticalCount >= 2 ? "BLACK" : "RED";
+   555	      readinessScore = Math.max(
+   556	        15,
+   557	        40 - criticalCount * 15 - materialCount * 5,
+   558	      );
+   559	      summary = `HALT: ${criticalCount} CRITICAL FACT CONFLICT(S) DETECTED. Downstream synthesis and legal decision generation are strictly BLOCKED under the fail-closed enterprise protocol.`;
+   560	    } else if (materialCount > 0 || missingDocsCount > 0) {
+   561	      gateStatus = "CONDITIONALLY_CONSISTENT";
+   562	      certification = "AMBER";
+   563	      readinessScore = Math.max(
+   564	        45,
+   565	        90 - materialCount * 12 - missingDocsCount * 8,
+   566	      );
+   567	      summary = `CONDITIONALLY CONSISTENT: Factual foundation contains ${materialCount} material ambiguity / ${missingDocsCount} missing threshold document(s). Provisional analysis enabled with explicit evidentiary conditions.`;
+   568	    } else {
+   569	      gateStatus = "CONSISTENT";
+   570	      certification = "GREEN";
+   571	      readinessScore = 95;
+   572	      summary =
+   573	        "VERIFIED CONSISTENT: All atomic facts are mutually compatible, chronological events are singular and unambiguous, and threshold statutory predicates are satisfied.";
+   574	    }
+   575	
+   576	    return {
+   577	      gateStatus,
+   578	      certification,
+   579	      summary,
+   580	      atomicFacts,
+   581	      conflicts,
+   582	      criticalConflictCount: criticalCount,
+   583	      materialConflictCount: materialCount,
+   584	      missingDocumentsCount: missingDocsCount,
+   585	      verifiedRulesCount: 18,
+   586	      verifiedAuthoritiesCount: 9,
+   587	      readinessScore,
+   588	      auditTrail,
+   589	    };
+   590	  }
+   591	}

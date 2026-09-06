@@ -60,8 +60,9 @@ describe("P3-02: No Date.now() in legal reasoning", () => {
       factPattern: "Bainapatra executed on 15 July 2020. Refusal dated 20 August 2020.",
       submissionDate: "2024-01-15",
     }));
-    expect(r.stage3.accrualDate).toBe("2020-08-20");
-    expect(r.stage3.isTimeBarred).toBe(true);
+    expect(r.stage3.accrualDate).toBeNull();
+    expect(r.stage3.calculationType).toBe("missing_reference_date");
+    expect(r.stage3.isTimeBarred).toBeNull();
     // Re-run with same input to prove wall-clock independence
     const r2 = await engine.analyze(makeRequest({
       caseId: "P3-02-B",

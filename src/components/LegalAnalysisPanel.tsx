@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { getStatuteProvenance } from "../engine/citations/SourceProvenanceResolver";
+
+const limitationProvenance = getStatuteProvenance("LIMITATION_ACT_1908");
+const limitationActTitle = limitationProvenance?.title ?? "The Limitation Act, 1908";
 import {
   Loader2,
   Scale,
@@ -88,7 +92,7 @@ ${chronologyLines}
 The factual pattern is legally **SUFFICIENT** to initiate a civil action. There is a clear cause of action arising from the dispute over ownership rights.
 
 ## DETAILED LEGAL ANALYSIS (ACTS & APPLICABILITY)
-The primary statutory framework governing this suit is the **${primaryAct}**, supplemented by the Specific Relief Act 1877 and the Limitation Act 1908.
+The primary statutory framework governing this suit is the **${primaryAct}**, supplemented by the Specific Relief Act 1877 and the ${limitationActTitle}.
 
 ${customNarrative}
 
