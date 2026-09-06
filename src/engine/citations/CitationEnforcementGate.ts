@@ -2,14 +2,14 @@ import { getArticleMetadata } from "./LimitationArticleMapper";
 import { isArticleAmended, getArticleAmendmentNote } from "./AmendmentTracker";
 import { getArticleEffectiveDate } from "./EffectiveDateResolver";
 import { getStatuteProvenance, ProvenanceRecord } from "./SourceProvenanceResolver";
-import { assertArticleNotObsolete } from "./ObsoleteLawProtector";
+import { isArticleObsolete, getObsoleteReason } from "./ObsoleteLawProtector";
 
 /**
  * P6-08: Citation Enforcement Gate.
  * 
  * Single source of truth for validating and compiling a legal citation.
- * Any engine module requesting article metadata must pass through this gate.
- * Fails closed if the article is obsolete or not found in the authoritative corpus.
+ * Fails closed (returns null) if the article is obsolete or not found,
+ * allowing the engine to gracefully degrade to INDETERMINATE.
  */
 
 export type ValidatedCitation = {
@@ -24,11 +24,15 @@ export type ValidatedCitation = {
 };
 
 export function enforceAndGetValidatedCitation(articleNumber: string | number): ValidatedCitation | null {
-  // 1. Hard fail-closed if the article is obsolete/repealed
-  assertArticleNotObsolete(articleNumber);
+  // 1. Fail closed if the article is obsolete/repealed
+  if (isArticleObsolete(articleNumber)) {
+    const reason = getObsoleteReason(articleNumber);
+    console.error(`Citation Gate: Attempted to apply obsolete Article ${articleNumber}. Reason: ${reason}`);
+    return null; 
+  }
   
   const meta = getArticleMetadata(articleNumber);
-  
+
   // 2. Fail closed if the article doesn't exist in the corpus
   if (!meta) {
     return null;
@@ -43,7 +47,6 @@ export function enforceAndGetValidatedCitation(articleNumber: string | number): 
     isAmended: isArticleAmended(articleNumber),
     amendmentNote: getArticleAmendmentNote(articleNumber),
     effectiveDate: getArticleEffectiveDate(articleNumber),
-    // Hardcoded to LIMITATION_ACT_1908 as it's the only corpus currently mapped
     provenance: getStatuteProvenance("LIMITATION_ACT_1908"), 
   };
 }
