@@ -117,7 +117,7 @@ export default function LoginPage() {
                   <label className="block text-[10px] font-bold font-mono text-[#1E252B] uppercase tracking-widest">Security Password</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Key className="h-4 w-4" /></div>
-                    <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
+                    <input type="password" autoComplete="current-password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
                       className="w-full text-xs font-mono pl-10 pr-3 py-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="••••••••••••" />
                   </div>
                 </div>
