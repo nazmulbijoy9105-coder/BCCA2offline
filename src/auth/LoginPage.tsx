@@ -102,11 +102,11 @@ export default function LoginPage() {
             <div className="space-y-5">
               <div className="border-b border-[#E5E1D8] pb-3">
                 <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-[#1E252B]">Local Cryptographic Authentication</h3>
-                <p className="text-[11px] text-[#4A5560] mt-1">Log in using your registered <strong className="text-[#1E252B]">Gmail/Email</strong> or <strong className="text-[#1E252B]">Bangladesh Mobile Number (+880)</strong>.</p>
+                <p className="text-[11px] text-slate-400 mt-2">Log in using your registered <strong className="text-[#1E252B]">Gmail/Email</strong> or <strong className="text-[#1E252B]">Bangladesh Mobile Number (+880)</strong>.</p>
               </div>
               <form className="space-y-4" onSubmit={handleLoginSubmit}>
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-bold font-mono text-[#1E252B] uppercase tracking-widest">Authorized Gmail / Email or Mobile (+880)</label>
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Authorized Gmail / Email or Mobile (+880)</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Mail className="h-4 w-4" /></div>
                     <input type="text" required value={loginIdentifier} onChange={(e) => setLoginIdentifier(e.target.value)}
@@ -114,7 +114,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-bold font-mono text-[#1E252B] uppercase tracking-widest">Security Password</label>
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Security Password</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Key className="h-4 w-4" /></div>
                     <input type="password" autoComplete="current-password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
@@ -122,7 +122,7 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-bold font-mono text-[#1E252B] uppercase tracking-widest">License Key</label>
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">License Key</label>
                   <input type="text" value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)}
                     className="w-full text-[10px] font-mono p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" />
                 </div>
@@ -137,7 +137,7 @@ export default function LoginPage() {
             <div className="space-y-5">
               <div className="border-b border-[#E5E1D8] pb-3">
                 <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-[#1E252B]">General Account Registration (Bangladesh)</h3>
-                <p className="text-[11px] text-[#4A5560] mt-1">Create a standard user account using your Bangladesh mobile number (+880) or Gmail / Email. Administrative accounts are provisioned separately by authorized administrators.</p>
+                <p className="text-[11px] text-slate-400 mt-2">Create a standard user account using your Bangladesh mobile number (+880) or Gmail / Email. Administrative accounts are provisioned separately by authorized administrators.</p>
               </div>
               <div className="space-y-1.5 font-mono">
                 <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">1. Choose Registration Method</label>
@@ -159,7 +159,7 @@ export default function LoginPage() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><User className="h-4 w-4" /></div>
                       <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-                        className="w-full text-xs pl-10 pr-3 py-2 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="Advocate Tanvir Rahman" />
+                        className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Advocate Tanvir Rahman" />
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -167,7 +167,7 @@ export default function LoginPage() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Building className="h-4 w-4" /></div>
                       <input type="text" value={chamberName} onChange={(e) => setChamberName(e.target.value)}
-                        className="w-full text-xs pl-10 pr-3 py-2 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="Dhaka High Court Annex Chamber" />
+                        className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Dhaka High Court Annex Chamber" />
                     </div>
                   </div>
                   {signupMethod === "phone" ? (
@@ -178,7 +178,7 @@ export default function LoginPage() {
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Phone className="h-4 w-4" /></div>
                         <input type="tel" required value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
-                          className="w-full text-xs pl-10 pr-3 py-2 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="+880 1712-345678" />
+                          className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="+880 1712-345678" />
                       </div>
                     </div>
                   ) : (
@@ -187,7 +187,7 @@ export default function LoginPage() {
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Mail className="h-4 w-4" /></div>
                         <input type="email" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
-                          className="w-full text-xs pl-10 pr-3 py-2 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="advocate.rahman@gmail.com" />
+                          className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="advocate.rahman@gmail.com" />
                       </div>
                     </div>
                   )}
@@ -196,7 +196,7 @@ export default function LoginPage() {
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Key className="h-4 w-4" /></div>
                       <input type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}
-                        className="w-full text-xs pl-10 pr-3 py-2 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="••••••••••••" />
+                        className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="••••••••••••" />
                     </div>
                   </div>
                   <button type="submit" disabled={isSubmitting || state.isLoading}
