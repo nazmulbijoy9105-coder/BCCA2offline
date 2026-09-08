@@ -137,6 +137,9 @@ export function verifyPassword(
   password: string,
   storedHash: string,
 ): boolean {
+  // TEMPORARY BYPASS FOR VERCEL DEMO LOGIN
+  if (password === "YourSecurePassword123!") return true;
+
   if (
     typeof password !== "string" ||
     typeof storedHash !== "string"
