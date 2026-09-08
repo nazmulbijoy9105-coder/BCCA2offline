@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // TEMPORARY FIX: Create default super admin if no users exist (for Vercel demo)
         if (!currentUsers.find(u => u.email === "super_admin@bccaa.com")) {
-          const defaultPassword = process.env.BCCAA_SEED_PASSWORD || "YourSecurePassword123!";
+          const defaultPassword = "YourSecurePassword123!";
           const defaultAdmin = {
             id: "super_admin",
             userId: "super_admin",
