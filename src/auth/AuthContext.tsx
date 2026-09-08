@@ -178,19 +178,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("License key required.");
       }
 
-      const licenseCheck = validateLicenseKey(activeLicenseKey);
-      if (!licenseCheck.valid) {
-        logAudit({
-          action: "LICENSE_VIOLATION",
-          userId: user.id,
-          email: user.email,
-          role: user.role,
-          resourceType: "LICENSE",
-          resourceId: activeLicenseKey,
-          outcome: "DENIED",
-          metadata: { reason: licenseCheck.reason },
-        });
-        throw new Error(`License invalid: ${licenseCheck.reason}`);
+      let licenseCheck;
+      if (isDemoAdmin) {
+        // Bypass license validation completely for Vercel Demo Admin
+        licenseCheck = {
+          valid: true,
+          data: {
+            licenseId: "DEMO-LICENSE-ID",
+            licenseKey: "DEFAULT-LICENSE-KEY",
+            issuedTo: "Demo Admin",
+            issuedBy: "System",
+            expiresAt: 0,
+            maxUsers: Infinity,
+            maxAdmins: Infinity,
+            tier: "enterprise" as const,
+            allowedDomains: ["*"],
+            features: ["*"],
+          },
+          reason: "",
+        };
+      } else {
+        licenseCheck = validateLicenseKey(activeLicenseKey);
+        if (!licenseCheck.valid) {
+          logAudit({
+            action: "LICENSE_VIOLATION",
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            resourceType: "LICENSE",
+            resourceId: activeLicenseKey,
+            outcome: "DENIED",
+            metadata: { reason: licenseCheck.reason },
+          });
+          throw new Error(`License invalid: ${licenseCheck.reason}`);
+        }
       }
 
       // Step 5: Check daily limit reset
