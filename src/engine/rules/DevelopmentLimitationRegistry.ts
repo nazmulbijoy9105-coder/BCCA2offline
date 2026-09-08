@@ -181,6 +181,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "CANCELLATION",
         "SET_ASIDE",
         "FORGERY_DECLARATION",
+        "INHERITANCE_CONSULTATION",
       ],
       requiredPredicates: [
         { predicate: "Right to Sue Date" },
