@@ -983,6 +983,20 @@ export default function StageExplorer({ analysis }: StageExplorerProps) {
                     </ul>
                   </div>
                   )}
+                  <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-amber-50 border border-amber-200 rounded">
+                    <strong className="text-amber-900 uppercase tracking-wider font-mono text-[9px] block mb-2">Deterministic Legal Conclusions</strong>
+                    <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-900">
+                      {analysis.stage13.legalConclusions?.map((con, i) => <li key={i}>{con}</li>)}
+                    </ul>
+                  </div>
+                  {analysis.stage13.recommendations && analysis.stage13.recommendations.length > 0 && (
+                  <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <strong className="text-blue-900 uppercase tracking-wider font-mono text-[9px] block mb-2">Filing Requirements & Recommendations</strong>
+                    <ul className="list-disc pl-5 space-y-1 text-[11px] text-blue-900">
+                      {analysis.stage13.recommendations?.map((rec, i) => <li key={i}>{rec}</li>)}
+                    </ul>
+                  </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] pt-1">
                     <div className="p-2.5 bg-neutral-50 border border-neutral-200 rounded">
                       <strong className="text-[#1E252B] uppercase tracking-wider font-mono text-[9px] block mb-0.5">Costs Apportionment (s.35)</strong>

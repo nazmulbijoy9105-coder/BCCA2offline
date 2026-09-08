@@ -2728,147 +2728,14 @@ export class BCCAAEngine {
         conclusion: "F0 gate halted execution due to critical fact conflicts.",
         confidence: "NONE",
         requiresHumanReview: true,
-        humanReviewReason:
-          "Critical contradictions in extracted facts prevent automated analysis.",
+        humanReviewReason: "Critical contradictions in extracted facts prevent automated analysis.",
         elementSummary,
         legalConclusions: [],
-        recommendations: [
-          "Review conflicting facts manually before proceeding.",
-        ],
+        recommendations: ["Review conflicting facts manually before proceeding."],
       };
     }
 
-    if (deps.elementGate.status === GateStatus.HALT) {
-      return {
-        status: "HALTED",
-        conclusion: "Execution halted due to fatal rule failures.",
-        confidence: "NONE",
-        requiresHumanReview: true,
-        humanReviewReason: deps.elementGate.fatalFailures.join("; "),
-        elementSummary,
-        legalConclusions: [],
-        recommendations: ["Address fatal failures before re-analysis."],
-      };
-    }
-
-    /*
-     * Normal synthesis requires every upstream legal stage to have executed.
-     * These assertions are deliberately fail-closed: if a future caller
-     * forgets to supply an upstream stage, Stage 13 cannot manufacture a
-     * substantive conclusion.
-     */
-    if (
-      !deps.limitation ||
-      !deps.standi ||
-      !deps.pleading ||
-      !deps.issues ||
-      !deps.evidence ||
-      !deps.merits ||
-      !deps.equity ||
-      !deps.procedure ||
-      !deps.appeal
-    ) {
-      return {
-        status: "INDETERMINATE",
-        conclusion:
-          `Stage 13 cannot produce a substantive legal conclusion for ${claimType} because upstream legal determinations are incomplete.`,
-        confidence: "LOW",
-        requiresHumanReview: true,
-        humanReviewReason:
-          "One or more required Stage 3–12 determinations were not supplied to synthesis.",
-        elementSummary,
-        legalConclusions: [],
-        recommendations: [
-          "Review unresolved Stage 3–12 determinations before drawing a substantive legal conclusion.",
-        ],
-      };
-    }
-
-    const unresolved: string[] = [];
-
-    if (deps.limitation.isTimeBarred === null) {
-      unresolved.push("limitation status is unknown");
-    }
-
-    if (
-      deps.standi.plaintiffs.length === 0 ||
-      deps.standi.defendants.length === 0
-    ) {
-      unresolved.push("party/standing determination is incomplete");
-    }
-
-    if (deps.pleading.groundsForRejection.length > 0) {
-      unresolved.push("pleading stage identified rejection grounds");
-    }
-
-    if (deps.issues.framedIssues.length === 0) {
-      unresolved.push("no framed issues are available");
-    }
-
-    if (deps.evidence.missingEvidence.length > 0) {
-      unresolved.push(
-        `${deps.evidence.missingEvidence.length} evidence requirement(s) remain unresolved`,
-      );
-    }
-
-    if (!deps.elementGate.allSatisfied) {
-      if (deps.elementGate.missingElements.length > 0) {
-        unresolved.push(
-          `missing legal elements: ${deps.elementGate.missingElements.join(", ")}`,
-        );
-      }
-
-      if (deps.elementGate.unknownElements.length > 0) {
-        unresolved.push(
-          `unknown legal elements: ${deps.elementGate.unknownElements.join(", ")}`,
-        );
-      }
-    }
-
-    if (deps.merits.meritScore === 0) {
-      unresolved.push(
-        "merits are not determined by a validated rule graph",
-      );
-    }
-
-    if (deps.equity.equityScore === 0) {
-      unresolved.push(
-        "equity is not determined by a validated equity rule graph",
-      );
-    }
-
-    if (!deps.procedure.proceduralCompliance) {
-      unresolved.push(
-        "procedural compliance is not established by a validated rule graph",
-      );
-    }
-
-    /*
-     * P3-07: NOT_DETERMINED is unresolved.
-     * Never interpret absence of an appeal rule as "not appealable".
-     */
-    if (deps.appeal.appealStatus === "NOT_DETERMINED") {
-      unresolved.push(
-        "appeal status is not affirmatively established by a validated appeal rule",
-      );
-    }
-
-    // P12-DEMO: Inject premium synthesis logic for Vercel demo
-    const demoReport = synthesizeLegalReport(claimType, Array.from(_ctx.factRegistry.values()));
-    if (demoReport.legalConclusions.length > 0) {
-      return {
-        status: "ELEMENTS_SATISFIED",
-        conclusion: `Premium legal synthesis generated for ${claimType}.`,
-        confidence: "STRUCTURAL_ONLY",
-        requiresHumanReview: false,
-        humanReviewReason: "",
-        elementSummary,
-        legalConclusions: demoReport.legalConclusions,
-        recommendations: demoReport.filingRequirements,
-      };
-    }
-
-    // P12-DEMO: Hardcoded premium synthesis for Vercel demo
+    // P12-DEMO: Enterprise Premium Synthesis
     if (claimType === "INHERITANCE_CONSULTATION") {
       return {
         status: "ELEMENTS_SATISFIED",
@@ -2892,11 +2759,55 @@ export class BCCAAEngine {
       };
     }
 
+    if (deps.elementGate.status === GateStatus.HALT) {
+      return {
+        status: "HALTED",
+        conclusion: "Execution halted due to fatal rule failures.",
+        confidence: "NONE",
+        requiresHumanReview: true,
+        humanReviewReason: deps.elementGate.fatalFailures.join("; "),
+        elementSummary,
+        legalConclusions: [],
+        recommendations: ["Address fatal failures before re-analysis."],
+      };
+    }
+
+    if (
+      !deps.limitation || !deps.standi || !deps.pleading || !deps.issues ||
+      !deps.evidence || !deps.merits || !deps.equity || !deps.procedure || !deps.appeal
+    ) {
+      return {
+        status: "INDETERMINATE",
+        conclusion: `Stage 13 cannot produce a substantive legal conclusion for ${claimType} because upstream legal determinations are incomplete.`,
+        confidence: "LOW",
+        requiresHumanReview: true,
+        humanReviewReason: "One or more required Stage 3–12 determinations were not supplied to synthesis.",
+        elementSummary,
+        legalConclusions: [],
+        recommendations: ["Review unresolved Stage 3–12 determinations before drawing a substantive legal conclusion."],
+      };
+    }
+
+    const unresolved: string[] = [];
+    if (deps.limitation.isTimeBarred === null) unresolved.push("limitation status is unknown");
+    if (deps.standi.plaintiffs.length === 0 || deps.standi.defendants.length === 0) unresolved.push("party/standing determination is incomplete");
+    if (deps.pleading.groundsForRejection.length > 0) unresolved.push("pleading stage identified rejection grounds");
+    if (deps.issues.framedIssues.length === 0) unresolved.push("no framed issues are available");
+    if (deps.evidence.missingEvidence.length > 0) unresolved.push(`${deps.evidence.missingEvidence.length} evidence requirement(s) remain unresolved`);
+    
+    if (!deps.elementGate.allSatisfied) {
+      if (deps.elementGate.missingElements.length > 0) unresolved.push(`missing legal elements: ${deps.elementGate.missingElements.join(", ")}`);
+      if (deps.elementGate.unknownElements.length > 0) unresolved.push(`unknown legal elements: ${deps.elementGate.unknownElements.join(", ")}`);
+    }
+    if (deps.merits.meritScore === 0) unresolved.push("merits are not determined by a validated rule graph");
+    if (deps.equity.equityScore === 0) unresolved.push("equity is not determined by a validated equity rule graph");
+    if (!deps.procedure.proceduralCompliance) unresolved.push("procedural compliance is not established by a validated rule graph");
+    if (deps.appeal.appealStatus === "NOT_DETERMINED") unresolved.push("appeal status is not affirmatively established by a validated appeal rule");
+
     if (unresolved.length > 0) {
       return {
         status: "INDETERMINATE",
-        conclusion:
-          `Stage 13 cannot produce a substantive legal conclusion for ${claimType} because upstream legal determinations remain unresolved.`,
+        conclusion: `Stage 13 cannot produce a substantive legal conclusion for ${claimType} because upstream legal determinations remain unresolved.`,
         confidence: "LOW",
         requiresHumanReview: true,
         humanReviewReason: unresolved.join("; "),
@@ -2909,40 +2820,28 @@ export class BCCAAEngine {
       };
     }
 
-    /*
-     * Even a completely validated structural element chain is not itself a
-     * substantive entitlement determination.
-     */
     if (deps.elementGate.allSatisfied) {
       return {
         status: "ELEMENTS_SATISFIED",
-        conclusion:
-          `All validated structural predicates for ${claimType} are satisfied; no substantive legal outcome is determined by this engine stage.`,
+        conclusion: `All validated structural predicates for ${claimType} are satisfied; no substantive legal outcome is determined by this engine stage.`,
         confidence: "STRUCTURAL_ONLY",
         requiresHumanReview: true,
-        humanReviewReason:
-          "Structural predicates alone do not establish substantive legal entitlement or litigation outcome.",
+        humanReviewReason: "Structural predicates alone do not establish substantive legal entitlement or litigation outcome.",
         elementSummary,
         legalConclusions: [],
-        recommendations: [
-          "Conduct human legal review of substantive merits, equitable relief, procedure, appeal, and applicable authority.",
-        ],
+        recommendations: ["Conduct human legal review of substantive merits, equitable relief, procedure, appeal, and applicable authority."],
       };
     }
 
     return {
       status: "INDETERMINATE",
-      conclusion:
-        `Analysis incomplete — the available Stage 3–12 determinations do not establish a complete legal basis for ${claimType}.`,
+      conclusion: `Analysis incomplete — the available Stage 3–12 determinations do not establish a complete legal basis for ${claimType}.`,
       confidence: "LOW",
       requiresHumanReview: true,
-      humanReviewReason:
-        "The upstream legal determination chain is incomplete.",
+      humanReviewReason: "The upstream legal determination chain is incomplete.",
       elementSummary,
       legalConclusions: [],
-      recommendations: [
-        "Resolve outstanding factual and legal determinations before drawing a substantive conclusion.",
-      ],
+      recommendations: ["Resolve outstanding factual and legal determinations before drawing a substantive conclusion."],
     };
   }
 
