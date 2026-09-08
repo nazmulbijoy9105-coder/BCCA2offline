@@ -1,217 +1,161 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "./AuthContext";
-import { Scale, ShieldAlert, Key, Mail, Sparkles, Phone, User, Building, CheckCircle, Smartphone } from "lucide-react";
 
 export default function LoginPage() {
-  const { login, registerUser, state } = useAuth();
-  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
+  const [isLogin, setIsLogin] = useState(true);
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [licenseKey, setLicenseKey] = useState("");
-  const [signupMethod, setSignupMethod] = useState<"email" | "phone">("phone");
-  const [fullName, setFullName] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [signupMethod, setSignupMethod] = useState<"gmail" | "phone" | "email">("email");
   const [signupEmail, setSignupEmail] = useState("");
-  const [signupPhone, setSignupPhone] = useState("+880 ");
+  const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [chamberName, setChamberName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [customError, setCustomError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setCustomError(null);
-    try {
-      await login(loginIdentifier, loginPassword, licenseKey);
-    } catch (err: any) {
-      setCustomError(err.message || "Invalid credentials or license key.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const { login, registerUser, state: authState } = useAuth();
 
-  const handleSignupSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setCustomError(null);
     try {
-      if (!fullName.trim()) throw new Error("Full Legal Name is required.");
-      if (signupMethod === "phone") {
-        if (!signupPhone || signupPhone.trim().length < 10) throw new Error("Please enter a valid Bangladesh mobile phone number.");
+      if (isLogin) {
+        await login(loginIdentifier, loginPassword);
       } else {
-        if (!signupEmail || !signupEmail.includes("@")) throw new Error("Please enter a valid Gmail / Email address.");
+        await registerUser({
+          name: fullName,
+          email: signupMethod === "gmail" || signupMethod === "email" ? signupEmail : undefined,
+          phone: signupMethod === "phone" ? signupPhone : undefined,
+          password: signupPassword,
+          chamberName,
+          authMethod: signupMethod,
+        });
       }
-      if ((!signupPassword || signupPassword.length < 12)) {
-        throw new Error("Password must be at least 12 characters.");
-      }
-      await registerUser({
-        name: fullName.trim(),
-        email: signupMethod === "email" ? signupEmail.trim() : undefined,
-        phone: signupMethod === "phone" ? signupPhone.trim() : undefined,
-        password: signupPassword,
-        chamberName: chamberName.trim() || "Chamber BD",
-        authMethod: signupMethod,
-      });
-      setSuccessMsg(`Registration successful. Please sign in.`);
-    } catch (err: any) {
-      setCustomError(err.message || "Registration failed. Please check your inputs.");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      // Error is handled by AuthContext
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-between p-4 sm:p-8 font-sans text-[#1E252B]">
-      <div className="fixed top-0 left-0 w-full h-1.5 bg-[#C5A059] z-50" />
-      <div className="max-w-xl w-full mx-auto space-y-6 flex-1 flex flex-col justify-center my-6">
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center p-3 bg-[#1E252B] text-[#FDFBF7] border-2 border-[#C5A059]">
-            <Scale className="h-9 w-9 stroke-[1.2] text-[#C5A059]" />
-          </div>
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight font-serif text-[#1E252B]">BCCAA Legal Platform</h2>
-            <p className="mt-1 text-[11px] font-mono text-[#C5A059] uppercase tracking-widest font-bold">Bangladesh Civil Case Analysis Architecture</p>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-[#0B0F19] bg-gradient-to-b from-[#0B0F19] to-[#111827] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div className="max-w-md w-full mx-auto glass-panel rounded-2xl overflow-hidden relative z-10">
+        <div className="px-8 pt-8 pb-6 border-b border-white/10">
+          <h2 className="text-3xl font-serif font-bold text-gold tracking-tight">
+            {isLogin ? "BCCAA Platform" : "Create Account"}
+          </h2>
+          <p className="text-slate-400 mt-2 text-sm">
+            {isLogin ? "Sign in to your secure legal workspace" : "Register your chamber account"}
+          </p>
         </div>
-        <div className="bg-white border-2 border-[#1E252B] p-5 sm:p-7 space-y-6 relative shadow-lg">
-          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#C5A059]" />
-          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#C5A059]" />
-          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#C5A059]" />
-          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#C5A059]" />
-          <div className="flex border-b-2 border-[#1E252B] font-mono text-xs">
-            <button type="button" onClick={() => { setActiveTab("login"); setCustomError(null); }}
-              className={`flex-1 py-3 px-4 font-bold uppercase tracking-wider transition text-center cursor-pointer ${activeTab === "login" ? "bg-[#1E252B] text-white" : "bg-[#FAF9F5] text-[#1E252B] hover:bg-neutral-100"}`}>Log In to Account</button>
-            <button type="button" onClick={() => { setActiveTab("signup"); setCustomError(null); }}
-              className={`flex-1 py-3 px-4 font-bold uppercase tracking-wider transition text-center cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === "signup" ? "bg-[#1E252B] text-white" : "bg-[#FAF9F5] text-[#1E252B] hover:bg-neutral-100"}`}>
-              <Sparkles className="h-3.5 w-3.5 text-[#C5A059]" /><span>Create Standard Account</span>
+
+        <div className="p-8">
+          <div className="flex border-b border-white/10 mb-6">
+            <button
+              onClick={() => setIsLogin(true)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${isLogin ? "text-amber-400 border-b-2 border-amber-400" : "text-slate-400 hover:text-slate-300"}`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => setIsLogin(false)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${!isLogin ? "text-amber-400 border-b-2 border-amber-400" : "text-slate-400 hover:text-slate-300"}`}
+            >
+              Register
             </button>
           </div>
-          {(state.error || customError) && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-900 text-xs font-mono flex items-start gap-2.5">
-              <ShieldAlert className="h-4.5 w-4.5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div><strong className="uppercase">Notice:</strong><p className="mt-0.5 text-[11px] leading-relaxed">{customError || state.error}</p></div>
-            </div>
-          )}
-          {successMsg && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-mono flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" /><span>{successMsg}</span>
-            </div>
-          )}
-          {activeTab === "login" && (
-            <div className="space-y-5">
-              <div className="border-b border-[#E5E1D8] pb-3">
-                <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-[#1E252B]">Local Cryptographic Authentication</h3>
-                <p className="text-[11px] text-slate-400 mt-2">Log in using your registered <strong className="text-[#1E252B]">Gmail/Email</strong> or <strong className="text-[#1E252B]">Bangladesh Mobile Number (+880)</strong>.</p>
-              </div>
-              <form className="space-y-4" onSubmit={handleLoginSubmit}>
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Authorized Gmail / Email or Mobile (+880)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Mail className="h-4 w-4" /></div>
-                    <input type="text" required value={loginIdentifier} onChange={(e) => setLoginIdentifier(e.target.value)}
-                      className="w-full text-xs font-mono pl-10 pr-3 py-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="lawyer@gmail.com or +880 1712-345678" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Security Password</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Key className="h-4 w-4" /></div>
-                    <input type="password" autoComplete="current-password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full text-xs font-mono pl-10 pr-3 py-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" placeholder="••••••••••••" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">License Key</label>
-                  <input type="text" value={licenseKey} onChange={(e) => setLicenseKey(e.target.value)}
-                    className="w-full text-[10px] font-mono p-2.5 bg-[#FDFBF7] border border-[#E5E1D8] focus:border-[#1E252B] outline-none text-[#1E252B]" />
-                </div>
-                <button type="submit" disabled={isSubmitting || state.isLoading}
-                  className="w-full py-3 bg-[#1E252B] hover:bg-[#C5A059] text-white hover:text-[#1E252B] disabled:bg-neutral-300 font-bold uppercase text-xs tracking-wider font-mono border border-[#1E252B] transition cursor-pointer flex items-center justify-center gap-2">
-                  {isSubmitting || state.isLoading ? "Authenticating Session..." : "Log In to Legal Engine"}
-                </button>
-              </form>
-            </div>
-          )}
-          {activeTab === "signup" && (
-            <div className="space-y-5">
-              <div className="border-b border-[#E5E1D8] pb-3">
-                <h3 className="text-xs font-bold font-mono tracking-wider uppercase text-[#1E252B]">General Account Registration (Bangladesh)</h3>
-                <p className="text-[11px] text-slate-400 mt-2">Create a standard user account using your Bangladesh mobile number (+880) or Gmail / Email. Administrative accounts are provisioned separately by authorized administrators.</p>
-              </div>
-              <div className="space-y-1.5 font-mono">
-                <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">1. Choose Registration Method</label>
-                <div className="grid grid-cols-3 gap-2 text-[10px]">
-                  <button type="button" onClick={() => { setSignupMethod("phone"); setCustomError(null); }}
-                    className={`p-2 border font-bold uppercase transition flex items-center justify-center gap-1.5 cursor-pointer ${signupMethod === "phone" ? "bg-[#C5A059] text-white border-[#C5A059]" : "bg-white text-[#1E252B] border-[#E5E1D8]"}`}>
-                    <Smartphone className="h-3.5 w-3.5" /><span>BD Mobile (+880)</span>
-                  </button>
-                  <button type="button" onClick={() => { setSignupMethod("email"); setCustomError(null); }}
-                    className={`p-2 border font-bold uppercase transition flex items-center justify-center gap-1.5 cursor-pointer ${signupMethod === "email" ? "bg-[#C5A059] text-white border-[#C5A059]" : "bg-white text-[#1E252B] border-[#E5E1D8]"}`}>
-                    <Mail className="h-3.5 w-3.5" /><span>Gmail / Email</span>
-                  </button>
-                </div>
-              </div>
 
-                <form className="space-y-3 font-mono" onSubmit={handleSignupSubmit}>
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">Full Legal Name</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><User className="h-4 w-4" /></div>
-                      <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-                        className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Advocate Tanvir Rahman" />
-                    </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isLogin ? (
+              <>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Email or Phone</label>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    <input type="text" autoComplete="username" required value={loginIdentifier} onChange={(e) => setLoginIdentifier(e.target.value)} className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="lawyer@gmail.com or +880 1712-345678" />
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">Chamber / Law Firm Name</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Building className="h-4 w-4" /></div>
-                      <input type="text" value={chamberName} onChange={(e) => setChamberName(e.target.value)}
-                        className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Dhaka High Court Annex Chamber" />
-                    </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Password</label>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <input type="password" autoComplete="current-password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="••••••••••••" />
                   </div>
-                  {signupMethod === "phone" ? (
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest flex items-center justify-between">
-                        <span>Bangladesh Mobile Number (+880)</span><span className="text-[9px] text-[#C5A059] font-bold">BD (+880)</span>
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Phone className="h-4 w-4" /></div>
-                        <input type="tel" required value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
-                          className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="+880 1712-345678" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">Gmail / Email Address</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Mail className="h-4 w-4" /></div>
-                        <input type="email" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
-                          className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="advocate.rahman@gmail.com" />
-                      </div>
-                    </div>
-                  )}
+                </div>
+
+                <div className="flex items-center justify-end mb-4">
+                  <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors">Forgot Password?</button>
+                </div>
+
+                {authState.error && <div className="text-red-400 text-xs mb-4">{authState.error}</div>}
+                
+                <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-bold text-[#0B0F19] bg-gradient-to-r from-amber-300 to-amber-500 hover:from-amber-400 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0B0F19] focus:ring-amber-500 transition-all duration-200">
+                  Sign In
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Full Name</label>
+                  <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="John Doe" />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Chamber Name</label>
+                  <input type="text" value={chamberName} onChange={(e) => setChamberName(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Doe & Associates" />
+                </div>
+                
+                <div className="flex space-x-2 mb-4">
+                  <button type="button" onClick={() => setSignupMethod("email")} className={`flex-1 py-2 text-xs font-medium rounded-lg ${signupMethod === "email" ? "bg-amber-400 text-[#0B0F19]" : "bg-white/5 text-slate-400"}`}>Email</button>
+                  <button type="button" onClick={() => setSignupMethod("phone")} className={`flex-1 py-2 text-xs font-medium rounded-lg ${signupMethod === "phone" ? "bg-amber-400 text-[#0B0F19]" : "bg-white/5 text-slate-400"}`}>Phone</button>
+                  <button type="button" onClick={() => setSignupMethod("gmail")} className={`flex-1 py-2 text-xs font-medium rounded-lg ${signupMethod === "gmail" ? "bg-amber-400 text-[#0B0F19]" : "bg-white/5 text-slate-400"}`}>Gmail</button>
+                </div>
+
+                {signupMethod === "phone" && (
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-[#1E252B] uppercase tracking-widest">Account Security Password</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400"><Key className="h-4 w-4" /></div>
-                      <input type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}
-                        className="w-full text-sm pl-10 pr-3 py-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="••••••••••••" />
-                    </div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Phone Number</label>
+                    <input type="tel" required value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="+880 1712-345678" />
                   </div>
-                  <button type="submit" disabled={isSubmitting || state.isLoading}
-                    className="w-full py-3 bg-[#1E252B] hover:bg-[#C5A059] text-white hover:text-[#1E252B] disabled:bg-neutral-300 font-bold uppercase text-xs tracking-wider border border-[#1E252B] transition cursor-pointer flex items-center justify-center gap-2 mt-4">
-                    {isSubmitting ? "Creating Account..." : "Create Account"}
-                  </button>
-                </form>
-            </div>
-          )}
+                )}
+                {signupMethod === "gmail" || signupMethod === "email" ? (
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Email Address</label>
+                    <input type="email" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="lawyer@gmail.com" />
+                  </div>
+                ) : null}
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Password</label>
+                  <input type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Minimum 12 characters" />
+                </div>
+
+                {authState.error && <div className="text-red-400 text-xs mb-4">{authState.error}</div>}
+
+                <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-bold text-[#0B0F19] bg-gradient-to-r from-amber-300 to-amber-500 hover:from-amber-400 hover:to-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0B0F19] focus:ring-amber-500 transition-all duration-200">
+                  Create Account
+                </button>
+              </>
+            )}
+          </form>
         </div>
       </div>
-      <footer className="text-center text-[10px] font-mono text-[#4A5560] pt-4 border-t border-[#E5E1D8]/50 mt-4">
-        <p>Proprietor & Author: <strong className="text-[#1E252B]">Md. Nazmul Islam</strong>, Neum Lex Counsel</p>
-        <p className="text-[#C5A059] uppercase tracking-wider font-bold mt-0.5">BCCAA v2.0 Client-Side Secured Engine &bull; Bangladesh General Sign-Up Engine</p>
-      </footer>
+
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-panel max-w-md w-full p-8 rounded-2xl relative">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-serif font-bold text-gold">Account Recovery</h2>
+              <button onClick={() => setShowForgotPassword(false)} className="text-slate-400 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <p className="text-sm text-slate-300 mb-6">For security reasons, passwords cannot be recovered online. Please contact your Chamber Administrator or the Super Admin to reset your credentials.</p>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-6">
+              <p className="text-xs text-slate-400 mb-1">Admin Contact:</p>
+              <p className="text-sm text-white font-mono">super_admin@bccaa.com</p>
+            </div>
+            <button onClick={() => setShowForgotPassword(false)} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-bold text-[#0B0F19] bg-gradient-to-r from-amber-300 to-amber-500 hover:from-amber-400 hover:to-amber-600 transition-all duration-200">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
