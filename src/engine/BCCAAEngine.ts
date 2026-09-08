@@ -1704,6 +1704,14 @@ export class BCCAAEngine {
 
   // P0-4: Temporal / chronology facts
   private extractTemporalFacts(clause: string, candidates: FactCandidate[]): void {
+    // Ancestor Death Date (for inheritance cases)
+    const deathMatch = clause.match(/\b(?:died|death|deceased|passed away)\b[^\.]{0,80}?(?:on|dated|on or about)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+    if (deathMatch) {
+      const date = deathMatch[1].trim();
+      candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: date });
+      candidates.push({ subject: "Ancestor", predicate: "Death Date", object: date, eventDate: date });
+    }
+
     // Refusal date
     const refusalMatch = clause.match(/\b(?:refused|refusal)\b[^\.]{0,80}?(?:on|dated)\s+([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
     if (refusalMatch) {
@@ -2145,8 +2153,9 @@ export class BCCAAEngine {
       if (fd.includes("inheritance") || fd.includes("succession")) return "INHERITANCE_CONSULTATION";
     }
     if (/\b(?:specific\s+performance|bainapatra|sale\s+deed|agreement\s+to\s+sell|earnest\s+money)\b/.test(lower)) return "SPECIFIC_PERFORMANCE";
-    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
+    // INHERITANCE_CONSULTATION must be checked before DECLARATION_AND_POSSESSION to prevent mutation/partition keywords from misclassifying succession cases
     if (/\b(?:inherit|succession|heir|warisan|intestate|ancestor|predeceased|died)\b/.test(lower)) return "INHERITANCE_CONSULTATION";
+    if (/\b(?:declaration|title|possession|dispossessed|ousted|encroach|mutation|khatian|partition)\b/.test(lower) || /\bco-?sharers?\b/.test(lower)) return "DECLARATION_AND_POSSESSION";
     return "GENERAL_CIVIL";
   }
 
