@@ -591,6 +591,27 @@ export async function downloadCaseBriefDOCX(
             ],
             spacing: { after: 120 },
           }),
+          // P12-DEMO: Render Premium Legal Conclusions
+          ...(analysis.stage13.legalConclusions ?? []).map(conclusion => new Paragraph({
+            children: [
+              new TextRun({ text: "• ", size: 20, font: "Calibri" }),
+              new TextRun({ text: conclusion, size: 20, font: "Calibri" }),
+            ],
+            spacing: { after: 80 },
+          })),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Filing Requirements:", bold: true, size: 20, font: "Calibri" }),
+            ],
+            spacing: { before: 200, after: 80 },
+          }),
+          ...(analysis.stage13.recommendations ?? []).map(rec => new Paragraph({
+            children: [
+              new TextRun({ text: "• ", size: 20, font: "Calibri" }),
+              new TextRun({ text: rec, size: 20, font: "Calibri" }),
+            ],
+            spacing: { after: 80 },
+          })),
 
           // Forensic Cryptographic Audit
           new Paragraph({
