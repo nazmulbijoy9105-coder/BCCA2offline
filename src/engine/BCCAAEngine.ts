@@ -1403,8 +1403,10 @@ export class BCCAAEngine {
                 ...(existingFact.provenanceAssertions ?? []),
                 assertionId,
               ]);
-              const updatedFact = { ...existingFact, provenanceAssertions: Array.from(merged).sort() };
-            ctx.factRegistry.set(existingFact.factId, updatedFact);
+              // P12-FIX: Preserve eventDate if the existing fact is missing it but the new one has it
+              const eventDate = existingFact.eventDate ?? candidate.eventDate ?? null;
+              const updatedFact = { ...existingFact, provenanceAssertions: Array.from(merged).sort(), eventDate };
+              ctx.factRegistry.set(existingFact.factId, updatedFact);
               continue;
             }
             // Otherwise fall through: register as a distinct fact below so
@@ -1784,7 +1786,7 @@ export class BCCAAEngine {
     const lower = clause.toLowerCase();
     // Death
     if (/\b(?:died|passed away|demise|death of)\b/i.test(clause)) {
-      const dm = clause.match(/(?:died|passed away|demise|death of)(?:\s+[a-z]+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+      const dm = clause.match(/(?:died|passed away|demise|death of)(?:\s+\w+){0,6}?\s+(?:on\s+)?([0-9]{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+,?\s*[0-9]{4}|[A-Za-z]+\s+[0-9]{1,2},?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
       if (dm) {
         const date = dm[1].trim();
         candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: date });
