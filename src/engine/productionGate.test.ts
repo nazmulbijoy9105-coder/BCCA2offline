@@ -41,4 +41,13 @@ describe("P0-1: production legal-engine boundary", () => {
       }),
     ).not.toThrow();
   });
+
+  it("allows development corpus in production if allowDevelopmentCorpus is true", () => {
+    expect(() =>
+      assertLegalEngineProductionReady(true, {
+        corpusMode: "DEVELOPMENT",
+        authorityStatus: "DEVELOPMENT_FIXTURE",
+      }, true),
+    ).not.toThrow();
+  });
 });
