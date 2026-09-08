@@ -156,9 +156,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Invalid credentials.");
       }
 
-      // Step 2: Verify password (Bypassed for Vercel Demo Admin)
-      const isDemoAdmin = user.email === "super_admin@bccaa.com" && password === "YourSecurePassword123!";
-      if (!isDemoAdmin && !verifyPassword(password, user.passwordHash || "")) {
+      // Step 2: Verify password
+      if (!verifyPassword(password, user.passwordHash || "")) {
         logAudit({
           action: "LOGIN_FAILED",
           userId: user.id,
@@ -171,47 +170,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Invalid credentials.");
       }
 
-      // Step 3: Handle license key requirement (Bypassed for Vercel Demo Admin)
-      const activeLicenseKey = isDemoAdmin ? "DEFAULT-LICENSE-KEY" : (licenseKey?.trim() || "");
+      // Step 3: Handle license key requirement
+      const activeLicenseKey = licenseKey?.trim() || "";
       
       if (!activeLicenseKey) {
         throw new Error("License key required.");
       }
 
-      let licenseCheck;
-      if (isDemoAdmin) {
-        // Bypass license validation completely for Vercel Demo Admin
-        licenseCheck = {
-          valid: true,
-          data: {
-            licenseId: "DEMO-LICENSE-ID",
-            licenseKey: "DEFAULT-LICENSE-KEY",
-            issuedTo: "Demo Admin",
-            issuedBy: "System",
-            expiresAt: 0,
-            maxUsers: Infinity,
-            maxAdmins: Infinity,
-            tier: "enterprise" as const,
-            allowedDomains: ["*"],
-            features: ["*"],
-          },
-          reason: "",
-        };
-      } else {
-        licenseCheck = validateLicenseKey(activeLicenseKey);
-        if (!licenseCheck.valid) {
-          logAudit({
-            action: "LICENSE_VIOLATION",
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-            resourceType: "LICENSE",
-            resourceId: activeLicenseKey,
-            outcome: "DENIED",
-            metadata: { reason: licenseCheck.reason },
-          });
-          throw new Error(`License invalid: ${licenseCheck.reason}`);
-        }
+      const licenseCheck = validateLicenseKey(activeLicenseKey);
+      if (!licenseCheck.valid) {
+        logAudit({
+          action: "LICENSE_VIOLATION",
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          resourceType: "LICENSE",
+          resourceId: activeLicenseKey,
+          outcome: "DENIED",
+          metadata: { reason: licenseCheck.reason },
+        });
+        throw new Error(`License invalid: ${licenseCheck.reason}`);
       }
 
       // Step 5: Check daily limit reset
