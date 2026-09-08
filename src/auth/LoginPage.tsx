@@ -122,7 +122,7 @@ export default function LoginPage() {
                 ) : null}
                 <div className="space-y-1">
                   <label className="block text-[10px] font-bold font-mono text-slate-300 uppercase tracking-widest mb-1">Password</label>
-                  <input type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Minimum 12 characters" />
+                  <input type="password" autoComplete="new-password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="w-full text-sm p-3 bg-white/5 border border-white/10 focus:border-amber-400/50 focus:ring-2 focus:ring-amber-400/10 outline-none text-white rounded-lg transition-all" placeholder="Minimum 12 characters" />
                 </div>
 
                 {authState.error && <div className="text-red-400 text-xs mb-4">{authState.error}</div>}
