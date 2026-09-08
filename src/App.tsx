@@ -30,6 +30,7 @@ export default function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showStandardModal, setShowStandardModal] = useState(false);
+  const [engineNotReady, setEngineNotReady] = useState(false);
 
   const user = getCurrentUser();
   const license = getLicense();
@@ -104,6 +105,7 @@ export default function App() {
     setLoading(true);
     setAnalysisResult(null);
     setLoadingStep(0);
+    setEngineNotReady(false);
 
     const interval = setInterval(() => {
       setLoadingStep(prev => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
@@ -142,6 +144,12 @@ export default function App() {
       });
     } catch (err: any) {
       console.error("Analysis failed:", err);
+      const isProductionGateFailure =
+        typeof err?.message === "string" &&
+        err.message.includes("FATAL LEGAL ENGINE CONFIGURATION");
+      if (isProductionGateFailure) {
+        setEngineNotReady(true);
+      }
       logAudit({
         action: "ANALYZE_FAILED",
         userId: user.id,
@@ -301,6 +309,22 @@ export default function App() {
 
       {/* Main Content Container */}
       <main className="max-w-7xl mx-auto px-6 sm:px-10 mt-10 mb-20 w-full flex-1">
+        {engineNotReady && (
+          <div className="p-4 mb-6 bg-amber-50 border-2 border-amber-500 rounded flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-amber-900">
+                Demo / Development Build — Analysis Not Available
+              </h4>
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                This deployment is running on the engine's development fixture, not a
+                validated production legal corpus. Case analysis is intentionally disabled
+                here rather than returning unverified legal conclusions. Contact the
+                administrator if you expected a production environment.
+              </p>
+            </div>
+          </div>
+        )}
         {!analysisResult && !loading && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             {/* Input Form Column */}
