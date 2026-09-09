@@ -30,6 +30,7 @@ import {
   type EvidenceIntegrityGateResult,
 } from "./evidence/EvidenceIntegrityGate";
 import { synthesizeLegalReport } from "./synthesis/LegalSynthesizer";
+import { finalizeOutputResponse } from "./output/OutputResponseFinalizer";
 import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
 import { assertCorpusVersion } from "./citations/CorpusVersionLock";
 
@@ -1190,12 +1191,13 @@ export class BCCAAEngine {
         result: "REJECTED",
       });
 
-      return this.buildPreF0HaltResponse(
+      const response = this.buildPreF0HaltResponse(
         ctx,
         caseId,
         "MALFORMED_REQUEST",
         "request must be a non-null object.",
       );
+      return finalizeOutputResponse(response);
     }
 
     // ── P1-18: Defensive input sanitization ─────────────────────────────
@@ -1218,7 +1220,13 @@ export class BCCAAEngine {
         dependsOnRules: [],
         result: "REJECTED",
       });
-      return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "request.input is required.");
+      const response = this.buildPreF0HaltResponse(
+        ctx,
+        caseId,
+        "EMPTY_INPUT",
+        "request.input is required.",
+      );
+      return finalizeOutputResponse(response);
     }
 
     // Normalize without mutating caller's original object (already cloned above)
@@ -1238,23 +1246,54 @@ export class BCCAAEngine {
       );
       if (!license.valid) {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `LICENSE_DENIED: ${license.reason ?? "unspecified"}`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
-        return this.buildPreF0HaltResponse(ctx, caseId, "LICENSE_DENIED", license.reason ?? "unspecified");
+        const response = this.buildPreF0HaltResponse(
+          ctx,
+          caseId,
+          "LICENSE_DENIED",
+          license.reason ?? "unspecified",
+        );
+        return finalizeOutputResponse(response);
       }
       if (!request.input?.factPattern) {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: "EMPTY_INPUT: factPattern is required.", dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
-        return this.buildPreF0HaltResponse(ctx, caseId, "EMPTY_INPUT", "factPattern is required.");
+        const response = this.buildPreF0HaltResponse(
+          ctx,
+          caseId,
+          "EMPTY_INPUT",
+          "factPattern is required.",
+        );
+        return finalizeOutputResponse(response);
       }
       if ((request.input?.factPattern ?? "" ?? "").length > MAX_INPUT_LENGTH) {
         recordTrace(ctx, { layer: "P0_INPUT_VALIDATION", description: `INPUT_TOO_LARGE: maximum ${MAX_INPUT_LENGTH} characters.`, dependsOnFacts: [], dependsOnRules: [], result: "REJECTED" });
-        return this.buildPreF0HaltResponse(ctx, caseId, "INPUT_TOO_LARGE", `maximum ${MAX_INPUT_LENGTH} characters.`);
+        const response = this.buildPreF0HaltResponse(
+          ctx,
+          caseId,
+          "INPUT_TOO_LARGE",
+          `maximum ${MAX_INPUT_LENGTH} characters.`,
+        );
+        return finalizeOutputResponse(response);
       }
       return await this.runPipeline(ctx, request, caseId, startTime);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       recordTrace(ctx, { layer: "SYSTEM_ERROR", description: "Uncaught execution error.", dependsOnFacts: [], dependsOnRules: [], result: message });
-      const response = this.buildPreF0HaltResponse(ctx, caseId, "SYSTEM_ERROR", message);
-      await this.persistAudit(ctx, request, caseId, startTime, "ERROR", this.computeOutputHash(response, caseId)).catch(() => undefined);
-      return response;
+      const response = this.buildPreF0HaltResponse(
+        ctx,
+        caseId,
+        "SYSTEM_ERROR",
+        message,
+      );
+      const finalizedResponse = finalizeOutputResponse(response);
+      await this.persistAudit(
+        ctx,
+        request,
+        caseId,
+        startTime,
+        "ERROR",
+        this.computeOutputHash(finalizedResponse, caseId),
+      ).catch(() => undefined);
+      return finalizedResponse;
     }
   }
 
@@ -1340,8 +1379,9 @@ export class BCCAAEngine {
         { elementGate: emptyGate },
       );
       const response = this.buildF0HaltResponse(ctx, request, claimType, f0Gate, synthesis, caseId, domain, legislation);
-      await this.persistAudit(ctx, request, caseId, startTime, "HALTED", this.computeOutputHash(response, caseId));
-      return response;
+      const finalizedResponse = finalizeOutputResponse(response);
+      await this.persistAudit(ctx, request, caseId, startTime, "HALTED", this.computeOutputHash(finalizedResponse, caseId));
+      return finalizedResponse;
     }
 
     const evidenceIntegrity = evaluateEvidenceIntegrity({
@@ -1368,6 +1408,7 @@ export class BCCAAEngine {
         domain,
         legislation,
       );
+      const finalizedResponse = finalizeOutputResponse(response);
 
       await this.persistAudit(
         ctx,
@@ -1375,10 +1416,10 @@ export class BCCAAEngine {
         caseId,
         startTime,
         "HALTED",
-        this.computeOutputHash(response, caseId),
+        this.computeOutputHash(finalizedResponse, caseId),
       );
 
-      return response;
+      return finalizedResponse;
     }
 
     const limitation = this.executeLimitationRules(ctx, claimType);
@@ -1415,8 +1456,9 @@ export class BCCAAEngine {
     const response = this.buildResponse(ctx, request, claimType, f0Gate, synthesis, {
       caseId, domain, legislation, limitation, standi, pleading, issues, evidence, evidenceIntegrity, elementGate, merits, equity, procedure, appeal, executionStatus,
     });
-    await this.persistAudit(ctx, request, caseId, startTime, outcome, this.computeOutputHash(response, caseId));
-    return response;
+    const finalizedResponse = finalizeOutputResponse(response);
+    await this.persistAudit(ctx, request, caseId, startTime, outcome, this.computeOutputHash(finalizedResponse, caseId));
+    return finalizedResponse;
   }
 
   // =======================================================================

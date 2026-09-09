@@ -1,11 +1,10 @@
 import type { OutputDefect } from "./OutputEnforcementGate";
 
 /**
- * P10-09: Output Audit Trail.
- * 
- * Generates a verifiable audit trail for the legal memo validation.
- * Bundles the validation status and any defects into a single payload 
- * with a timestamp.
+ * P10-09: Deterministic Output Audit Trail.
+ *
+ * The timestamp is supplied by the engine's deterministic execution envelope.
+ * This function MUST NOT read wall-clock time.
  */
 
 export type OutputAuditRecord = {
@@ -15,11 +14,12 @@ export type OutputAuditRecord = {
 };
 
 export function generateOutputAuditTrail(
+  timestamp: string,
   isValid: boolean,
-  defects: readonly OutputDefect[]
+  defects: readonly OutputDefect[],
 ): OutputAuditRecord {
   return {
-    timestamp: new Date().toISOString(),
+    timestamp,
     isValid,
     defects,
   };
