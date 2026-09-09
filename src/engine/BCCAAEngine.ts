@@ -905,10 +905,6 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
   }
 }
 
-export class DefaultRuleRegistry extends DevelopmentRuleRegistry {
-  constructor() { super(); }
-}
-
 // P0 FIX: DefaultAuditSink.append() — remove unreachable code after return
 export class DefaultAuditSink implements AuditSink {
   readonly isProductionReady = false;
@@ -1126,6 +1122,24 @@ export class BCCAAEngine {
     this.ruleRegistry = (deps?.ruleRegistry ?? new DevelopmentRuleRegistry()) as RuleRegistry;
     this.limitationRuleRegistry =
       deps?.limitationRuleRegistry ?? new DevelopmentLimitationRegistry();
+
+    if (
+      this.corpusMode === "VALIDATED_PRODUCTION" &&
+      !deps?.ruleRegistry
+    ) {
+      throw new Error(
+        "FATAL LEGAL ENGINE CONFIGURATION: VALIDATED_PRODUCTION requires an explicitly supplied production RuleRegistry",
+      );
+    }
+
+    if (
+      this.corpusMode === "VALIDATED_PRODUCTION" &&
+      !deps?.limitationRuleRegistry
+    ) {
+      throw new Error(
+        "FATAL LEGAL ENGINE CONFIGURATION: VALIDATED_PRODUCTION requires an explicitly supplied production LimitationRuleRegistry",
+      );
+    }
     this.auditSink = deps?.auditSink ?? new DefaultAuditSink();
     this.licenseValidator = deps?.licenseValidator ?? new DefaultLicenseValidator();
     this.factValidationProvider =

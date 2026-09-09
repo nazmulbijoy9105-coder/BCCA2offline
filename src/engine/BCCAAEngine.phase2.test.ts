@@ -1,3 +1,4 @@
+import type { LimitationRuleRegistry } from "./rules/LimitationContracts";
 import { describe, it, expect } from "vitest";
 import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
 import type { RuleGraphIdentity, RuleRegistry, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
@@ -568,6 +569,11 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     getLegislationMapping: () => ({ primaryAct: null, relevantSections: [] }),
   };
 
+  const validLimitationRuleRegistry: LimitationRuleRegistry = {
+    getRules: () => [],
+    getCandidateRules: () => [],
+  };
+
   const devRuleRegistry: RuleRegistry = {
     ...validRuleRegistry,
     authorityStatus: "DEVELOPMENT_FIXTURE",
@@ -601,6 +607,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     expect(() => new BCCAAEngine({
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: devRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(/VALIDATED_PRODUCTION requires ruleRegistry\.authorityStatus/);
@@ -610,6 +617,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     expect(() => new BCCAAEngine({
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
       auditSink: incompleteAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(/VALIDATED_PRODUCTION requires a ValidatedAuditSink/);
@@ -619,14 +627,27 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     expect(() => new BCCAAEngine({
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
       auditSink: validAuditSink,
     })).toThrow(/VALIDATED_PRODUCTION requires a production FactValidationProvider/);
+  });
+
+  it("throws when VALIDATED_PRODUCTION has no production limitation registry", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /VALIDATED_PRODUCTION requires an explicitly supplied production LimitationRuleRegistry/,
+    );
   });
 
   it("does not throw when all VALIDATED_PRODUCTION requirements are met", () => {
     expect(() => new BCCAAEngine({
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).not.toThrow();
