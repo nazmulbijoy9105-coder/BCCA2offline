@@ -5,7 +5,7 @@
  * phone numbers, or emails are masked before being logged or sent to an LLM.
  */
 
-const NID_PATTERN = /\b\d{10}|\d{13}|\d{17}\b/g;
+const NID_PATTERN = /\b(?:\d{10}|\d{13}|\d{17})\b/g;
 const PHONE_PATTERN = /(\+?880|0)?1[3-9]\d{8}\b/g;
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 

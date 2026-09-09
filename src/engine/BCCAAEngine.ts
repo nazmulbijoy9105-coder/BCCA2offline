@@ -25,6 +25,10 @@ import { AuthUser } from "../types/auth.types";
 import { generateSecureId, generateHash } from "../utils/crypto";
 import { CitationValidator } from "./CitationValidator";
 import { FactConsistencyGate } from "./FactConsistencyGate";
+import {
+  evaluateEvidenceIntegrity,
+  type EvidenceIntegrityGateResult,
+} from "./evidence/EvidenceIntegrityGate";
 import { synthesizeLegalReport } from "./synthesis/LegalSynthesizer";
 import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
 import { assertCorpusVersion } from "./citations/CorpusVersionLock";
@@ -1340,6 +1344,43 @@ export class BCCAAEngine {
       return response;
     }
 
+    const evidenceIntegrity = evaluateEvidenceIntegrity({
+      facts: Array.from(ctx.factRegistry.values()).map((fact) => ({
+        factId: fact.factId,
+        propositionId: fact.propositionId,
+        predicate: fact.predicate,
+        object: fact.object,
+        truth: fact.truth,
+        validationStatus: fact.validationStatus,
+        assertionType: fact.assertionType,
+        source: fact.source,
+      })),
+    });
+
+    if (evidenceIntegrity.status === "FAIL" && evidenceIntegrity.isBlocking) {
+      const response = this.buildP7HaltResponse(
+        ctx,
+        request,
+        claimType,
+        f0Gate,
+        evidenceIntegrity,
+        caseId,
+        domain,
+        legislation,
+      );
+
+      await this.persistAudit(
+        ctx,
+        request,
+        caseId,
+        startTime,
+        "HALTED",
+        this.computeOutputHash(response, caseId),
+      );
+
+      return response;
+    }
+
     const limitation = this.executeLimitationRules(ctx, claimType);
     const elementGate = this.executeElementCompletenessGate(ctx, claimType);
     const standi = this.executePartyStandiRules(ctx, claimType, input.factPattern);
@@ -1372,7 +1413,7 @@ export class BCCAAEngine {
     const outcome = this.determineOutcome(executionStatus, elementGate);
 
     const response = this.buildResponse(ctx, request, claimType, f0Gate, synthesis, {
-      caseId, domain, legislation, limitation, standi, pleading, issues, evidence, elementGate, merits, equity, procedure, appeal, executionStatus,
+      caseId, domain, legislation, limitation, standi, pleading, issues, evidence, evidenceIntegrity, elementGate, merits, equity, procedure, appeal, executionStatus,
     });
     await this.persistAudit(ctx, request, caseId, startTime, outcome, this.computeOutputHash(response, caseId));
     return response;
@@ -2776,30 +2817,6 @@ export class BCCAAEngine {
       };
     }
 
-    // P12-DEMO: Enterprise Premium Synthesis
-    if (claimType === "INHERITANCE_CONSULTATION") {
-      return {
-        status: "ELEMENTS_SATISFIED",
-        conclusion: "Premium legal synthesis generated for inheritance consultation.",
-        confidence: "STRUCTURAL_ONLY",
-        requiresHumanReview: false,
-        humanReviewReason: "",
-        elementSummary,
-        legalConclusions: [
-          "Legal Validity of 'Disowning' Affidavit: Under Sunni Hanafi law, a parent cannot unilaterally disinherit legal heirs. The shares of legal heirs are fixed by the Quran and Sunnah. An affidavit 'disowning' sons has absolutely zero legal efficacy in altering the devolution of intestate property.",
-          "Inheritance Share Calculation: Under Sunni Hanafi Muslim Personal Law, the estate is distributed in a 2:1 ratio for sons and daughters. Each son receives 2/5th share (40%) and the daughter receives 1/5th share (20%).",
-          "Injunctive Relief: A temporary injunction under Order XXXIX Rules 1 & 2 CPC is warranted to restrain the defendant from alienating, selling, or creating encumbrances over the undivided suit property during the pendency of the suit.",
-          "Maintainability: Under the Proviso to Section 42 of the Specific Relief Act 1877, a suit for mere declaration is not maintainable if the plaintiff is out of possession and omits to pray for consequential relief. Here, the plaintiffs have explicitly prayed for partition by metes and bounds, satisfying the mandatory procedural prerequisite."
-        ],
-        recommendations: [
-          "Certified copies of CS, SA, and RS Khatians and Mouza maps.",
-          "Certified copy of the Mutation Case (to be challenged).",
-          "Draft Affidavit verifying the plaint.",
-          "Court Fee Stamps (Ad-valorem for partition based on 2/5th share of market value, capped as per Court Fees Act 1870)."
-        ],
-      };
-    }
-
     if (deps.elementGate.status === GateStatus.HALT) {
       return {
         status: "HALTED",
@@ -2814,18 +2831,27 @@ export class BCCAAEngine {
     }
 
     if (
-      !deps.limitation || !deps.standi || !deps.pleading || !deps.issues ||
-      !deps.evidence || !deps.merits || !deps.equity || !deps.procedure || !deps.appeal
+      !deps.limitation ||
+      !deps.standi ||
+      !deps.pleading ||
+      !deps.issues ||
+      !deps.evidence ||
+      !deps.merits ||
+      !deps.equity ||
+      !deps.procedure ||
+      !deps.appeal
     ) {
       return {
-        status: "INDETERMINATE",
-        conclusion: `Stage 13 cannot produce a substantive legal conclusion for ${claimType} because upstream legal determinations are incomplete.`,
-        confidence: "LOW",
+        status: "HALTED",
+        conclusion: "Execution cannot produce a substantive legal synthesis because required upstream stages are incomplete.",
+        confidence: "NONE",
         requiresHumanReview: true,
-        humanReviewReason: "One or more required Stage 3–12 determinations were not supplied to synthesis.",
+        humanReviewReason: "One or more required upstream legal stages did not produce a determination.",
         elementSummary,
         legalConclusions: [],
-        recommendations: ["Review unresolved Stage 3–12 determinations before drawing a substantive legal conclusion."],
+        recommendations: [
+          "Complete all required upstream legal stages and review unresolved inputs before re-analysis.",
+        ],
       };
     }
 
@@ -2905,6 +2931,7 @@ export class BCCAAEngine {
       pleading: ReturnType<BCCAAEngine["executePleadingRules"]>;
       issues: ReturnType<BCCAAEngine["executeIssueFramingRules"]>;
       evidence: ReturnType<BCCAAEngine["executeEvidenceRules"]>;
+      evidenceIntegrity: EvidenceIntegrityGateResult;
       elementGate: ElementGateResult;
       merits: ReturnType<BCCAAEngine["executeMeritRules"]>;
       equity: ReturnType<BCCAAEngine["executeEquityRules"]>;
@@ -2956,7 +2983,7 @@ export class BCCAAEngine {
         atomicFacts,
         propositions: atomicFacts.map((f) => f.proposition),
         provenance: atomicFacts.map((f) => ({ factId: f.factId, source: f.source,
-    sourceType: f.source.extractionMethod, extractionMethod: f.source.extractionMethod })),
+    sourceType: f.source.sourceType, extractionMethod: f.source.extractionMethod })),
         factualSummary: atomicFacts.length > 0 ? `Extracted ${atomicFacts.length} facts from input narrative.` : "No facts extracted.",
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,
@@ -3017,6 +3044,7 @@ export class BCCAAEngine {
         oralAssertions: deps.evidence.oralAssertions,
         documentaryEvidence: deps.evidence.documentaryEvidence,
         missingEvidence: deps.evidence.missingEvidence,
+        evidenceIntegrity: deps.evidenceIntegrity,
       },
       stage8: {
         elementGateStatus: deps.elementGate.status,
@@ -3149,6 +3177,69 @@ export class BCCAAEngine {
     };
   }
 
+  private buildP7HaltResponse(
+    ctx: ExecutionContext,
+    request: AnalyzeRequest,
+    claimType: ClaimType,
+    f0Gate: FactConsistencyGateOutput,
+    evidenceIntegrity: EvidenceIntegrityGateResult,
+    caseId: string,
+    domain: string,
+    legislation: ReturnType<RuleRegistry["getLegislationMapping"]>,
+  ): CaseAnalysisResponse {
+    const response = this.buildPreF0HaltResponse(
+      ctx,
+      caseId,
+      "P7_EVIDENCE_INTEGRITY_FAILURE",
+      evidenceIntegrity.reasons.length > 0
+        ? evidenceIntegrity.reasons.join("; ")
+        : "Evidence integrity gate failed.",
+    );
+
+    response.userId = request.user?.id ?? "anonymous";
+    response.licenseId = request.license?.licenseId ?? "UNLICENSED";
+    response.claimType = claimType;
+    response.domain = domain;
+    response.legislation = legislation;
+    response.executionStatus = "BLOCKED";
+    response.outcome = "HALTED";
+
+    response.stage7 = {
+      oralAssertions: 0,
+      documentaryEvidence: evidenceIntegrity.documentaryFactCount,
+      missingEvidence: evidenceIntegrity.missingEvidence,
+      evidenceIntegrity,
+    };
+
+    response.gateF0 = {
+      gateStatus: f0Gate.gateStatus,
+      conflictCount: f0Gate.conflictCount ?? 0,
+      criticalConflicts: f0Gate.criticalConflicts ?? 0,
+      warnings: [
+        ...(f0Gate.warnings ?? []),
+        "P7 evidence integrity gate blocked downstream legal analysis.",
+      ],
+    };
+
+    response.stage13 = {
+      conclusion:
+        "Execution halted because evidence integrity requirements were not satisfied.",
+      confidence: "NONE",
+      requiresHumanReview: true,
+      humanReviewReason:
+        evidenceIntegrity.reasons.length > 0
+          ? evidenceIntegrity.reasons.join("; ")
+          : "P7 evidence integrity failure requires human review.",
+      elementSummary: [],
+      legalConclusions: [],
+      recommendations: [
+        "Resolve the evidence integrity defect before downstream legal analysis.",
+      ],
+    };
+
+    return response;
+  }
+
   private buildF0HaltResponse(
     ctx: ExecutionContext,
     request: AnalyzeRequest,
@@ -3178,7 +3269,7 @@ export class BCCAAEngine {
         atomicFacts: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, propositionId: f.propositionId, assertionId: f.assertionId, proposition: f.proposition, subject: f.subject, predicate: f.predicate, object: f.object, truth: f.truth, polarity: f.polarity, source: f.source, assertionType: f.assertionType, validationStatus: f.validationStatus, confidence: f.confidence, assertedBy: f.assertedBy, eventDate: f.eventDate, normalizedValue: f.normalizedValue, contradicts: f.contradicts, supports: f.supports, disputedProposition: f.disputedProposition, validation: f.validation, provenanceAssertions: f.provenanceAssertions })),
         propositions: Array.from(ctx.factRegistry.values()).map((f) => f.proposition),
         provenance: Array.from(ctx.factRegistry.values()).map((f) => ({ factId: f.factId, source: f.source,
-    sourceType: f.source.extractionMethod, extractionMethod: f.source.extractionMethod })),
+    sourceType: f.source.sourceType, extractionMethod: f.source.extractionMethod })),
         factualSummary: ctx.factRegistry.size > 0 ? `Extracted ${ctx.factRegistry.size} facts from input narrative.` : "No facts extracted.",
         contradictionGraph: ctx.contradictionGraph,
         eventTimeline: ctx.eventTimeline,

@@ -33,7 +33,7 @@ export function findMissingEvidence(
       if (fact.predicate !== req.predicate) return false;
       if (req.object && fact.object !== req.object) return false;
       // An unverified fact cannot satisfy a required predicate
-      if (fact.verified === false) return false; 
+      if (fact.verified !== true) return false;
       return true;
     });
 

@@ -36,8 +36,13 @@ export function verifyChainOfCustody(
 
   for (const fact of facts) {
     const docId = fact.source?.documentId;
-    if (!docId || !docMap.has(docId)) {
-      if (docId) unregisteredDocumentIds.add(docId);
+    if (!docId) {
+      unregisteredDocumentIds.add(`[MISSING_DOCUMENT_ID:${fact.factId}]`);
+      continue;
+    }
+
+    if (!docMap.has(docId)) {
+      unregisteredDocumentIds.add(docId);
     }
   }
 

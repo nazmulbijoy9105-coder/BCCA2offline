@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 
 /**
  * P7-08: Evidence Integrity Hashing.
@@ -36,7 +36,10 @@ function serializeFacts(facts: readonly HashableFact[]): string {
  */
 export function getEvidenceHash(facts: readonly HashableFact[]): string {
   const serialized = serializeFacts(facts);
-  return createHash("sha256").update(serialized).digest("hex");
+  return Array.from(
+    sha256(new TextEncoder().encode(serialized)),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
 }
 
 /**
