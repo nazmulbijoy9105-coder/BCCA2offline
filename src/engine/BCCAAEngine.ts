@@ -1096,6 +1096,8 @@ interface FactCandidate {
 // ENGINE
 // ============================================================================
 
+export type { CaseAnalysisResponse } from "../types/types";
+
 export interface AnalyzeRequest {
   caseId?: string;
   user: AuthUser;
@@ -1154,6 +1156,29 @@ export class BCCAAEngine {
 
   async analyze(request: AnalyzeRequest): Promise<CaseAnalysisResponse> {
     const startTime = Date.now();
+
+    // ── P0: Fail-closed malformed-request guard ─────────────────────────
+    // Runtime callers may bypass the TypeScript type and provide null or
+    // undefined. Reject before deterministicClone() or any property access.
+    if (request === null || request === undefined) {
+      const ctx = newContext();
+      const caseId = "BCCAA-MALFORMED-REQUEST";
+
+      recordTrace(ctx, {
+        layer: "P0_INPUT_VALIDATION",
+        description: "MALFORMED_REQUEST: request must be a non-null object.",
+        dependsOnFacts: [],
+        dependsOnRules: [],
+        result: "REJECTED",
+      });
+
+      return this.buildPreF0HaltResponse(
+        ctx,
+        caseId,
+        "MALFORMED_REQUEST",
+        "request must be a non-null object.",
+      );
+    }
 
     // ── P1-18: Defensive input sanitization ─────────────────────────────
     // P0 FIX: deterministicClone replaces JSON.parse(JSON.stringify(...))
