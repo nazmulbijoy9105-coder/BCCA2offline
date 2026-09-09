@@ -5,7 +5,13 @@ import type {
 
 /**
  * Development Procedure Registry.
- * P8-01: Authoritative source of truth for procedural and remedy rules.
+ *
+ * P8-01:
+ * DEVELOPMENT FIXTURE ONLY.
+ *
+ * This registry is NOT an authoritative or validated production legal
+ * corpus. Structural validity, version identity, or hashing must never
+ * be treated as statutory validation.
  */
 const PROCEDURE_RULES: readonly ProcedureRule[] = [
   {
@@ -46,6 +52,9 @@ const PROCEDURE_RULES: readonly ProcedureRule[] = [
 ];
 
 export class DevelopmentProcedureRegistry implements ProcedureRegistry {
+  readonly authorityStatus = "DEVELOPMENT_FIXTURE" as const;
+  readonly registryVersion = "1.0";
+
   getRules(): readonly ProcedureRule[] {
     return PROCEDURE_RULES;
   }

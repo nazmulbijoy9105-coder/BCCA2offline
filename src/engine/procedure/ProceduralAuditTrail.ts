@@ -26,10 +26,11 @@ export function generateProceduralAuditTrail(
   jurisdiction: JurisdictionVerdict | null,
   courtFee: CourtFeeVerdict | null,
   maintainability: MaintainabilityVerdict | null,
-  defects: readonly ProceduralDefect[]
+  defects: readonly ProceduralDefect[],
+  timestamp: string,
 ): ProceduralAuditRecord {
   return {
-    timestamp: new Date().toISOString(),
+    timestamp,
     suitType,
     jurisdiction,
     courtFee,

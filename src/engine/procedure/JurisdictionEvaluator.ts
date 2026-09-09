@@ -1,71 +1,30 @@
-import { DevelopmentProcedureRegistry } from "./DevelopmentProcedureRegistry";
-import type { CourtTier, SuitType, ProcedureRule } from "./ProcedureContracts";
-
-const registry = new DevelopmentProcedureRegistry();
+import type { CourtTier, SuitType } from "./ProcedureContracts";
 
 /**
- * P8-02: Jurisdiction & Pecuniary Limits Evaluator.
- * 
- * Deterministically evaluates whether a proposed court tier has the 
- * jurisdiction to hear a suit based on its type and pecuniary value.
+ * P8-02: Jurisdiction Evaluator.
+ *
+ * The available procedural registry is a development fixture and is not
+ * sufficient to establish production jurisdiction. This utility therefore
+ * fails closed rather than converting fixture data into a legal conclusion.
  */
 
 export type JurisdictionVerdict = {
   isValid: boolean;
   reason: string;
-  matchedRule?: ProcedureRule;
 };
 
 export function evaluateJurisdiction(
   suitType: SuitType,
   proposedCourtTier: CourtTier,
-  suitValue?: number
+  suitValue?: number,
 ): JurisdictionVerdict {
-  const candidateRules = registry.getCandidateRules(suitType);
-
-  if (candidateRules.length === 0) {
-    return {
-      isValid: false,
-      reason: `No procedure rules found for suit type: ${suitType}`,
-    };
-  }
-
-  // Find the rule that matches the proposed court tier
-  const matchedRule = candidateRules.find(
-    (rule) => rule.jurisdiction.primaryCourtTier === proposedCourtTier
-  );
-
-  if (!matchedRule) {
-    return {
-      isValid: false,
-      reason: `Court tier ${proposedCourtTier} is not authorized for suit type ${suitType}.`,
-    };
-  }
-
-  // Check pecuniary limits if they exist for the rule
-  if (matchedRule.jurisdiction.pecuniaryLimit) {
-    const { min, max } = matchedRule.jurisdiction.pecuniaryLimit;
-    
-    if (suitValue === undefined) {
-      return {
-        isValid: false,
-        reason: `Suit value is required for pecuniary jurisdiction check (Limit: ${min} - ${max}).`,
-        matchedRule,
-      };
-    }
-
-    if (suitValue < min || suitValue > max) {
-      return {
-        isValid: false,
-        reason: `Suit value ${suitValue} falls outside the pecuniary limit (${min} - ${max}) for ${proposedCourtTier}.`,
-        matchedRule,
-      };
-    }
-  }
+  void suitType;
+  void proposedCourtTier;
+  void suitValue;
 
   return {
-    isValid: true,
-    reason: "Jurisdiction and pecuniary limits verified.",
-    matchedRule,
+    isValid: false,
+    reason:
+      "NOT_DETERMINED — no validated production jurisdiction rule graph is available; human legal review required.",
   };
 }

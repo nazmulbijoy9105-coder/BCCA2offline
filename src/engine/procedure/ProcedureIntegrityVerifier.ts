@@ -13,6 +13,14 @@ export function verifyProcedureIntegrity(): { isValid: boolean; errors: string[]
   const registry = new DevelopmentProcedureRegistry();
   const rules = registry.getRules();
 
+  if (registry.authorityStatus !== "DEVELOPMENT_FIXTURE") {
+    errors.push("Unexpected development procedure registry authority status.");
+  }
+
+  if (!registry.registryVersion) {
+    errors.push("Development procedure registry version is missing.");
+  }
+
   if (!Array.isArray(rules) || rules.length === 0) {
     errors.push("Procedure rules array is missing or empty.");
     return { isValid: false, errors };

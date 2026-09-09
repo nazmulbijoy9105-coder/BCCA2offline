@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { DevelopmentProcedureRegistry } from "./DevelopmentProcedureRegistry";
 
 const registry = new DevelopmentProcedureRegistry();
@@ -28,7 +28,11 @@ function serializeRules(): string {
 
 export function getProcedureCorpusHash(): string {
   const serialized = serializeRules();
-  return createHash("sha256").update(serialized).digest("hex");
+
+  return Array.from(
+    sha256(new TextEncoder().encode(serialized)),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
 }
 
 /**
