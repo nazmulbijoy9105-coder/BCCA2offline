@@ -1708,7 +1708,7 @@ export class BCCAAEngine {
   // P0-4: Temporal / chronology facts
   private extractTemporalFacts(clause: string, candidates: FactCandidate[]): void {
     // Ancestor Death Date (for inheritance cases)
-    const deathMatch = clause.match(/\b(?:died|death|deceased|passed away)\b[^\.]{0,80}?\s+(?:on|dated|on or about)?\s*([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})/i);
+    const deathMatch = clause.match(/\b(?:died|death|deceased|passed away)\b.{0,80}?\b([0-9]{1,2}\s+[A-Za-z]+,?\s*[0-9]{4}|[0-9]{1,2}[\/\-.][0-9]{1,2}[\/\-.][0-9]{2,4})\b/i);
     if (deathMatch) {
       const date = deathMatch[1].trim();
       candidates.push({ subject: "Ancestor", predicate: "Vital Status", object: "DECEASED", eventDate: date });
