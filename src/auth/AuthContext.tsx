@@ -69,32 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // administrative provisioning flow with a user-supplied password.
         const currentUsers = getUsers();
 
-        // TEMPORARY FIX: Create default super admin if no users exist (for Vercel demo)
-        if (!currentUsers.find(u => u.email === "super_admin@bccaa.com")) {
-          const defaultPassword = "YourSecurePassword123!";
-          const defaultAdmin = {
-            id: "super_admin",
-            userId: "super_admin",
-            email: "super_admin@bccaa.com",
-            name: "Super Admin",
-            role: "super_admin" as const,
-            authMethod: "email" as const,
-            isActive: true,
-            mfaEnabled: false,
-            mfaRequired: false,
-            sessionExpiry: 0,
-            maxCasesPerDay: Infinity,
-            chamberId: "default-chamber",
-            licenseKey: "DEFAULT-LICENSE-KEY",
-            createdAt: Date.now(),
-            lastLogin: 0,
-            casesToday: 0,
-            lastCaseDate: "",
-            passwordHash: hashPassword(defaultPassword),
-          };
-          currentUsers.push(defaultAdmin);
-          saveUsers(currentUsers);
-        }
 
         if (storedUser && storedLicense) {
           const user: AuthUser = JSON.parse(storedUser);
