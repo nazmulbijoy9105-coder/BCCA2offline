@@ -177,7 +177,6 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "DECLARATION",
         "GENERAL_CIVIL",
         "DECLARATION_AND_POSSESSION",
-        "SPECIFIC_PERFORMANCE",
         "CANCELLATION",
         "SET_ASIDE",
         "FORGERY_DECLARATION",

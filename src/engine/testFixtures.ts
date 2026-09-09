@@ -33,6 +33,7 @@ export function makeAnalyzeRequest(overrides: {
   license?: { licenseId: string; issuedTo: string };
   factPattern?: string;
   submissionDate?: string | null;
+  limitationReferenceDate?: string | null;
   focusDomain?: string;
 } = {}): AnalyzeRequest {
   const input: EngineInput = {
@@ -40,6 +41,9 @@ export function makeAnalyzeRequest(overrides: {
   };
   if (overrides.submissionDate !== undefined) {
     (input as any).submissionDate = overrides.submissionDate;
+  }
+  if (overrides.limitationReferenceDate !== undefined && overrides.limitationReferenceDate !== null) {
+    input.limitationReferenceDate = overrides.limitationReferenceDate;
   }
   if (overrides.focusDomain !== undefined) {
     input.focusDomain = overrides.focusDomain;
