@@ -3,7 +3,7 @@ import { DevelopmentAppellateRegistry } from "./DevelopmentAppellateRegistry";
 /**
  * P9-09: Appellate Integrity Verifier.
  * 
- * Verifies the structural integrity of the appellate rules registry.
+ * Verifies the structural integrity of the development appellate fixture.
  * Ensures arrays are populated, required fields exist, and the schema is sound.
  * Fails closed if the registry is corrupted or malformed.
  */
@@ -37,7 +37,7 @@ export function verifyAppellateIntegrity(): { isValid: boolean; errors: string[]
 }
 
 /**
- * Hard fail-closed guard. Throws an error if the appellate registry is structurally invalid.
+ * Hard fail-closed guard. Throws if the development fixture is structurally invalid.
  */
 export function assertAppellateIntegrity(): void {
   const { isValid, errors } = verifyAppellateIntegrity();

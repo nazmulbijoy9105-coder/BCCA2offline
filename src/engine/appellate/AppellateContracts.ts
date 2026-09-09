@@ -1,9 +1,14 @@
 /**
  * P9-01: Appeal / Review / Revision Integrity Contracts.
  * 
- * Establishes the authoritative registry types for appellate procedure,
- * including forums, limitation periods, and grounds for appeal, review, and revision.
+ * Establishes registry types for appellate procedure, including forums,
+ * limitation metadata, and grounds. Registry authority is explicitly
+ * represented and must not be inferred from fixture contents.
  */
+
+export type AppellateAuthorityStatus =
+  | "VALIDATED_PRODUCTION"
+  | "DEVELOPMENT_FIXTURE";
 
 export type AppellateRemedyType = 
   | "FIRST_APPEAL" 
@@ -28,13 +33,25 @@ export type AppellateRule = {
     prerequisiteForum?: AppellateForum;
   };
   limitation: {
-    article: string; // E.g., "ARTICLE_152" or "ARTICLE_156"
+    article: string; // Fixture article identifier
     periodDays: number;
   };
   grounds: readonly string[];
 };
 
 export type AppellateRegistry = {
+  /**
+   * Explicit authority classification.
+   * Production legal outcomes require VALIDATED_PRODUCTION.
+   */
+  authorityStatus: AppellateAuthorityStatus;
+
+  /**
+   * Registry version identifies the exact registry definition.
+   * It is not itself evidence of legal validity.
+   */
+  version: string;
+
   getRules(): readonly AppellateRule[];
   getCandidateRules(remedyType: string): readonly AppellateRule[];
 };

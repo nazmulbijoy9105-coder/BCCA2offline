@@ -4,13 +4,13 @@
  2026-09-08T00:36:32Z
 
 ## Status
-**CERTIFIED**
+**NOT CERTIFIED — DEVELOPMENT FIXTURE / FAIL-CLOSED ONLY**
 
 ## Phase 9 Summary
-Phase 9 successfully establishes an authoritative, deterministic appellate pipeline. The engine now evaluates appellate forums, limitation periods (e.g., 30 vs 90 days), and legal grounds (e.g., substantial question of law) against a locked registry. All appellate rules are version-locked, hashed for tamper detection, and bound to statutory provenance.
+Phase 9 establishes appellate integrity controls and fail-closed boundaries, but does not establish an authoritative production appellate pipeline. The engine does not make production appellate determinations from the development registry. Forum, limitation, and grounds evaluation remain NOT_DETERMINED without validated production authority. Development-fixture appellate metadata is version-locked, hashed for fixture tamper detection, and carries explicit provenance metadata without establishing production legal authority.
 
 ## Completed Checkpoints
-- P9-01: Authoritative appellate registry established.
+- P9-01: Development appellate registry explicitly classified as DEVELOPMENT_FIXTURE; production authority NOT established.
 - P9-02: Appellate forum evaluator (prerequisite verification) implemented.
 - P9-03: Appellate limitation calculator implemented.
 - P9-04: Appellate grounds validator implemented.
@@ -23,4 +23,4 @@ Phase 9 successfully establishes an authoritative, deterministic appellate pipel
 - P9-11: Appellate provenance resolver implemented.
 
 ## Forensic Verification
-A system-wide grep confirms that no hardcoded appellate strings remain outside the authoritative registry. The TypeScript compiler (`tsc --noEmit`) passes with zero errors, verifying that all 11 new appellate utility files integrate cleanly with the existing architecture.
+The development registry contains fixture rule data and is explicitly non-authoritative; production appellate determinations remain fail-closed. Structural, version, provenance, and hashing controls operate only within the development-fixture boundary. Final certification remains blocked until the production appellate corpus is validated.

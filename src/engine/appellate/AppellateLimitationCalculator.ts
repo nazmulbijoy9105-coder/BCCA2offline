@@ -51,8 +51,8 @@ export function calculateAppellateLimitation(
     };
   }
 
-  // Exclude the day of the decree (Section 12 of the Limitation Act)
-  // and add the prescribed number of days
+  // Fixture calculation only. Production limitation computation requires
+  // validated statutory authority and applicable date-counting rules.
   const expiryDate = new Date(date);
   expiryDate.setDate(expiryDate.getDate() + periodDays);
 

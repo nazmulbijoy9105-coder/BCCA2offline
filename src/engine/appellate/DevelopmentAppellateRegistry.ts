@@ -5,7 +5,8 @@ import type {
 
 /**
  * Development Appellate Registry.
- * P9-01: Authoritative source of truth for appellate, review, and revision rules.
+ * P9-01: Development fixture containing example appellate metadata.
+ * This registry is NOT authoritative production legal authority.
  */
 const APPELLATE_RULES: readonly AppellateRule[] = [
   {
@@ -65,6 +66,13 @@ const APPELLATE_RULES: readonly AppellateRule[] = [
 ];
 
 export class DevelopmentAppellateRegistry implements AppellateRegistry {
+  /**
+   * This registry is intentionally non-authoritative.
+   * Its legal-looking entries are development fixtures only.
+   */
+  readonly authorityStatus = "DEVELOPMENT_FIXTURE" as const;
+  readonly version = "1.0-fixture";
+
   getRules(): readonly AppellateRule[] {
     return APPELLATE_RULES;
   }

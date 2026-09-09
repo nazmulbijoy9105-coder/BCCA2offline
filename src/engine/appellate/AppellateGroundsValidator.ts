@@ -5,10 +5,9 @@ const registry = new DevelopmentAppellateRegistry();
 
 /**
  * P9-04: Appellate Grounds Validator.
- * 
- * Verifies that the grounds asserted for an appeal or review are legally
- * permissible under the registry rules (e.g., Section 100 CPC limits 
- * second appeals to substantial questions of law only).
+ *
+ * Development-only validation utility over fixture metadata. It does not
+ * establish whether asserted grounds are legally available in production.
  */
 
 export type GroundsVerdict = {

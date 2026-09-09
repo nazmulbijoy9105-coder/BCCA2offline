@@ -17,12 +17,13 @@ export type AppellateAuditRecord = {
 };
 
 export function generateAppellateAuditTrail(
+  timestamp: string,
   remedyType: AppellateRemedyType,
   limitationExpiryDate: string | null,
   defects: readonly AppellateDefect[]
 ): AppellateAuditRecord {
   return {
-    timestamp: new Date().toISOString(),
+    timestamp,
     remedyType,
     limitationExpiryDate,
     defects,
