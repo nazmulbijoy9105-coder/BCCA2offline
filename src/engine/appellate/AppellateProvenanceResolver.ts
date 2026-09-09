@@ -6,7 +6,7 @@ const registry = new DevelopmentAppellateRegistry();
  * P9-11: Appellate Provenance Binding.
  * 
  * Ensures that any appellate rule applied by the engine can be traced 
- * back to its authoritative statutory source.
+ * provenance metadata for development appellate fixture rules.
  */
 
 export type AppellateProvenance = {
@@ -41,6 +41,6 @@ export function getAppellateProvenance(ruleId: string): AppellateProvenance | nu
 export function assertAppellateProvenance(ruleId: string): void {
   const provenance = getAppellateProvenance(ruleId);
   if (!provenance) {
-    throw new Error(`Appellate Provenance Violation: Rule ${ruleId} does not exist in the authoritative registry.`);
+    throw new Error(`Appellate Provenance Violation: Rule ${ruleId} does not exist in the development fixture registry.`);
   }
 }

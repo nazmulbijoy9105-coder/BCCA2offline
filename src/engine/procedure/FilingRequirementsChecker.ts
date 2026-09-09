@@ -1,9 +1,8 @@
 /**
  * P8-05: Filing Requirements Checker.
- * 
- * Verifies that all mandatory filing requirements under the CPC have been met.
- * E.g., Affidavit, Court Fee Stamp, List of Documents, Vakalatnama.
- * Fails closed if any required filing predicate is missing.
+ *
+ * Filing requirements are jurisdiction- and procedure-dependent legal rules.
+ * The previous hardcoded universal document list is therefore removed.
  */
 
 export type FilingDocument = {
@@ -17,39 +16,21 @@ export type FilingVerdict = {
   missingRequirements: string[];
 };
 
-const REQUIRED_FILING_PREDICATES = [
-  "Affidavit",
-  "Court Fee Stamp",
-  "List of Documents",
-  "Vakalatnama"
-];
-
 export function checkFilingRequirements(
-  filedDocuments: readonly FilingDocument[]
+  filedDocuments: readonly FilingDocument[],
 ): FilingVerdict {
-  const missing: string[] = [];
-
-  for (const req of REQUIRED_FILING_PREDICATES) {
-    const isPresent = filedDocuments.some(doc => 
-      doc.predicate === req && doc.verified !== false
-    );
-    
-    if (!isPresent) {
-      missing.push(req);
-    }
-  }
+  void filedDocuments;
 
   return {
-    isComplete: missing.length === 0,
-    missingRequirements: missing,
+    isComplete: false,
+    missingRequirements: [
+      "NOT_DETERMINED — no validated filing-requirements rule graph is available; human legal review required.",
+    ],
   };
 }
 
-/**
- * Hard fail-closed guard. Returns true if any filing requirements are missing.
- */
 export function hasMissingFilingRequirements(
-  filedDocuments: readonly FilingDocument[]
+  filedDocuments: readonly FilingDocument[],
 ): boolean {
   return !checkFilingRequirements(filedDocuments).isComplete;
 }

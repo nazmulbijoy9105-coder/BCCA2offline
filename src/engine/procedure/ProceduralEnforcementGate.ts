@@ -11,9 +11,11 @@ import type { CourtTier, SuitType } from "./ProcedureContracts";
 /**
  * P8-10: Procedural Enforcement Gate.
  * 
- * Single source of truth for procedural validation. Combines jurisdiction,
- * court fees, maintainability, filing, relief, and limitation interaction.
- * Fails closed if any procedural defect is detected.
+ * DEVELOPMENT-ONLY procedural evaluation harness.
+ *
+ * This is not the production BCCAAEngine procedure graph. Its validators
+ * fail closed because no validated production procedure corpus is available.
+ * It cannot establish affirmative production procedural compliance.
  */
 
 export type ProceduralEvaluationInput = {
@@ -84,7 +86,8 @@ export function enforceProceduralRules(input: ProceduralEvaluationInput): Proced
     jurisdiction.isValid ? jurisdiction : null,
     courtFee,
     maintainability,
-    defects
+    defects,
+    "1970-01-01T00:00:00.000Z",
   );
 
   return {

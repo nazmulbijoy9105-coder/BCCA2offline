@@ -1,5 +1,5 @@
 import { DevelopmentProcedureRegistry } from "./DevelopmentProcedureRegistry";
-import type { ProcedureRule } from "./ProcedureContracts";
+
 
 const registry = new DevelopmentProcedureRegistry();
 
@@ -42,6 +42,6 @@ export function getProceduralProvenance(ruleId: string): ProceduralProvenance | 
 export function assertProceduralProvenance(ruleId: string): void {
   const provenance = getProceduralProvenance(ruleId);
   if (!provenance) {
-    throw new Error(`Procedural Provenance Violation: Rule ${ruleId} does not exist in the authoritative registry.`);
+    throw new Error(`Procedural Provenance Violation: Rule ${ruleId} does not exist in the development procedure fixture.`);
   }
 }

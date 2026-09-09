@@ -42,7 +42,13 @@ export type ProcedureRule = {
   maintainabilityPrerequisites: readonly string[];
 };
 
+export type ProcedureAuthorityStatus =
+  | "DEVELOPMENT_FIXTURE"
+  | "VALIDATED_PRODUCTION";
+
 export type ProcedureRegistry = {
+  readonly authorityStatus: ProcedureAuthorityStatus;
+  readonly registryVersion: string;
   getRules(): readonly ProcedureRule[];
   getCandidateRules(suitType: string): readonly ProcedureRule[];
 };

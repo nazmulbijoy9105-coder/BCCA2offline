@@ -514,7 +514,25 @@ export interface CaseAnalysisResponse {
     }>;
     oralAssertions?: number;
     documentaryEvidence?: number;
-    missingEvidence?: any[];
+    missingEvidence?: readonly any[];
+    evidenceIntegrity?: {
+      status: "PASS" | "INDETERMINATE" | "FAIL" | "HALT";
+      isBlocking: boolean;
+      linkageFailures: string[];
+      provenanceFailures: string[];
+      rejectedFacts: string[];
+      unsupportedAssertions: string[];
+      duplicateFacts: boolean;
+      missingEvidence: readonly any[];
+      custodyStatus: "NOT_APPLICABLE" | "PASS" | "FAIL";
+      unregisteredDocumentIds: string[];
+      lifecycleStatus: "NOT_APPLICABLE" | "AVAILABLE" | "UNAVAILABLE";
+      extractionHashStatus: "NOT_AVAILABLE" | "VERIFIED" | "MISMATCH";
+      narrativeFactCount: number;
+      documentaryFactCount: number;
+      warnings: string[];
+      reasons: string[];
+    };
   };
   stage8: {
     evidenceList?: Array<{

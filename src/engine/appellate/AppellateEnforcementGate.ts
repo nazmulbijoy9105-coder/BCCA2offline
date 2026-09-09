@@ -5,9 +5,10 @@ import type { AppellateForum, AppellateRemedyType } from "./AppellateContracts";
 
 /**
  * P9-05: Appellate Enforcement Gate.
- * 
- * Single source of truth for appellate validation. Combines forum, 
- * limitation, and grounds checks. Fails closed if any appellate defect is detected.
+ *
+ * Development/validation utility for appellate metadata. It must not be
+ * treated as production legal authority. Production appellate outcomes
+ * remain NOT_DETERMINED until validated production authority is supplied.
  */
 
 export type AppellateEvaluationInput = {
@@ -36,25 +37,47 @@ export function enforceAppellateRules(input: AppellateEvaluationInput): Appellat
   // 1. Forum Check
   const forumVerdict = evaluateAppellateForum(input.remedyType, input.proposedForum, input.originatingForum);
   if (!forumVerdict.isValid) {
-    defects.push({ category: "FORUM", description: forumVerdict.reason });
+    defects.push({
+      category: "FORUM",
+      description: forumVerdict.reason,
+    });
   }
 
   // 2. Limitation Check
   const limitationVerdict = calculateAppellateLimitation(input.remedyType, input.decreeDate);
   if (!limitationVerdict) {
-    defects.push({ category: "LIMITATION", description: "No limitation rule found for the remedy type." });
+    defects.push({
+      category: "LIMITATION",
+      description:
+        "NOT_DETERMINED — no validated production appellate limitation rule is available.",
+    });
   } else {
     limitationExpiryDate = limitationVerdict.expiryDate;
     if (!limitationVerdict.expiryDate) {
-      defects.push({ category: "LIMITATION", description: limitationVerdict.reason });
+      defects.push({
+        category: "LIMITATION",
+        description: limitationVerdict.reason,
+      });
     }
   }
 
   // 3. Grounds Check
   const groundsVerdict = validateAppellateGrounds(input.remedyType, input.assertedGrounds);
   if (!groundsVerdict.isValid) {
-    for (const invalid of groundsVerdict.invalidGrounds) {
-      defects.push({ category: "GROUNDS", description: `Invalid ground asserted for ${input.remedyType}: ${invalid}` });
+    if (groundsVerdict.invalidGrounds.length === 0) {
+      defects.push({
+        category: "GROUNDS",
+        description:
+          "NOT_DETERMINED — no validated production appellate grounds rule is available.",
+      });
+    } else {
+      for (const invalid of groundsVerdict.invalidGrounds) {
+        defects.push({
+          category: "GROUNDS",
+          description:
+            `Ground cannot be validated against a production appellate rule: ${invalid}`,
+        });
+      }
     }
   }
 
