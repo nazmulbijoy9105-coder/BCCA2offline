@@ -327,8 +327,40 @@ export interface CaseHistoryItem {
   accessLog: Array<{ userId: string; accessedAt: number; action: string }>;
 }
 
+export interface OutputIntegrityMetadata {
+  schemaId: string;
+  schemaVersion: string;
+  corpusHash: string;
+  isValid: boolean;
+  defects: Array<{
+    category:
+      | "SCHEMA"
+      | "PROVENANCE"
+      | "TRACEABILITY"
+      | "UNCERTAINTY"
+      | "CONTRADICTION"
+      | "UNSUPPORTED_CONCLUSION";
+    description: string;
+  }>;
+  auditTrail: {
+    timestamp: string;
+    isValid: boolean;
+    defects: readonly {
+      category:
+        | "SCHEMA"
+        | "PROVENANCE"
+        | "TRACEABILITY"
+        | "UNCERTAINTY"
+        | "CONTRADICTION"
+        | "UNSUPPORTED_CONCLUSION";
+      description: string;
+    }[];
+  };
+}
+
 export interface CaseAnalysisResponse {
   auditHash?: string;
+  outputIntegrity?: OutputIntegrityMetadata;
   caseId?: string;
   userId?: string;
   licenseId?: string;
