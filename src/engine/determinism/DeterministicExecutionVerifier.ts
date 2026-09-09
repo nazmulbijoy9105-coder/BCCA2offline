@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { canonicalHash } from "../../utils/crypto";
 
 /**
  * P11-01: Deterministic Execution Verifier.
@@ -30,9 +30,7 @@ export function verifyDeterministicExecution<T>(
 
   for (let i = 0; i < runs; i++) {
     const output = fn();
-    const serialized = JSON.stringify(output, Object.keys(output as object).sort());
-    const hash = createHash("sha256").update(serialized).digest("hex");
-    hashes.push(hash);
+    hashes.push(canonicalHash(output));
   }
 
   const firstHash = hashes[0];

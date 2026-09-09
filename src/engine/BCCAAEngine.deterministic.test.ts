@@ -25,7 +25,7 @@ function makeRequest(overrides: {
   submissionDate?: string;
 } = {}): AnalyzeRequest {
   return {
-    caseId: overrides.caseId ?? `DET-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+    caseId: overrides.caseId ?? "DET-DEFAULT",
     user: makeTestUser(),
     license: { licenseId: "TEST-LIC-001", issuedTo: "DETERMINISTIC_TEST_SUITE" },
     input: {

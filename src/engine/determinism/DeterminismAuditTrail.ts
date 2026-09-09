@@ -20,12 +20,13 @@ export type DeterminismAuditRecord = {
 };
 
 export function generateDeterminismAuditTrail(
+  timestamp: string,
   testType: DeterminismTestType,
   behavesCorrectly: boolean,
   reason: string
 ): DeterminismAuditRecord {
   return {
-    timestamp: new Date().toISOString(),
+    timestamp,
     testType,
     behavesCorrectly,
     reason,

@@ -1,3 +1,5 @@
+import { canonicalStringify } from "../BCCAAEngine";
+
 /**
  * P11-08: Repeatability Verifier.
  * 
@@ -28,8 +30,9 @@ export function verifyRepeatability<T>(
 
   for (let i = 0; i < runs; i++) {
     const output = fn();
-    // Use deterministic JSON serialization
-    const serialized = JSON.stringify(output, Object.keys(output as object).sort());
+    // Use the repository-wide canonical serializer so nested object ordering
+    // cannot create false nondeterminism.
+    const serialized = canonicalStringify(output);
     outputs.push(serialized);
   }
 
