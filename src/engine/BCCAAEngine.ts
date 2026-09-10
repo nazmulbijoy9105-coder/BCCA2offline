@@ -1,3 +1,12 @@
+import {
+  canonicalHash,
+  canonicalStringify,
+} from "../utils/crypto";
+
+export {
+  canonicalHash,
+  canonicalStringify,
+};
 // src/engine/BCCAAEngine.ts
 // BCCAA 4.5.2-P0 — P0 Fact-Graph Hardened
 //
@@ -521,31 +530,6 @@ function getAllFactIds(ctx: ExecutionContext): string[] {
 // ============================================================================
 // ONE CANONICAL SERIALIZATION / HASH PATH
 // ============================================================================
-
-function canonicalize(value: unknown): unknown {
-  if (value === null) return null;
-  if (value === undefined) return null;
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return value;
-  if (typeof value === "boolean") return value;
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-      out[key] = canonicalize((value as Record<string, unknown>)[key]);
-    }
-    return out;
-  }
-  return String(value);
-}
-
-export function canonicalStringify(value: unknown): string {
-  return JSON.stringify(canonicalize(value));
-}
-
-export function canonicalHash(value: unknown): string {
-  return generateHash(canonicalStringify(value));
-}
 
 /** P0 FIX: Deterministic structural clone — sorts keys, drops functions,
  *  preserves Date as ISO strings via canonicalStringify. Replaces
