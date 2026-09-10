@@ -18,19 +18,14 @@ export interface LegalEngineRuntimeStatus {
  *
  * Development fixtures are allowed outside production.
  *
- * The explicit allowDevelopmentCorpus override exists only for
- * controlled demo/development scenarios and is intentionally explicit.
+ * There is intentionally NO production override for development
+ * corpus or development authority.
  */
 export function assertLegalEngineProductionReady(
   isProduction: boolean,
   status: LegalEngineRuntimeStatus,
-  allowDevelopmentCorpus: boolean = false,
 ): void {
   if (!isProduction) {
-    return;
-  }
-
-  if (allowDevelopmentCorpus) {
     return;
   }
 
