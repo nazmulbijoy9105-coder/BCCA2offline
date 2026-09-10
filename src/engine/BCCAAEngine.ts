@@ -47,7 +47,7 @@ import { assertCorpusHash } from "./citations/CorpusHasher";
 // P6-11: Enforce corpus integrity and version lock at engine startup
 assertCorpusIntegrity();
 assertCorpusVersion("1.0");
-assertCorpusHash("67b1acb30dd8d5754c657466b210b05474913ed96aea406bc0d758b29ece9bbd"); // P6-12: Pin expected SHA-256 hash
+assertCorpusHash("67B1ACB30DD8D5754C657466B210B05474913ED96AEA406BC0D758B29ECE9BBD"); // P6-12: Pin expected SHA-256 hash
 import {
   Tristate,
 } from "./rules/RuleContracts";

@@ -1,4 +1,4 @@
-import { sha256 } from "js-sha256";
+import { canonicalHash } from "../../utils/crypto";
 import { LIMITATION_ACT_1908_CORPUS } from "./LimitationAct1908Corpus";
 
 /**
@@ -8,24 +8,13 @@ import { LIMITATION_ACT_1908_CORPUS } from "./LimitationAct1908Corpus";
  * Allows mathematical proof that the underlying statutory data has not been
  * tampered with between deployments or audits.
  *
- * Uses js-sha256 (pure JS, sync) rather than node:crypto so this runs
- * identically in the browser (offline-first client engine) and Node
- * (server / tests) without Vite externalization issues.
+ * Uses the repository-wide canonical hashing path so corpus integrity
+ * uses the same deterministic SHA-256 implementation as the rest of
+ * the legal engine.
  */
 
 export function getCorpusHash(): string {
-  // Serialize the corpus deterministically.
-  const serialized = JSON.stringify(LIMITATION_ACT_1908_CORPUS, (key, value) => {
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      return Object.keys(value).sort().reduce((acc, k) => {
-        (acc as Record<string, unknown>)[k] = (value as Record<string, unknown>)[k];
-        return acc;
-      }, {} as Record<string, unknown>);
-    }
-    return value;
-  });
-
-  return sha256(serialized);
+  return canonicalHash(LIMITATION_ACT_1908_CORPUS);
 }
 
 /**

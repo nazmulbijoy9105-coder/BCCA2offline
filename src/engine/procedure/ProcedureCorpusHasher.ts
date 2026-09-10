@@ -1,4 +1,4 @@
-import { sha256 } from "@noble/hashes/sha2.js";
+import { canonicalHash } from "../../utils/crypto";
 import { DevelopmentProcedureRegistry } from "./DevelopmentProcedureRegistry";
 
 const registry = new DevelopmentProcedureRegistry();
@@ -11,28 +11,15 @@ const registry = new DevelopmentProcedureRegistry();
  * have not been tampered with between deployments.
  */
 
-function serializeRules(): string {
-  const rules = registry.getRules();
-  // Sort by ruleId to ensure deterministic order
-  const sortedRules = [...rules].sort((a, b) => a.ruleId.localeCompare(b.ruleId));
-  return JSON.stringify(sortedRules, (key, value) => {
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      return Object.keys(value).sort().reduce((acc, k) => {
-        (acc as Record<string, unknown>)[k] = (value as Record<string, unknown>)[k];
-        return acc;
-      }, {} as Record<string, unknown>);
-    }
-    return value;
-  });
-}
+
 
 export function getProcedureCorpusHash(): string {
-  const serialized = serializeRules();
+  const rules = registry.getRules();
+  const sortedRules = [...rules].sort((a, b) =>
+    a.ruleId.localeCompare(b.ruleId),
+  );
 
-  return Array.from(
-    sha256(new TextEncoder().encode(serialized)),
-    (byte) => byte.toString(16).padStart(2, "0"),
-  ).join("");
+  return canonicalHash(sortedRules);
 }
 
 /**
