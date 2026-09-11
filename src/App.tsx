@@ -2,7 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Scale, FileText, BookOpen, ShieldAlert, Hammer, History, RotateCcw, Copy, Check, X, Loader2, Download, ShieldCheck } from "lucide-react";
 import { useAuth } from "./auth/AuthContext";
 import { BCCAAEngine, ENGINE_MANIFEST } from "./engine/BCCAAEngine";
-import { assertLegalEngineProductionReady } from "./engine/productionGate";
+import {
+  assertLegalEngineProductionReady,
+  PRODUCTION_LEGAL_ENGINE_NOT_READY_ERROR,
+} from "./engine/productionGate";
 import { generateWatermark } from "./utils/watermark";
 import { downloadSecurePDF } from "./utils/pdfGeneratorSecure";
 import { downloadCaseBriefDOCX } from "./utils/docxGenerator";
@@ -146,7 +149,8 @@ export default function App() {
       console.error("Analysis failed:", err);
       const isProductionGateFailure =
         typeof err?.message === "string" &&
-        err.message.includes("FATAL LEGAL ENGINE CONFIGURATION");
+        (err.message === PRODUCTION_LEGAL_ENGINE_NOT_READY_ERROR ||
+          err.message.includes("FATAL LEGAL ENGINE CONFIGURATION"));
       if (isProductionGateFailure) {
         setEngineNotReady(true);
       }

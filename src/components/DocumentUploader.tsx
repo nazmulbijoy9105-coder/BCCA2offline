@@ -231,73 +231,6 @@ export default function DocumentUploader({ onTextExtracted, onClearText, current
     }
   };
 
-  // Sample document test generators
-  const loadSampleDocument = (type: "bainapatra" | "disowning") => {
-    if (type === "bainapatra") {
-      const sampleText = `CONVOLUTED LAND DISPUTE & BAINAPATRA BREACH (SPECIFIC PERFORMANCE)
-====================================================================
-FILE NO: REG-BD-2024-8892 | JURISDICTION: DHAKA JOINT DISTRICT JUDGE COURT
-
-FACTUAL RECORD & DEED CHRONOLOGY:
-1. On January 10, 2022, Plaintiff Rafiqul Islam entered into a registered Bainapatra (Agreement for Sale Deed No. 4451) with Defendant Abdul Barek for the purchase of 12 Decimals of land in Mouza Dhanmondi, Khatian No. 882, Plot No. 1045.
-2. Total agreed consideration price was BDT 50,00,000/- (Fifty Lakh Taka).
-3. On the execution date (Jan 10, 2022), the Plaintiff paid advance earnest money of BDT 30,00,000/- via Pay Order No. 458921 drawn on Sonali Bank Ltd.
-4. The registered Bainapatra stipulated that the balance consideration of BDT 20,00,000/- was to be paid within 6 months (i.e., on or before July 10, 2022), whereupon Defendant Abdul Barek was obligated to execute and register the final Kabala Deed.
-5. On June 15, 2022, Plaintiff Rafiqul Islam tendered the remaining balance of BDT 20,00,000/- via Bank Draft and requested Defendant Barek to appear at the Sub-Registry Office for Kabala registration.
-6. Defendant Barek refused to accept the balance and delayed under various pretexts.
-7. On August 20, 2022, Plaintiff sent a formal Legal Notice demanding performance within 15 days.
-8. Defendant barefacedly refused performance on September 05, 2022, claiming he had sold the property to a third party.
-
-STATUTORY GRIEVANCE:
-Plaintiff seeks Specific Performance of the registered Bainapatra under Section 12 of the Specific Relief Act 1877, alongside a Temporary Injunction under Order XXXIX Rules 1 & 2 CPC to restrain Defendant from transferring the property.`;
-
-      const newDoc: ExtractedDoc = {
-        id: "DOC-SAMPLE-BAINA-4451",
-        fileName: "Sample_Bainapatra_Agreement_Deed_4451.pdf",
-        fileSize: "14.2 KB",
-        fileType: "PDF",
-        extractedText: sampleText,
-        wordCount: sampleText.split(/\s+/).length,
-        charCount: sampleText.length,
-        pageCount: 2,
-        timestamp: Date.now(),
-        isDeleted: false
-      };
-
-      setActiveDoc(newDoc);
-      saveHistory([newDoc, ...docHistory.filter(d => d.id !== newDoc.id)]);
-      onTextExtracted(sampleText, "replace");
-    } else {
-      const sampleText = `PARTITION SUIT & NULLITY OF TEJYA PUTRO DISOWNING AFFIDAVIT
-====================================================================
-FILE NO: SUIT-PRT-2024-104 | JURISDICTION: KHULNA SENIOR JUDGE COURT
-
-FACT PATTERN & INHERITANCE RECORD:
-1. Ancestor late Hazi Karim Box died intestate on March 14, 2018, leaving behind 2 sons (Plaintiff Kamrul & Defendant Rahim) and 1 daughter (Defendant Fatema), along with 30 Decimals of ancestral land in Mouza Rupsha, Khatian 102.
-2. Under Muslim Personal Law (Shariat) Application Act 1937, the 2 sons inherit 2/5th share each (12 Decimals each) and the daughter inherits 1/5th share (6 Decimals).
-3. On November 10, 2023, Defendant Rahim produced a notarized "Tejya Putro Affidavit" executed by late Hazi Karim Box in 2015, purporting to disown Plaintiff Kamrul from all inheritance.
-4. Based on this void affidavit, Defendant Rahim obtained an exclusive Namjari mutation in his sole name and threatened to alienate undivided suit land to third-party developers.
-5. Plaintiff Kamrul remains in constructive joint possession of the suit property and seeks a decree of partition and declaration that the Tejya Putro affidavit is null, void, and inoperative in law.`;
-
-      const newDoc: ExtractedDoc = {
-        id: "DOC-SAMPLE-PARTITION-104",
-        fileName: "Sample_Partition_Inheritance_CaseFile.txt",
-        fileSize: "8.6 KB",
-        fileType: "TXT",
-        extractedText: sampleText,
-        wordCount: sampleText.split(/\s+/).length,
-        charCount: sampleText.length,
-        pageCount: 1,
-        timestamp: Date.now(),
-        isDeleted: false
-      };
-
-      setActiveDoc(newDoc);
-      saveHistory([newDoc, ...docHistory.filter(d => d.id !== newDoc.id)]);
-      onTextExtracted(sampleText, "replace");
-    }
-  };
-
   const activeDocsList = docHistory.filter(d => !d.isDeleted);
   const deletedDocsList = docHistory.filter(d => d.isDeleted);
 
@@ -373,31 +306,6 @@ FACT PATTERN & INHERITANCE RECORD:
               Select Document File
             </span>
           </div>
-        </div>
-      </div>
-
-      {/* Quick sample loader buttons */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[10px]">
-        <span className="text-[#4A5560] font-bold uppercase tracking-wider">
-          Or load sample case file:
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); loadSampleDocument("bainapatra"); }}
-            className="px-2.5 py-1 bg-white hover:bg-[#1E252B] hover:text-white border border-[#E5E1D8] hover:border-[#1E252B] text-[#1E252B] font-bold transition flex items-center gap-1 cursor-pointer"
-          >
-            <Sparkles className="h-3 w-3 text-[#C5A059]" />
-            Bainapatra Specific Performance (.pdf sample)
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); loadSampleDocument("disowning"); }}
-            className="px-2.5 py-1 bg-white hover:bg-[#1E252B] hover:text-white border border-[#E5E1D8] hover:border-[#1E252B] text-[#1E252B] font-bold transition flex items-center gap-1 cursor-pointer"
-          >
-            <Sparkles className="h-3 w-3 text-[#C5A059]" />
-            Partition & Tejya Putro (.txt sample)
-          </button>
         </div>
       </div>
 

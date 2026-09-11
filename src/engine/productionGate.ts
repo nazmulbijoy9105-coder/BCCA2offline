@@ -9,6 +9,9 @@ export interface LegalEngineRuntimeStatus {
   authorityStatus: LegalAuthorityStatus;
 }
 
+export const PRODUCTION_LEGAL_ENGINE_NOT_READY_ERROR =
+  "production legal analysis requires VALIDATED_PRODUCTION corpus and authority";
+
 /**
  * Application-level fail-closed boundary.
  *
@@ -36,7 +39,5 @@ export function assertLegalEngineProductionReady(
     return;
   }
 
-  throw new Error(
-    "production legal analysis requires VALIDATED_PRODUCTION corpus and authority",
-  );
+  throw new Error(PRODUCTION_LEGAL_ENGINE_NOT_READY_ERROR);
 }

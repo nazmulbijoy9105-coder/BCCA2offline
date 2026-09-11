@@ -144,48 +144,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Invalid credentials.");
       }
 
-      // Step 3: Handle license key requirement (Admins bypass license check)
-      const isAdmin = user.role === "super_admin" || user.role === "admin";
-      const activeLicenseKey = isAdmin ? "ADMIN-BYPASS" : (licenseKey?.trim() || "");
-      
+      // Step 3: License validation applies to every authenticated role.
+      const activeLicenseKey = licenseKey?.trim() || "";
+
       if (!activeLicenseKey) {
         throw new Error("License key required.");
       }
 
-      let licenseCheck;
-      if (isAdmin) {
-        // Admins do not require a license to log in
-        licenseCheck = { 
-          valid: true, 
-          data: { 
-            licenseId: "admin-bypass", 
-            licenseKey: activeLicenseKey, 
-            issuedTo: user.email, 
-            issuedBy: "System", 
-            expiresAt: 0, 
-            maxUsers: Infinity, 
-            maxAdmins: Infinity, 
-            tier: "enterprise" as const, 
-            allowedDomains: [], 
-            features: ["ALL"] 
-          }, 
-          reason: "" 
-        };
-      } else {
-        licenseCheck = validateLicenseKey(activeLicenseKey);
-        if (!licenseCheck.valid) {
-          logAudit({
-            action: "LICENSE_VIOLATION",
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-            resourceType: "LICENSE",
-            resourceId: activeLicenseKey,
-            outcome: "DENIED",
-            metadata: { reason: licenseCheck.reason },
-          });
-          throw new Error(`License invalid: ${licenseCheck.reason}`);
-        }
+      const licenseCheck = validateLicenseKey(activeLicenseKey);
+
+      if (!licenseCheck.valid || !licenseCheck.data) {
+        logAudit({
+          action: "LICENSE_VIOLATION",
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          resourceType: "LICENSE",
+          resourceId: activeLicenseKey,
+          outcome: "DENIED",
+          metadata: { reason: licenseCheck.reason },
+        });
+        throw new Error(
+          `License invalid: ${licenseCheck.reason || "invalid license"}`
+        );
       }
 
       // Step 5: Check daily limit reset

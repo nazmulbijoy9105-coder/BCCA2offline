@@ -38,7 +38,6 @@ import {
   evaluateEvidenceIntegrity,
   type EvidenceIntegrityGateResult,
 } from "./evidence/EvidenceIntegrityGate";
-import { synthesizeLegalReport } from "./synthesis/LegalSynthesizer";
 import { finalizeOutputResponse } from "./output/OutputResponseFinalizer";
 import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
 import { assertCorpusVersion } from "./citations/CorpusVersionLock";
@@ -2296,6 +2295,8 @@ export class BCCAAEngine {
       isValid: boolean;
       errors: string[];
       warnings: string[];
+      limitationArticle?: string | null;
+      limitationPeriodYears?: number | null;
       calculationType?: string;
     };
     preliminaryAnalysis?: string;
@@ -2405,6 +2406,8 @@ export class BCCAAEngine {
             isValid: true,
             errors: result.errors,
             warnings: result.warnings,
+            limitationArticle: result.limitationArticle,
+            limitationPeriodYears: result.limitationPeriodYears,
             calculationType: result.calculationType,
           },
           preliminaryAnalysis:
@@ -2439,6 +2442,8 @@ export class BCCAAEngine {
         isValid: false,
         errors: unresolved.errors,
         warnings: unresolved.warnings,
+        limitationArticle: unresolved.limitationArticle,
+        limitationPeriodYears: unresolved.limitationPeriodYears,
         calculationType: unresolved.calculationType,
       },
       preliminaryAnalysis:
@@ -3152,7 +3157,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
       stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationArticle: null, limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
@@ -3305,7 +3310,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationArticle: null, limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
