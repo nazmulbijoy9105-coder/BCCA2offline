@@ -268,6 +268,9 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
 ];
 
 export class DevelopmentLimitationRegistry implements LimitationRuleRegistry {
+  readonly version = "DEVELOPMENT-LIMITATION-FIXTURE-1.0.0";
+  readonly authorityStatus = "DEVELOPMENT_FIXTURE" as const;
+
   getRules(): readonly LimitationRule[] {
     return LIMITATION_RULES;
   }

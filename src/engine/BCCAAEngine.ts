@@ -1128,6 +1128,16 @@ export class BCCAAEngine {
         "FATAL LEGAL ENGINE CONFIGURATION: VALIDATED_PRODUCTION requires an explicitly supplied production LimitationRuleRegistry",
       );
     }
+
+    if (
+      this.corpusMode === "VALIDATED_PRODUCTION" &&
+      this.limitationRuleRegistry.authorityStatus !== "VALIDATED_PRODUCTION"
+    ) {
+      throw new Error(
+        "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires limitationRuleRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.",
+      );
+    }
+
     this.auditSink = deps?.auditSink ?? new DefaultAuditSink();
     this.licenseValidator = deps?.licenseValidator ?? new DefaultLicenseValidator();
     this.factValidationProvider =

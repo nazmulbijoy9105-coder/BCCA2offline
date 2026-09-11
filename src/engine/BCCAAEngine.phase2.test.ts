@@ -570,6 +570,15 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
   };
 
   const validLimitationRuleRegistry: LimitationRuleRegistry = {
+    version: "1.0.0",
+    authorityStatus: "VALIDATED_PRODUCTION",
+    getRules: () => [],
+    getCandidateRules: () => [],
+  };
+
+  const devLimitationRuleRegistry: LimitationRuleRegistry = {
+    version: "DEVELOPMENT-FIXTURE-1.0.0",
+    authorityStatus: "DEVELOPMENT_FIXTURE",
     getRules: () => [],
     getCandidateRules: () => [],
   };
@@ -611,6 +620,18 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(/VALIDATED_PRODUCTION requires ruleRegistry\.authorityStatus/);
+  });
+
+  it("throws when limitation registry authority is not VALIDATED_PRODUCTION", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: devLimitationRuleRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /VALIDATED_PRODUCTION requires limitationRuleRegistry\.authorityStatus/,
+    );
   });
 
   it("throws when auditSink lacks atomicAppend/durable/concurrencySafe", () => {
