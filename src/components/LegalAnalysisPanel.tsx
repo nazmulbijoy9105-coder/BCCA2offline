@@ -27,8 +27,10 @@ import { useAuth } from "../auth/AuthContext";
 import { generateWatermark } from "../utils/watermark";
 
 // Helper to generate a professional legal consultation draft dynamically from NEUMLEX engine results
-export const generateLegalMemo = (factPattern: string, result: CaseAnalysisResponse): string => {
-  const category = result.stage0?.factsMeta?.category;
+export const generateLegalMemo = (
+  factPattern: string,
+  result: CaseAnalysisResponse,
+): string => {
   const primaryAct = result.stage2?.primaryAct;
   const limitationStatus =
     result.stage3?.isTimeBarred === true
@@ -38,49 +40,65 @@ export const generateLegalMemo = (factPattern: string, result: CaseAnalysisRespo
         : "UNKNOWN / REQUIRES REVIEW";
   const courtLevel = result.stage5?.pecuniary?.courtLevel;
   const courtFeesNotes = result.stage5?.pecuniary?.suitsValuationActNotes;
-  
-  let customNarrative = "";
-  if (category === "INHERITANCE_CONSULTATION") {
-    customNarrative = `### MUSLIM PERSONAL LAW (SHARIAT) ANALYSIS
-1. **Nullity of Disowning (Tejya Putro)**: Under the Muslim Personal Law (Shariat) Application Act, 1937, inheritance is a vested right that accrues immediately upon the death of the ancestor. A disowning affidavit has zero legal validity or force under Sunni Hanafi jurisprudence. The disowned heirs remain full legal sharers.
-2. **Sharia Shares Verification**: The calculated shares are mathematically absolute. Co-sharers have joint constructive possession of undivided suit land unless explicit ouster is proved.`;
-  } else if (category === "SPECIFIC_PERFORMANCE") {
-    customNarrative = `### SPECIFIC RELIEF ACT 1877 APPLICABILITY
-1. **Section 12 specific performance**: Suit for enforcement of the registered contract (Bainapatra).
-2. **Deposit of Balance**: Verify whether the balance consideration has been deposited in court under Section 21A of the Specific Relief Act, 1877.`;
-  } else if (category === "DECLARATION_AND_POSSESSION") {
-    customNarrative = `### SPECIFIC RELIEF ACT 1877 DECLARATORY REMEDIES
-1. **Section 42 (Declaration of Title)**: Plaintiff must sue for declaration of legal character or title. If dispossessed, plaintiff must couple this with a consequential relief of recovery of possession under Section 7(iv)(c) of the Court Fees Act 1870, or a standalone Section 8 / 9 action.
-2. **Constructive Joint Possession**: If co-sharer, constructive possession is presumed.`;
-  } else {
-    customNarrative = `### GENERAL CIVIL LITIGATION ANALYSIS
-1. **Cause of Action**: The fact pattern establishes a clear cause of action arising on the specified trigger dates.
-2. **Substantive Title**: The plaintiff's standing is predicated on valid deeds or inheritance.`;
-  }
 
-  // Chronology section
-  const chronologyLines = (result.stage0?.chronology && result.stage0.chronology.length > 0)
-    ? result.stage0.chronology.map(c => `- **${c.date}**: ${c.event} (Parties: ${c.partiesInvolved || "N/A"}) - *Source*: ${c.factualSource || "N/A"}`).join("\n")
-    : "- No key dates extracted from the fact pattern.";
+  const chronologyLines =
+    result.stage0?.chronology && result.stage0.chronology.length > 0
+      ? result.stage0.chronology
+          .map(
+            (c) =>
+              `- **${c.date}**: ${c.event} (Parties: ${
+                c.partiesInvolved || "N/A"
+              }) - *Source*: ${c.factualSource || "N/A"}`,
+          )
+          .join("\n")
+      : "- No key dates extracted from the fact pattern.";
 
-  // Precedents section
-  const precedentsLines = (result.stage2?.precedents && result.stage2.precedents.length > 0)
-    ? (result.stage2?.precedents ?? []).map(p => `- **${p.citation} (${p.court})**: *Holding*: "${p.holding}"\n  *Relevance*: ${p.relevance}`).join("\n\n")
-    : `- **75 DLR 142 (HCD)**: Held that a disowning affidavit has zero recognition under Muslim Personal Law (Shariat) Application Act 1937.\n- **56 DLR 215 (AD)**: Held that possession of one co-sharer is the possession of all co-sharers unless ouster is established.`;
+  const precedentsLines =
+    result.stage2?.precedents && result.stage2.precedents.length > 0
+      ? result.stage2.precedents
+          .map(
+            (p) =>
+              `- **${p.citation} (${p.court})**: *Holding*: "${p.holding}"\n` +
+              `  *Relevance*: ${p.relevance}`,
+          )
+          .join("\n\n")
+      : "- No validated precedent was returned by the engine; requires human legal review.";
 
-  // Plaintiffs and Defendants
-  const plaintiffsList = (result.stage4?.plaintiffs && result.stage4.plaintiffs.length > 0)
-    ? (result.stage4?.plaintiffs ?? []).map(p => `- **${p.name}** (${p.legalIdentity}): Capacity is *${p.capacity}* with standing.`).join("\n")
-    : "- No plaintiffs registered.";
-  const defendantsList = (result.stage4?.defendants && result.stage4.defendants.length > 0)
-    ? (result.stage4?.defendants ?? []).map(d => `- **${d.name}** (${d.legalIdentity}): Capacity is *${d.capacity}* under liability type *${d.liabilityType}*.`).join("\n")
-    : "- No defendants registered.";
+  const legalConclusionsLines =
+    result.stage13?.legalConclusions &&
+    result.stage13.legalConclusions.length > 0
+      ? result.stage13.legalConclusions
+          .map((conclusion) => `- ${conclusion}`)
+          .join("\n")
+      : "- No substantive legal conclusion was returned by the engine; requires human legal review.";
+
+  const plaintiffsList =
+    result.stage4?.plaintiffs && result.stage4.plaintiffs.length > 0
+      ? result.stage4.plaintiffs
+          .map(
+            (p) =>
+              `- **${p.name}** (${p.legalIdentity}): Capacity is *${p.capacity}* with standing.`,
+          )
+          .join("\n")
+      : "- No plaintiffs registered.";
+
+  const defendantsList =
+    result.stage4?.defendants && result.stage4.defendants.length > 0
+      ? result.stage4.defendants
+          .map(
+            (d) =>
+              `- **${d.name}** (${d.legalIdentity}): Capacity is *${d.capacity}* under liability type *${d.liabilityType}*.`,
+          )
+          .join("\n")
+      : "- No defendants registered.";
 
   return `# CIVIL SUIT LEGAL MEMORANDUM & DRAFTING GUIDE
 Generated by the NEUMLEX Statutory Synthesis Engine
 
 ## FACTUAL VERITY & SUFFICIENCY AUDIT
-We have reviewed the submitted fact pattern containing **${factPattern.length} characters** and compiled the following legal chronology:
+The submitted fact pattern contains **${factPattern.length} characters**.
+
+### LEGAL CHRONOLOGY
 
 ${chronologyLines}
 
@@ -88,52 +106,65 @@ ${chronologyLines}
 - **Admitted Facts**: ${result.stage0?.admittedFacts?.join("; ") || "None extracted."}
 - **Disputed Facts**: ${result.stage0?.disputedFacts?.join("; ") || "None extracted."}
 
-### AUDIT VERDICT
-The factual pattern is legally **SUFFICIENT** to initiate a civil action. There is a clear cause of action arising from the dispute over ownership rights.
+### ENGINE DETERMINATION
+${result.stage13?.conclusion || "No engine conclusion was returned; requires human legal review."}
 
-## DETAILED LEGAL ANALYSIS (ACTS & APPLICABILITY)
-The primary statutory framework governing this suit is the **${primaryAct}**, supplemented by the Specific Relief Act 1877 and the ${limitationActTitle}.
+### HUMAN REVIEW STATUS
+${result.stage13?.humanReviewReason || "Human legal review is required where the engine has not established a validated determination."}
 
-${customNarrative}
+## DETAILED LEGAL ANALYSIS
+
+The primary statutory framework identified by the engine is **${primaryAct || "Not determined"}**, together with other validated statutory mappings returned by the engine.
+
+### ENGINE-DERIVED LEGAL CONCLUSIONS
+${legalConclusionsLines}
 
 ### APPLICABLE STATUTORY SECTIONS
-${result.stage2?.relevantSections?.map(s => `- **${s.actName} ${s.sectionOrRule}**: ${s.purpose}`).join("\n") || "- No statutory sections mapped."}
+${
+  result.stage2?.relevantSections
+    ?.map(
+      (section) =>
+        `- **${section.actName} ${section.sectionOrRule}**: ${section.purpose}`,
+    )
+    .join("\n") || "- No statutory sections mapped."
+}
 
-### LANDMARK SUPREME COURT OF BANGLADESH PRECEDENTS
+### VALIDATED PRECEDENTS RETURNED BY ENGINE
 ${precedentsLines}
 
 ## DETERMINISTIC LEGAL PARAMETERS
 
 | Legal Parameter | Rule-Engine Deterministic Baseline |
 | :--- | :--- |
-| **Primary Domain** | ${result.stage1?.primaryDomain || "Civil Suit"} |
-| **Primary Act** | ${primaryAct} |
+| **Primary Domain** | ${result.stage1?.primaryDomain || "Not determined"} |
+| **Primary Act** | ${primaryAct || "Not determined"} |
 | **Limitation Status** | **${limitationStatus}** (Article ${result.stage3?.limitationArticle || "N/A"}) |
-| **Competent Forum** | **${courtLevel}** |
-| **Court Fees Strategy** | ${courtFeesNotes} |
+| **Competent Forum** | **${courtLevel || "Not determined"}** |
+| **Court Fees Strategy** | ${courtFeesNotes || "Not determined"} |
 
-## TACTICAL COURTROOM STRATEGY & COURT FEES ACT OPTIMIZATION
+### STANDING AND JOINDER OF PARTIES
 
-### 1. ORDER XXXIX (39) RULES 1 & 2 CPC TEMPORARY INJUNCTION STRATEGY
-To preserve the status quo of the suit land and prevent hostile alienation:
-- **Prima Facie Case**: Establish the plaintiffs' legal title or inheritance right (disowning instruments having zero legal force).
-- **Balance of Convenience**: Prove that allowing the defendants to alienate or mutate the land will cause irreparable damage.
-- **Irreparable Loss**: Argue that the sale or construction on disputed property creates multi-party litigation.
-
-### 2. COURT FEES ACT 1870 OPTIMIZATION
-- **Fixed Partition Fee**: If the plaintiffs plead constructive joint possession, claim fixed court fees under Schedule II Article 17(vi).
-- **Ad Valorem Fee Mitigation**: Avoid pleading complete dispossession or ouster at the initial stage unless standalone recovery under Section 8 is mandatory.
-
-### 3. STANDING AND JOINDER OF PARTIES (ORDER I CPC)
 - **Plaintiffs**:
 ${plaintiffsList}
+
 - **Defendants**:
 ${defendantsList}
 
-### 4. ORDER VII RULE 11 CPC RISK MITIGATION
-Ensure that the plaint:
-- Explicitly states the date of accrual of the cause of action (${result.stage3?.accrualDate || "N/A"}).
-- Correctly values the suit according to the Suits Valuation Act 1887.
+### PROCEDURAL INFORMATION
+${
+  result.stage13?.recommendations &&
+  result.stage13.recommendations.length > 0
+    ? result.stage13.recommendations
+        .map((recommendation) => `- ${recommendation}`)
+        .join("\n")
+    : "- No validated procedural recommendation was returned by the engine; requires human legal review."
+}
+
+### LIMITATION / CAUSE-OF-ACTION INFORMATION
+- **Accrual Date**: ${result.stage3?.accrualDate || "Not determined"}
+- **Limitation Article**: ${result.stage3?.limitationArticle || "Not determined"}
+
+This memorandum is generated solely from the structured outputs returned by the NEUMLEX legal-analysis engine. It does not independently determine legal entitlement, litigation outcome, or factual truth.
 `;
 };
 
@@ -141,7 +172,6 @@ interface LegalAnalysisPanelProps {
   factPattern: string;
   analysisResult: CaseAnalysisResponse;
 }
-
 export default function LegalAnalysisPanel({ factPattern, analysisResult }: LegalAnalysisPanelProps) {
   const { getCurrentUser, getLicense } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -226,40 +256,6 @@ export default function LegalAnalysisPanel({ factPattern, analysisResult }: Lega
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  // Quick insertion helpers for legal clauses
-  const insertClause = (clauseText: string) => {
-    setMemoResponse((prev) => (prev ? prev + "\n\n" + clauseText : clauseText));
-    setActiveTab("edit");
-  };
-
-  const quickClauses = [
-    {
-      title: "Injunction Prayer (O. 39 R. 1 & 2)",
-      text: `### PRAYER FOR TEMPORARY & AD-INTERIM INJUNCTION (ORDER XXXIX RULES 1 & 2 CPC)
-That an order of temporary injunction be passed restraining the Defendant(s), their agents, servants, assigns, and representatives from entering upon, changing the physical feature of, cutting trees from, creating third-party charges over, or alienating any portion of the suit schedule property till disposal of the suit.`,
-    },
-    {
-      title: "Cause of Action Accrual Clause",
-      text: `### CAUSE OF ACTION PARAGRAPH
-That the cause of action for this suit first arose on the date of execution of the initial instrument, and subsequently on every date when the Defendant(s) refused to perform their legal obligation and threatened wrongful dispossession/alienation, within the territorial jurisdiction of this Learned Court.`,
-    },
-    {
-      title: "Schedule of Suit Property",
-      text: `### SCHEDULE OF SUIT PROPERTY
-District: Dhaka, P.S. / Upazila: [Name], Mouza: [Name], J.L. No: [Number]
-- CS Khatian No: [___], SA Khatian No: [___], RS Khatian No: [___]
-- CS Plot No: [___], SA Plot No: [___], RS Plot No: [___]
-- Total Area: [___] decimals of land with boundary demarcations:
-  - North: [___], South: [___], East: [___], West: [___].`,
-    },
-    {
-      title: "Verification & Affidavit Block",
-      text: `### VERIFICATION & SOLEMN AFFIDAVIT
-I, [Name of Plaintiff], aged about [__] years, son/daughter of [___], by faith Muslim, by profession [___], residing at [___], do hereby solemnly affirm and state that the statements made in paragraphs 1 to [__] of this Plaint are true to the best of my knowledge, belief, and matter of record, which I believe to be true.
-Solemnly affirmed this [__] day of [Month], [Year].`,
-    },
-  ];
 
   const renderMarkdown = (text: string) => {
     if (!text) return null;
@@ -482,66 +478,40 @@ Solemnly affirmed this [__] day of [Month], [Year].`,
                 </div>
               </div>
 
-              {/* Quick Legal Clause Insert Bar */}
-              <div className="p-3 bg-[#FDFBF7] border border-[#E5E1D8] rounded-xs space-y-2">
-                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#C5A059] uppercase tracking-wider">
-                  <Sparkles className="h-3 w-3" />
-                  Quick-Insert Statutory Pleading Clauses:
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {quickClauses.map((clause, i) => (
-                    <button
-                      key={i}
-                      onClick={() => insertClause(clause.text)}
-                      className="px-2.5 py-1 bg-white hover:bg-[#1E252B] hover:text-[#FDFBF7] text-[#1E252B] border border-[#E5E1D8] hover:border-[#1E252B] text-[11px] font-sans flex items-center gap-1.5 rounded-xs transition cursor-pointer shadow-2xs"
-                    >
-                      <PlusCircle className="h-3 w-3 text-[#C5A059]" />
-                      {clause.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Editor / Preview Body */}
-              {activeTab === "preview" ? (
-                <div className="bg-[#FAFBF9] border-l-4 border-l-[#C5A059] border-y border-r border-[#E5E1D8] p-5 sm:p-6 space-y-4 font-serif">
-                  <div className="flex items-center justify-between border-b border-[#FAF9F5] pb-2.5 mb-1">
-                    <span className="text-[10px] font-mono font-bold text-[#1E252B] uppercase tracking-widest flex items-center gap-1.5">
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                      Statutory Synthesis & Legal Draft Formatted
-                    </span>
-                    <span className="text-[10px] font-mono text-neutral-400">
-                      Switch to "Edit Document" to modify text
-                    </span>
+                {activeTab === "preview" ? (
+                  <div className="p-6 bg-white border border-[#E5E1D8] min-h-[420px]">
+                    <div className="max-w-none prose prose-sm">
+                      {renderMarkdown(memoResponse)}
+                    </div>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-mono font-bold text-[#1E252B] uppercase tracking-wider">
+                        Editable Draft
+                      </label>
+                      <span className="text-[9px] font-mono text-neutral-400">
+                        Changes remain local until exported
+                      </span>
+                    </div>
 
-                  <div className="space-y-3 font-serif text-xs text-[#1E252B] leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
-                    {renderMarkdown(memoResponse)}
+                    <textarea
+                      value={memoResponse}
+                      onChange={(e) => setMemoResponse(e.target.value)}
+                      className="w-full min-h-[420px] p-4 bg-white border border-[#E5E1D8] text-[11px] leading-relaxed font-mono text-[#1E252B] resize-y focus:outline-none focus:border-[#C5A059]"
+                      spellCheck={false}
+                    />
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-mono text-neutral-500">
-                    <span>Drafting Markdown Editor (Supports # Headers, - Lists, **Bold**)</span>
-                    <span>Edits are saved in real time and reflected in DOCX & PDF exports</span>
-                  </div>
-                  <textarea
-                    value={memoResponse}
-                    onChange={(e) => setMemoResponse(e.target.value)}
-                    rows={18}
-                    className="w-full p-4 font-mono text-xs text-[#1E252B] bg-white border-2 border-[#1E252B] focus:border-[#C5A059] focus:outline-hidden leading-relaxed resize-y shadow-inner"
-                    placeholder="Type or edit legal memorandum here..."
-                  />
-                </div>
-              )}
+                )}
 
-              <div className="bg-[#FAF9F5] p-3 border border-[#E5E1D8] text-[10px] font-mono text-[#4A5560] leading-relaxed">
-                <span className="font-bold text-[#1E252B] uppercase tracking-wider block mb-1">
-                  💡 DRAFTING & EXPORT GUIDELINES:
-                </span>
-                Exporting to <strong>DOCX (.docx)</strong> produces an editable Microsoft Word / Google Docs file with formatted tables, headings, and pagination. <strong>Export PDF</strong> produces a secured document. You can freely edit and customize clauses above before exporting.
+                <div className="p-3 bg-[#FAF9F5] border border-[#E5E1D8] text-[10px] font-mono text-neutral-500 leading-relaxed">
+                  Draft content is derived from the structured legal-engine
+                  analysis output. Review all facts, authorities, procedural
+                  requirements, and relief before filing or relying on this
+                  document.
+                </div>
               </div>
-            </div>
           )}
         </div>
       )}

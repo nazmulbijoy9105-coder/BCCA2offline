@@ -1,3 +1,4 @@
+import { canonicalHash } from "../../utils/crypto";
 import { DevelopmentAppellateRegistry } from "./DevelopmentAppellateRegistry";
 
 const registry = new DevelopmentAppellateRegistry();
@@ -12,23 +13,14 @@ const registry = new DevelopmentAppellateRegistry();
 
 export async function getAppellateCorpusHash(): Promise<string> {
   const rules = registry.getRules();
-  // Sort by ruleId to ensure deterministic order
-  const sortedRules = [...rules].sort((a, b) => a.ruleId.localeCompare(b.ruleId));
-  
-  const serialized = JSON.stringify(sortedRules, (key, value) => {
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      return Object.keys(value).sort().reduce((acc, k) => {
-        (acc as Record<string, unknown>)[k] = (value as Record<string, unknown>)[k];
-        return acc;
-      }, {} as Record<string, unknown>);
-    }
-    return value;
-  });
 
-  const encoder = new TextEncoder();
-  const data = encoder.encode(serialized);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  // Preserve the existing deterministic rule ordering while using
+  // the repository-wide canonical SHA-256 implementation.
+  const sortedRules = [...rules].sort((a, b) =>
+    a.ruleId.localeCompare(b.ruleId),
+  );
+
+  return canonicalHash(sortedRules);
 }
 
 /**

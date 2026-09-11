@@ -483,6 +483,8 @@ export interface CaseAnalysisResponse {
       refusalDate?: string | null;
       isAgreementDateExtracted?: boolean;
       isRefusalDateExtracted?: boolean;
+      limitationArticle?: string | null;
+      limitationPeriodYears?: number | null;
       calculationType?: "real_refusal" | "heuristic_6_months" | "missing_dates" | "other_category" | string;
       validationStatus?: "valid" | "heuristic_applied" | "invalid_gaps";
       explanation?: string;

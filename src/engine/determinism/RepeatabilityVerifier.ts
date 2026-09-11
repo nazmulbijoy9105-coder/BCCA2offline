@@ -1,4 +1,4 @@
-import { canonicalStringify } from "../BCCAAEngine";
+import { canonicalStringify } from "../../utils/crypto";
 
 /**
  * P11-08: Repeatability Verifier.

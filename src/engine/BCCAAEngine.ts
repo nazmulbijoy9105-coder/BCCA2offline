@@ -1,3 +1,12 @@
+import {
+  canonicalHash,
+  canonicalStringify,
+} from "../utils/crypto";
+
+export {
+  canonicalHash,
+  canonicalStringify,
+};
 // src/engine/BCCAAEngine.ts
 // BCCAA 4.5.2-P0 — P0 Fact-Graph Hardened
 //
@@ -29,7 +38,6 @@ import {
   evaluateEvidenceIntegrity,
   type EvidenceIntegrityGateResult,
 } from "./evidence/EvidenceIntegrityGate";
-import { synthesizeLegalReport } from "./synthesis/LegalSynthesizer";
 import { finalizeOutputResponse } from "./output/OutputResponseFinalizer";
 import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
 import { assertCorpusVersion } from "./citations/CorpusVersionLock";
@@ -38,7 +46,7 @@ import { assertCorpusHash } from "./citations/CorpusHasher";
 // P6-11: Enforce corpus integrity and version lock at engine startup
 assertCorpusIntegrity();
 assertCorpusVersion("1.0");
-assertCorpusHash("67b1acb30dd8d5754c657466b210b05474913ed96aea406bc0d758b29ece9bbd"); // P6-12: Pin expected SHA-256 hash
+assertCorpusHash("67B1ACB30DD8D5754C657466B210B05474913ED96AEA406BC0D758B29ECE9BBD"); // P6-12: Pin expected SHA-256 hash
 import {
   Tristate,
 } from "./rules/RuleContracts";
@@ -521,31 +529,6 @@ function getAllFactIds(ctx: ExecutionContext): string[] {
 // ============================================================================
 // ONE CANONICAL SERIALIZATION / HASH PATH
 // ============================================================================
-
-function canonicalize(value: unknown): unknown {
-  if (value === null) return null;
-  if (value === undefined) return null;
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return value;
-  if (typeof value === "boolean") return value;
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-      out[key] = canonicalize((value as Record<string, unknown>)[key]);
-    }
-    return out;
-  }
-  return String(value);
-}
-
-export function canonicalStringify(value: unknown): string {
-  return JSON.stringify(canonicalize(value));
-}
-
-export function canonicalHash(value: unknown): string {
-  return generateHash(canonicalStringify(value));
-}
 
 /** P0 FIX: Deterministic structural clone — sorts keys, drops functions,
  *  preserves Date as ISO strings via canonicalStringify. Replaces
@@ -2312,6 +2295,8 @@ export class BCCAAEngine {
       isValid: boolean;
       errors: string[];
       warnings: string[];
+      limitationArticle?: string | null;
+      limitationPeriodYears?: number | null;
       calculationType?: string;
     };
     preliminaryAnalysis?: string;
@@ -2421,6 +2406,8 @@ export class BCCAAEngine {
             isValid: true,
             errors: result.errors,
             warnings: result.warnings,
+            limitationArticle: result.limitationArticle,
+            limitationPeriodYears: result.limitationPeriodYears,
             calculationType: result.calculationType,
           },
           preliminaryAnalysis:
@@ -2455,6 +2442,8 @@ export class BCCAAEngine {
         isValid: false,
         errors: unresolved.errors,
         warnings: unresolved.warnings,
+        limitationArticle: unresolved.limitationArticle,
+        limitationPeriodYears: unresolved.limitationPeriodYears,
         calculationType: unresolved.calculationType,
       },
       preliminaryAnalysis:
@@ -3168,7 +3157,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: "UNKNOWN", subsidiaryDomains: [], domainConfidence: "NONE" },
       stage2: { relevantSections: [], primaryAct: null, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationArticle: null, limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: [haltDetail], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },
@@ -3321,7 +3310,7 @@ export class BCCAAEngine {
       },
       stage1: { primaryDomain: domain, subsidiaryDomains: [domain], domainConfidence: "NONE" },
       stage2: { relevantSections: legislation.relevantSections, primaryAct: legislation.primaryAct, precedents: [], citationValidationAudit: { totalCitations: 0, validatedCitations: 0, unverifiedCitations: 0, auditStatus: "NOT_EXECUTED", validationStandard: "Deterministic canonical-registry citation verification" }, equityPrinciples: [] },
-      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
+      stage3: { isTimeBarred: null, accrualDate: "NOT_EXTRACTED", preliminaryAnalysis: "Limitation cannot be computed — F0 gate halted", limitationArticle: null, limitationPeriodYears: null, calculationType: "missing_dates", timelineValidation: { isValid: false, errors: ["F0 gate halted"], warnings: [], calculationType: "missing_dates" } },
       stage4: { plaintiffs: [], defendants: [], joinderIssues: "", locusStandiSummary: "" },
       stage5: {
         territorial: { rule: null, governingSection: null, jurisdictionalFacts: null },

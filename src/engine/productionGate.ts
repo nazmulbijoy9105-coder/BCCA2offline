@@ -9,6 +9,9 @@ export interface LegalEngineRuntimeStatus {
   authorityStatus: LegalAuthorityStatus;
 }
 
+export const PRODUCTION_LEGAL_ENGINE_NOT_READY_ERROR =
+  "production legal analysis requires VALIDATED_PRODUCTION corpus and authority";
+
 /**
  * Application-level fail-closed boundary.
  *
@@ -18,19 +21,14 @@ export interface LegalEngineRuntimeStatus {
  *
  * Development fixtures are allowed outside production.
  *
- * The explicit allowDevelopmentCorpus override exists only for
- * controlled demo/development scenarios and is intentionally explicit.
+ * There is intentionally NO production override for development
+ * corpus or development authority.
  */
 export function assertLegalEngineProductionReady(
   isProduction: boolean,
   status: LegalEngineRuntimeStatus,
-  allowDevelopmentCorpus: boolean = false,
 ): void {
   if (!isProduction) {
-    return;
-  }
-
-  if (allowDevelopmentCorpus) {
     return;
   }
 
@@ -41,7 +39,5 @@ export function assertLegalEngineProductionReady(
     return;
   }
 
-  throw new Error(
-    "production legal analysis requires VALIDATED_PRODUCTION corpus and authority",
-  );
+  throw new Error(PRODUCTION_LEGAL_ENGINE_NOT_READY_ERROR);
 }

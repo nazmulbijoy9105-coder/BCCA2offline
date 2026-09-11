@@ -53,7 +53,7 @@ describe("P8 Procedure Integrity", () => {
     const first = getProcedureCorpusHash();
     const second = getProcedureCorpusHash();
 
-    expect(first).toMatch(/^[0-9a-f]{64}$/);
+    expect(first).toMatch(/^[0-9A-F]{64}$/);
     expect(first).toBe(second);
     expect(() => assertProcedureCorpusHash(first)).not.toThrow();
   });

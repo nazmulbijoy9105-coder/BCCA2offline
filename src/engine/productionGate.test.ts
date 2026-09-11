@@ -42,12 +42,36 @@ describe("P0-1: production legal-engine boundary", () => {
     ).not.toThrow();
   });
 
-  it("allows development corpus in production if allowDevelopmentCorpus is true", () => {
+  it("fails closed for development corpus even when production is requested", () => {
     expect(() =>
       assertLegalEngineProductionReady(true, {
         corpusMode: "DEVELOPMENT",
         authorityStatus: "DEVELOPMENT_FIXTURE",
-      }, true),
-    ).not.toThrow();
+      }),
+    ).toThrow(
+      /production legal analysis requires VALIDATED_PRODUCTION/,
+    );
+  });
+
+  it("fails closed for validated corpus with development authority", () => {
+    expect(() =>
+      assertLegalEngineProductionReady(true, {
+        corpusMode: "VALIDATED_PRODUCTION",
+        authorityStatus: "DEVELOPMENT_FIXTURE",
+      }),
+    ).toThrow(
+      /production legal analysis requires VALIDATED_PRODUCTION/,
+    );
+  });
+
+  it("fails closed for development corpus with validated authority", () => {
+    expect(() =>
+      assertLegalEngineProductionReady(true, {
+        corpusMode: "DEVELOPMENT",
+        authorityStatus: "VALIDATED_PRODUCTION",
+      }),
+    ).toThrow(
+      /production legal analysis requires VALIDATED_PRODUCTION/,
+    );
   });
 });
