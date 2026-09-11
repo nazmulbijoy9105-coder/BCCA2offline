@@ -1,3 +1,10 @@
+import {
+  calculateClaimDefinitionHash,
+  calculateClaimRegistryHash,
+  assertClaimDefinitionProvenance,
+  assertClaimDefinitionHash,
+  type ClaimDefinitionProvenance,
+} from "./ClaimMatrixProvenance";
 /**
  * Enterprise Claim Matrix
  * 
@@ -40,12 +47,14 @@ export interface EnterpriseClaimDefinition {
   elements: ClaimElement[];
   courtFeeType: "AD_VALOREM" | "FIXED" | "MULTIPLE";
   forum: string;
+  provenance: ClaimDefinitionProvenance;
+  definitionHash: string;
 }
 
 /**
  * The Master Claim Registry
  */
-export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] = [
+const CLAIM_MATRIX_DEFINITIONS: readonly Omit<EnterpriseClaimDefinition, "definitionHash">[] = [
   // 1. SPECIFIC PERFORMANCE (Contract)
   {
     claimId: "SPECIFIC_PERFORMANCE",
@@ -71,7 +80,25 @@ export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] = [
       }
     ],
     courtFeeType: "AD_VALOREM",
-    forum: "Senior Assistant Judge / Joint District Judge"
+    forum: "Senior Assistant Judge / Joint District Judge",
+    provenance: {
+      authorities: [
+        {
+          authorityId: "BD-SRA-1877-SEC12",
+          act: "Specific Relief Act 1877",
+          section: "Sec 12",
+          sourceId: "SRA_1877_SEC_12",
+          validationStatus: "SOURCE_VERIFIED"
+        }
+      ],
+      validation: {
+        scoped: true,
+        authoritative: false,
+        legallyValidated: false,
+        independentlyValidated: false,
+        productionApproved: false
+      }
+    },
   },
 
   // 2. RECOVERY OF POSSESSION (Property - Sec 8 SRA)
@@ -99,7 +126,25 @@ export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] = [
       }
     ],
     courtFeeType: "AD_VALOREM",
-    forum: "Senior Assistant Judge"
+    forum: "Senior Assistant Judge",
+    provenance: {
+      authorities: [
+        {
+          authorityId: "BD-SRA-1877-SEC8",
+          act: "Specific Relief Act 1877",
+          section: "Sec 8",
+          sourceId: "SRA_1877_SEC_8",
+          validationStatus: "SOURCE_VERIFIED"
+        }
+      ],
+      validation: {
+        scoped: true,
+        authoritative: false,
+        legallyValidated: false,
+        independentlyValidated: false,
+        productionApproved: false
+      }
+    },
   },
 
   // 3. PARTITION (Property & Family)
@@ -121,7 +166,25 @@ export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] = [
       }
     ],
     courtFeeType: "FIXED",
-    forum: "Joint District Judge"
+    forum: "Joint District Judge",
+    provenance: {
+      authorities: [
+        {
+          authorityId: "BD-SRA-1877-SEC9",
+          act: "Specific Relief Act 1877",
+          section: "Sec 9",
+          sourceId: "SRA_1877_SEC_9",
+          validationStatus: "SOURCE_VERIFIED"
+        }
+      ],
+      validation: {
+        scoped: true,
+        authoritative: false,
+        legallyValidated: false,
+        independentlyValidated: false,
+        productionApproved: false
+      }
+    },
   },
 
   // 4. DECLARATION (Property - Sec 42 SRA)
@@ -143,7 +206,25 @@ export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] = [
       }
     ],
     courtFeeType: "FIXED",
-    forum: "Joint District Judge"
+    forum: "Joint District Judge",
+    provenance: {
+      authorities: [
+        {
+          authorityId: "BD-SRA-1877-SEC42",
+          act: "Specific Relief Act 1877",
+          section: "Sec 42",
+          sourceId: "SRA_1877_SEC_42",
+          validationStatus: "SOURCE_VERIFIED"
+        }
+      ],
+      validation: {
+        scoped: true,
+        authoritative: false,
+        legallyValidated: false,
+        independentlyValidated: false,
+        productionApproved: false
+      }
+    },
   },
 
   // 5. INHERITANCE_CONSULTATION (Family)
@@ -166,9 +247,60 @@ export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] = [
       }
     ],
     courtFeeType: "FIXED",
-    forum: "Joint District Judge"
+    forum: "Joint District Judge",
+    provenance: {
+      authorities: [
+        {
+          authorityId: "BD-MPLSA-1937-SUCCESSION",
+          act: "Muslim Personal Law (Shariat) Application Act 1937",
+          section: "Succession",
+          sourceId: "MPLSA_1937_SUCCESSION",
+          validationStatus: "SOURCE_VERIFIED"
+        }
+      ],
+      validation: {
+        scoped: true,
+        authoritative: false,
+        legallyValidated: false,
+        independentlyValidated: false,
+        productionApproved: false
+      }
+    },
   }
 ];
+
+/**
+ * P1-NEXT-03:
+ * Claim definitions are provenance-bound and deterministically hashed.
+ *
+ * The matrix remains non-production until the underlying authorities and
+ * legal interpretations receive the required human/independent validation.
+ *
+ * Hashes are calculated during immutable registry construction. The exported
+ * registry is never mutated after initialization.
+ */
+export const ENTERPRISE_CLAIM_REGISTRY: readonly EnterpriseClaimDefinition[] =
+  CLAIM_MATRIX_DEFINITIONS.map(definition => {
+    assertClaimDefinitionProvenance({
+      ...definition,
+      definitionHash: "",
+    });
+
+    const definitionHash = calculateClaimDefinitionHash(definition);
+
+    const provenancedDefinition: EnterpriseClaimDefinition = {
+      ...definition,
+      definitionHash,
+    };
+
+    assertClaimDefinitionHash(provenancedDefinition);
+
+    return provenancedDefinition;
+  });
+
+export const ENTERPRISE_CLAIM_REGISTRY_HASH = calculateClaimRegistryHash(
+  ENTERPRISE_CLAIM_REGISTRY,
+);
 
 /**
  * Utility function to retrieve a claim definition by ID
