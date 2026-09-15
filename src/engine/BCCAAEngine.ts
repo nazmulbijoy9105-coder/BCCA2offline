@@ -77,6 +77,12 @@ import type {
   LimitationFact,
   LimitationRuleRegistry,
 } from "./rules/LimitationContracts";
+import type {
+  ClaimRuleBindingRegistry,
+} from "./rules/ClaimRuleBinding";
+import {
+  DEVELOPMENT_CLAIM_RULE_BINDING_REGISTRY,
+} from "./rules/DevelopmentClaimRuleBindingRegistry";
 
 // ============================================================================
 // MANIFEST / HARD LIMITS
@@ -1102,6 +1108,7 @@ export interface AnalyzeRequest {
 
 export class BCCAAEngine {
   private readonly ruleRegistry: RuleRegistry;
+  private readonly claimRuleBindingRegistry: ClaimRuleBindingRegistry;
   private readonly limitationRuleRegistry: LimitationRuleRegistry;
   private readonly authorityRegistry?: AuthorityRegistry;
   private readonly auditSink: AuditSink;
@@ -1112,6 +1119,7 @@ export class BCCAAEngine {
 
   constructor(deps?: {
     ruleRegistry?: RuleRegistry;
+    claimRuleBindingRegistry?: ClaimRuleBindingRegistry;
     limitationRuleRegistry?: LimitationRuleRegistry;
     authorityRegistry?: AuthorityRegistry;
     auditSink?: AuditSink;
@@ -1121,6 +1129,9 @@ export class BCCAAEngine {
   }) {
     this.corpusMode = deps?.corpusMode ?? ENGINE_MANIFEST.corpusMode;
     this.ruleRegistry = (deps?.ruleRegistry ?? new DevelopmentRuleRegistry()) as RuleRegistry;
+    this.claimRuleBindingRegistry =
+      deps?.claimRuleBindingRegistry ??
+      DEVELOPMENT_CLAIM_RULE_BINDING_REGISTRY;
     this.limitationRuleRegistry =
       deps?.limitationRuleRegistry ?? new DevelopmentLimitationRegistry();
     this.authorityRegistry = deps?.authorityRegistry;
