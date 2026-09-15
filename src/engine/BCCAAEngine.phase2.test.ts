@@ -2,6 +2,8 @@ import type { LimitationRuleRegistry } from "./rules/LimitationContracts";
 import { describe, it, expect } from "vitest";
 import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
 import type { RuleGraphIdentity, RuleRegistry, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
+import type { AuthorityRegistry } from "./authority/AuthorityRegistry";
+import { computeAuthorityRegistryDigest } from "./authority/AuthorityRegistryHasher";
 import { makeAnalyzeRequest as makeRequest } from "./testFixtures";
 
 const engine = new BCCAAEngine({
@@ -551,12 +553,53 @@ describe("P1-STRESS: Determinism and boundary stress", () => {
 });
 
 describe("VALIDATED_PRODUCTION configuration guards", () => {
+  const authorityRecords = [
+    {
+      authorityId: "TEST-AUTHORITY-001",
+      kind: "STATUTE" as const,
+      actOrStatute: "Test Statute",
+      sectionOrRule: "Section 1",
+      sourceId: "TEST-SOURCE-001",
+      citation: "Test Statute, Section 1",
+      provenance: {
+        sourceId: "TEST-SOURCE-001",
+        citation: "Test Statute, Section 1",
+      },
+      validationStatus: "VALIDATED_PRODUCTION" as const,
+    },
+  ];
+
+  const validAuthorityRegistry: AuthorityRegistry = {
+    identity: {
+      authorityRegistryVersion: "TEST-AUTHORITY-1.0.0",
+      authorityRegistryDigest: "",
+    },
+    authorityStatus: "VALIDATED_PRODUCTION",
+    getAuthorities: () => authorityRecords,
+    getAuthorityById: (authorityId) =>
+      authorityRecords.find((authority) => authority.authorityId === authorityId) ?? null,
+    getAuthorityBySourceId: (sourceId) =>
+      authorityRecords.find((authority) => authority.sourceId === sourceId) ?? null,
+  };
+
+  const validAuthorityDigest = computeAuthorityRegistryDigest(validAuthorityRegistry);
+
+  const productionAuthorityRegistry: AuthorityRegistry = {
+    ...validAuthorityRegistry,
+    identity: {
+      authorityRegistryVersion: validAuthorityRegistry.identity.authorityRegistryVersion,
+      authorityRegistryDigest: validAuthorityDigest,
+    },
+  };
+
   const validIdentity: RuleGraphIdentity = {
     corpusId: "test-corpus",
     corpusVersion: "1.0.0",
     corpusDigest: "test-digest",
-    authorityRegistryVersion: "1.0.0",
-    authorityRegistryDigest: "test-digest",
+    authorityRegistryVersion:
+      productionAuthorityRegistry.identity.authorityRegistryVersion,
+    authorityRegistryDigest:
+      productionAuthorityRegistry.identity.authorityRegistryDigest,
     ruleGraphVersion: "1.0.0",
     ruleGraphDigest: "test-digest",
   };
@@ -617,9 +660,85 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: devRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(/VALIDATED_PRODUCTION requires ruleRegistry\.authorityStatus/);
+  });
+
+  it("throws when no production AuthorityRegistry is supplied", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /VALIDATED_PRODUCTION requires an explicitly supplied production AuthorityRegistry/,
+    );
+  });
+
+  it("throws when AuthorityRegistry authority status is not VALIDATED_PRODUCTION", () => {
+    const developmentAuthorityRegistry: AuthorityRegistry = {
+      ...productionAuthorityRegistry,
+      authorityStatus: "DEVELOPMENT_FIXTURE",
+    };
+
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: developmentAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /requires authorityRegistry\.authorityStatus === 'VALIDATED_PRODUCTION'/,
+    );
+  });
+
+  it("throws when AuthorityRegistry deterministic identity is invalid", () => {
+    const invalidAuthorityRegistry: AuthorityRegistry = {
+      ...productionAuthorityRegistry,
+      identity: {
+        authorityRegistryVersion:
+          productionAuthorityRegistry.identity.authorityRegistryVersion,
+        authorityRegistryDigest:
+          "0000000000000000000000000000000000000000000000000000000000000000",
+      },
+    };
+
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: invalidAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /requires a verified deterministic AuthorityRegistry identity/,
+    );
+  });
+
+  it("throws when RuleRegistry authority identity does not match AuthorityRegistry", () => {
+    const mismatchedRuleRegistry: RuleRegistry = {
+      ...validRuleRegistry,
+      identity: {
+        ...validRuleRegistry.identity,
+        authorityRegistryDigest:
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      },
+    };
+
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: mismatchedRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /requires RuleRegistry\.identity authority registry identity to match the supplied AuthorityRegistry/,
+    );
   });
 
   it("throws when limitation registry authority is not VALIDATED_PRODUCTION", () => {
@@ -627,6 +746,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: devLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(
@@ -639,6 +759,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
       auditSink: incompleteAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(/VALIDATED_PRODUCTION requires a ValidatedAuditSink/);
@@ -649,6 +770,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
     })).toThrow(/VALIDATED_PRODUCTION requires a production FactValidationProvider/);
   });
@@ -657,6 +779,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     expect(() => new BCCAAEngine({
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(
@@ -669,6 +792,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).not.toThrow();
