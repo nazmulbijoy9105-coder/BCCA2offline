@@ -75,6 +75,8 @@ export interface LegalRule {
   effectiveFrom: string;
   effectiveTo?: string;
   claimTypes: string[];
+  canonicalClaimId?: string;
+  canonicalElementId?: string;
   ruleType: LegalRuleType;
   predicates: RulePredicate[];
   logicalOperator: RuleLogicalOperator;
