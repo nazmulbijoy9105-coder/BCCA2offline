@@ -1,6 +1,7 @@
 import type { AuthoritativePrecedent } from "../CitationValidator";
 import type {
   AuthorityProvenance,
+  AuthorityRegistryIdentity,
   AuthorityValidationStatus,
 } from "../authority/AuthorityRegistry";
 
@@ -18,6 +19,7 @@ import type {
 export type CitationAuthorityBinding = {
   authorityId: string;
   authorityStatus: AuthorityValidationStatus;
+  authorityRegistryIdentity: AuthorityRegistryIdentity;
   provenance: AuthorityProvenance;
 };
 
@@ -27,10 +29,12 @@ function buildAuthorityId(precedent: AuthoritativePrecedent): string {
 
 export function bindCitationProvenance(
   precedent: AuthoritativePrecedent,
+  authorityRegistryIdentity: AuthorityRegistryIdentity,
 ): CitationAuthorityBinding {
   return {
     authorityId: buildAuthorityId(precedent),
     authorityStatus: "DEVELOPMENT_FIXTURE",
+    authorityRegistryIdentity,
     provenance: {
       sourceId: precedent.id,
       citation: precedent.citation,

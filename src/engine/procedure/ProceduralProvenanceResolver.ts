@@ -1,10 +1,13 @@
 import { DevelopmentProcedureRegistry } from "./DevelopmentProcedureRegistry";
+import { DevelopmentAuthorityRegistry } from "../authority/DevelopmentAuthorityRegistry";
 import type {
   AuthorityProvenance,
+  AuthorityRegistryIdentity,
   AuthorityValidationStatus,
 } from "../authority/AuthorityRegistry";
 
 const registry = new DevelopmentProcedureRegistry();
+const authorityRegistry = new DevelopmentAuthorityRegistry();
 
 /**
  * P8-14 / N4-04: Procedural Provenance Binding.
@@ -26,6 +29,7 @@ export type ProceduralProvenance = {
   description: string;
   authorityId: string;
   authorityStatus: AuthorityValidationStatus;
+  authorityRegistryIdentity: AuthorityRegistryIdentity;
   provenance: AuthorityProvenance;
 };
 
@@ -55,6 +59,7 @@ export function getProceduralProvenance(
     description: rule.description,
     authorityId,
     authorityStatus: registry.authorityStatus,
+    authorityRegistryIdentity: authorityRegistry.identity,
     provenance: {
       sourceId: rule.statute,
       citation: rule.courtFee.actRef,

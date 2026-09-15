@@ -1,10 +1,13 @@
 import { DevelopmentAppellateRegistry } from "./DevelopmentAppellateRegistry";
+import { DevelopmentAuthorityRegistry } from "../authority/DevelopmentAuthorityRegistry";
 import type {
   AuthorityProvenance,
+  AuthorityRegistryIdentity,
   AuthorityValidationStatus,
 } from "../authority/AuthorityRegistry";
 
 const registry = new DevelopmentAppellateRegistry();
+const authorityRegistry = new DevelopmentAuthorityRegistry();
 
 /**
  * P9-11 / N4-04: Appellate Provenance Binding.
@@ -26,6 +29,7 @@ export type AppellateProvenance = {
   limitationArticle: string;
   authorityId: string;
   authorityStatus: AuthorityValidationStatus;
+  authorityRegistryIdentity: AuthorityRegistryIdentity;
   provenance: AuthorityProvenance;
 };
 
@@ -55,6 +59,7 @@ export function getAppellateProvenance(
     limitationArticle: rule.limitation.article,
     authorityId,
     authorityStatus: registry.authorityStatus,
+    authorityRegistryIdentity: authorityRegistry.identity,
     provenance: {
       sourceId: rule.statute,
       citation: rule.limitation.article,

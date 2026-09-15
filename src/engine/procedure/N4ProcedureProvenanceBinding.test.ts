@@ -21,6 +21,37 @@ describe("N4-04 Procedure Provenance Binding", () => {
     );
   });
 
+  it("binds procedure provenance to the canonical development authority registry identity", () => {
+    const result = getProceduralProvenance(
+      "BD-PROC-SUIT-POSSESSION-SEC8",
+    );
+
+    expect(result?.authorityRegistryIdentity).toEqual({
+      authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+      authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+    });
+  });
+
+  it("keeps procedure authority registry identity deterministic and runtime-independent", () => {
+    const first = getProceduralProvenance(
+      "BD-PROC-SUIT-POSSESSION-SEC8",
+    );
+    const second = getProceduralProvenance(
+      "BD-PROC-SUIT-POSSESSION-SEC8",
+    );
+
+    expect(first?.authorityRegistryIdentity).toEqual(
+      second?.authorityRegistryIdentity,
+    );
+
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        first?.authorityRegistryIdentity ?? {},
+        "timestamp",
+      ),
+    ).toBe(false);
+  });
+
   it("preserves the existing procedure rule metadata", () => {
     const result = getProceduralProvenance(
       "BD-PROC-SUIT-DECLARATION-SEC42",

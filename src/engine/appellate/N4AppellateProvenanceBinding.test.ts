@@ -19,6 +19,37 @@ describe("N4-04 Appellate Provenance Binding", () => {
     expect(result?.provenance.citation).toBe("ARTICLE_152");
   });
 
+  it("binds appellate provenance to the canonical development authority registry identity", () => {
+    const result = getAppellateProvenance(
+      "BD-APPEAL-FIRST-APPEAL-DJ",
+    );
+
+    expect(result?.authorityRegistryIdentity).toEqual({
+      authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+      authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+    });
+  });
+
+  it("keeps appellate authority registry identity deterministic and runtime-independent", () => {
+    const first = getAppellateProvenance(
+      "BD-APPEAL-FIRST-APPEAL-DJ",
+    );
+    const second = getAppellateProvenance(
+      "BD-APPEAL-FIRST-APPEAL-DJ",
+    );
+
+    expect(first?.authorityRegistryIdentity).toEqual(
+      second?.authorityRegistryIdentity,
+    );
+
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        first?.authorityRegistryIdentity ?? {},
+        "timestamp",
+      ),
+    ).toBe(false);
+  });
+
   it("preserves existing appellate metadata", () => {
     const result = getAppellateProvenance(
       "BD-APPEAL-SECOND-APPEAL-HCD",

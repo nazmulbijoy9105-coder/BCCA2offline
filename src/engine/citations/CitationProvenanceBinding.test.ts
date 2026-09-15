@@ -20,6 +20,33 @@ describe("N4-03: Citation Provenance Binding", () => {
     );
   });
 
+  it("binds citation provenance to the canonical development authority registry identity", () => {
+    const result = CitationValidator.validate("60 DLR (AD) 54");
+
+    expect(result.authorityBinding?.authorityRegistryIdentity).toEqual({
+      authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+      authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+    });
+  });
+
+  it("does not permit runtime metadata to alter authority registry identity", () => {
+    const first = CitationValidator.validate("60 DLR (AD) 54");
+    const second = CitationValidator.validate("60 DLR (AD) 54");
+
+    expect(
+      first.authorityBinding?.authorityRegistryIdentity,
+    ).toEqual(
+      second.authorityBinding?.authorityRegistryIdentity,
+    );
+
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        first.authorityBinding?.authorityRegistryIdentity ?? {},
+        "timestamp",
+      ),
+    ).toBe(false);
+  });
+
   it("binds provenance to the canonical precedent identity and citation", () => {
     const result = CitationValidator.validate("60 DLR (AD) 54");
 
