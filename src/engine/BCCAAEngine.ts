@@ -730,6 +730,8 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
         {
           ruleId: "SP-ELEMENT-REGISTRATION",
           ruleVersion: "1.0.0",
+          canonicalClaimId: "SPECIFIC_PERFORMANCE",
+          canonicalElementId: "ELEMENT_REGISTRATION",
           jurisdiction,
           effectiveFrom: "1872-09-01",
           claimTypes: [claimType],
@@ -792,6 +794,8 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
         {
           ruleId: "SUCCESSION-DEATH-ELEMENT",
           ruleVersion: "1.0.0",
+          canonicalClaimId: "INHERITANCE_CONSULTATION",
+          canonicalElementId: "ELEMENT_DEATH",
           jurisdiction,
           effectiveFrom: "1925-01-01",
           claimTypes: [claimType],
@@ -825,6 +829,8 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
         {
           ruleId: "DP-ELEMENT-TITLE",
           ruleVersion: "1.0.0",
+          canonicalClaimId: "DECLARATION_SEC42",
+          canonicalElementId: "ELEMENT_TITLE",
           jurisdiction,
           effectiveFrom: "1877-01-01",
           claimTypes: [claimType],
