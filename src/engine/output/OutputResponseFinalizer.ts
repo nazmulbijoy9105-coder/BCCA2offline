@@ -41,6 +41,27 @@ export function finalizeOutputResponse(
     );
   }
 
+  const ruleGraphIdentity = response.ruleGraphIdentity;
+
+  if (
+    !ruleGraphIdentity ||
+    typeof ruleGraphIdentity.authorityRegistryVersion !== "string" ||
+    typeof ruleGraphIdentity.authorityRegistryDigest !== "string" ||
+    ruleGraphIdentity.authorityRegistryVersion.length === 0 ||
+    ruleGraphIdentity.authorityRegistryDigest.length === 0
+  ) {
+    throw new Error(
+      "P10 Output Integrity Failure: missing deterministic RuleGraphIdentity authority registry identity.",
+    );
+  }
+
+  const authorityRegistryIdentity = {
+    authorityRegistryVersion:
+      ruleGraphIdentity.authorityRegistryVersion,
+    authorityRegistryDigest:
+      ruleGraphIdentity.authorityRegistryDigest,
+  };
+
   const validFactIds = (response.stage0?.atomicFacts ?? [])
     .map((fact: any) => fact.factId)
     .filter((id: unknown): id is string => typeof id === "string");
@@ -178,6 +199,7 @@ export function finalizeOutputResponse(
       schemaId: getOutputRegistryId(),
       schemaVersion: getOutputRegistryVersion(),
       corpusHash,
+      authorityRegistryIdentity,
       isValid: evaluation.isValid,
       defects: evaluation.defects,
       auditTrail,

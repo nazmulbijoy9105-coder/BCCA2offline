@@ -2,13 +2,26 @@ import { describe, expect, it } from "vitest";
 import { finalizeOutputResponse } from "./OutputResponseFinalizer";
 import { getOutputCorpusHash } from "./OutputCorpusHasher";
 import { generateOutputAuditTrail } from "./OutputAuditTrail";
+import { verifyOutputIntegrity } from "./OutputIntegrityVerifier";
 import type { CaseAnalysisResponse } from "../../types/types";
+import type { RuleGraphIdentity } from "../rules/RuleContracts";
+
+const TEST_RULE_GRAPH_IDENTITY: RuleGraphIdentity = {
+  corpusId: "BD-DEVELOPMENT-FIXTURE",
+  corpusVersion: "DEVELOPMENT-2026.08",
+  corpusDigest: "DEVELOPMENT-NOT-A-LEGAL-CORPUS",
+  authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+  authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+  ruleGraphVersion: "3.0.0",
+  ruleGraphDigest: "DEVELOPMENT-RULE-GRAPH",
+};
 
 function makeResponse(
   overrides: Partial<CaseAnalysisResponse> = {},
 ): CaseAnalysisResponse {
   return {
     caseId: "P10-TEST",
+    ruleGraphIdentity: TEST_RULE_GRAPH_IDENTITY,
     executionTimestamp: "1970-01-01T00:00:00.000Z",
     stage0: {
       atomicFacts: [],
@@ -121,8 +134,181 @@ describe("P10 output integrity", () => {
     expect(response.outputIntegrity?.schemaId).toBe("BD-MEMO-SCHEMA-V1");
     expect(response.outputIntegrity?.schemaVersion).toBe("1.0");
     expect(response.outputIntegrity?.corpusHash).toMatch(/^[0-9A-F]{64}$/);
+    expect(response.outputIntegrity?.authorityRegistryIdentity).toEqual({
+      authorityRegistryVersion: "DEVELOPMENT-AUTHORITY-1.0.0",
+      authorityRegistryDigest: "DEVELOPMENT-NOT-VERIFIED",
+    });
     expect(response.outputIntegrity?.auditTrail.timestamp).toBe(
       "1970-01-01T00:00:00.000Z",
+    );
+  });
+
+  it("propagates authority registry identity from RuleGraphIdentity", () => {
+    const response = finalizeOutputResponse(
+      makeResponse({
+        ruleGraphIdentity: {
+          ...TEST_RULE_GRAPH_IDENTITY,
+          authorityRegistryVersion: "TEST-AUTHORITY-2.0.0",
+          authorityRegistryDigest: "TEST-AUTHORITY-DIGEST",
+        },
+      }),
+    );
+
+    expect(response.outputIntegrity?.authorityRegistryIdentity).toEqual({
+      authorityRegistryVersion: "TEST-AUTHORITY-2.0.0",
+      authorityRegistryDigest: "TEST-AUTHORITY-DIGEST",
+    });
+  });
+
+  it("preserves authority identity independently of execution timestamp", () => {
+    const first = finalizeOutputResponse(
+      makeResponse({
+        executionTimestamp: "1970-01-01T00:00:00.000Z",
+      }),
+    );
+    const second = finalizeOutputResponse(
+      makeResponse({
+        executionTimestamp: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+
+    expect(first.outputIntegrity?.authorityRegistryIdentity).toEqual(
+      second.outputIntegrity?.authorityRegistryIdentity,
+    );
+  });
+
+  it("fails closed when RuleGraphIdentity is missing", () => {
+    expect(() =>
+      finalizeOutputResponse(
+        makeResponse({
+          ruleGraphIdentity: undefined,
+        }),
+      ),
+    ).toThrow(
+      /missing deterministic RuleGraphIdentity authority registry identity/,
+    );
+  });
+
+  it("does not silently invent authority identity when the digest is missing", () => {
+    expect(() =>
+      finalizeOutputResponse(
+        makeResponse({
+          ruleGraphIdentity: {
+            ...TEST_RULE_GRAPH_IDENTITY,
+            authorityRegistryDigest: "",
+          },
+        }),
+      ),
+    ).toThrow(
+      /missing deterministic RuleGraphIdentity authority registry identity/,
+    );
+  });
+
+  it("verifies matching authority identity across RuleGraphIdentity and outputIntegrity", () => {
+    const response = finalizeOutputResponse(makeResponse());
+
+    const result = verifyOutputIntegrity(response);
+
+    expect(result.isValid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("fails when output authority registry version does not match RuleGraphIdentity", () => {
+    const response = finalizeOutputResponse(makeResponse());
+
+    const tamperedResponse: CaseAnalysisResponse = {
+      ...response,
+      outputIntegrity: {
+        ...response.outputIntegrity!,
+        authorityRegistryIdentity: {
+          ...response.outputIntegrity!.authorityRegistryIdentity,
+          authorityRegistryVersion: "TAMPERED-AUTHORITY-VERSION",
+        },
+      },
+    };
+
+    const result = verifyOutputIntegrity(tamperedResponse);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Output authorityRegistryVersion does not match RuleGraphIdentity.",
+    );
+  });
+
+  it("fails when output authority registry digest does not match RuleGraphIdentity", () => {
+    const response = finalizeOutputResponse(makeResponse());
+
+    const tamperedResponse: CaseAnalysisResponse = {
+      ...response,
+      outputIntegrity: {
+        ...response.outputIntegrity!,
+        authorityRegistryIdentity: {
+          ...response.outputIntegrity!.authorityRegistryIdentity,
+          authorityRegistryDigest: "TAMPERED-AUTHORITY-DIGEST",
+        },
+      },
+    };
+
+    const result = verifyOutputIntegrity(tamperedResponse);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Output authorityRegistryDigest does not match RuleGraphIdentity.",
+    );
+  });
+
+  it("fails when output authority registry identity is missing", () => {
+    const response = finalizeOutputResponse(makeResponse());
+
+    const tamperedResponse: CaseAnalysisResponse = {
+      ...response,
+      outputIntegrity: {
+        ...response.outputIntegrity!,
+        authorityRegistryIdentity: undefined as any,
+      },
+    };
+
+    const result = verifyOutputIntegrity(tamperedResponse);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Missing output authority registry identity.",
+    );
+  });
+
+  it("fails when RuleGraphIdentity is missing", () => {
+    const response = finalizeOutputResponse(makeResponse());
+
+    const tamperedResponse: CaseAnalysisResponse = {
+      ...response,
+      ruleGraphIdentity: undefined,
+    };
+
+    const result = verifyOutputIntegrity(tamperedResponse);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Missing RuleGraphIdentity.");
+  });
+
+  it("fails when output authority registry digest is empty", () => {
+    const response = finalizeOutputResponse(makeResponse());
+
+    const tamperedResponse: CaseAnalysisResponse = {
+      ...response,
+      outputIntegrity: {
+        ...response.outputIntegrity!,
+        authorityRegistryIdentity: {
+          ...response.outputIntegrity!.authorityRegistryIdentity,
+          authorityRegistryDigest: "",
+        },
+      },
+    };
+
+    const result = verifyOutputIntegrity(tamperedResponse);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain(
+      "Missing or invalid output authorityRegistryDigest.",
     );
   });
 

@@ -43,6 +43,11 @@ import { assertCorpusIntegrity } from "./citations/CorpusIntegrityVerifier";
 import { assertCorpusVersion } from "./citations/CorpusVersionLock";
 
 import { assertCorpusHash } from "./citations/CorpusHasher";
+import type { AuthorityRegistry } from "./authority/AuthorityRegistry";
+import {
+  verifyAuthorityRegistryIdentity,
+  getComputedAuthorityRegistryIdentity,
+} from "./authority/AuthorityRegistryHasher";
 // P6-11: Enforce corpus integrity and version lock at engine startup
 assertCorpusIntegrity();
 assertCorpusVersion("1.0");
@@ -1092,6 +1097,7 @@ export interface AnalyzeRequest {
 export class BCCAAEngine {
   private readonly ruleRegistry: RuleRegistry;
   private readonly limitationRuleRegistry: LimitationRuleRegistry;
+  private readonly authorityRegistry?: AuthorityRegistry;
   private readonly auditSink: AuditSink;
   private readonly licenseValidator: LicenseValidator;
   private readonly factValidationProvider: FactValidationProvider;
@@ -1101,6 +1107,7 @@ export class BCCAAEngine {
   constructor(deps?: {
     ruleRegistry?: RuleRegistry;
     limitationRuleRegistry?: LimitationRuleRegistry;
+    authorityRegistry?: AuthorityRegistry;
     auditSink?: AuditSink;
     licenseValidator?: LicenseValidator;
     factValidationProvider?: FactValidationProvider;
@@ -1110,6 +1117,7 @@ export class BCCAAEngine {
     this.ruleRegistry = (deps?.ruleRegistry ?? new DevelopmentRuleRegistry()) as RuleRegistry;
     this.limitationRuleRegistry =
       deps?.limitationRuleRegistry ?? new DevelopmentLimitationRegistry();
+    this.authorityRegistry = deps?.authorityRegistry;
 
     if (
       this.corpusMode === "VALIDATED_PRODUCTION" &&
@@ -1126,6 +1134,15 @@ export class BCCAAEngine {
     ) {
       throw new Error(
         "FATAL LEGAL ENGINE CONFIGURATION: VALIDATED_PRODUCTION requires an explicitly supplied production LimitationRuleRegistry",
+      );
+    }
+
+    if (
+      this.corpusMode === "VALIDATED_PRODUCTION" &&
+      !deps?.authorityRegistry
+    ) {
+      throw new Error(
+        "FATAL LEGAL ENGINE CONFIGURATION: VALIDATED_PRODUCTION requires an explicitly supplied production AuthorityRegistry",
       );
     }
 
@@ -1152,6 +1169,33 @@ export class BCCAAEngine {
       if (this.authorityStatus !== "VALIDATED_PRODUCTION") {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires ruleRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.");
       }
+
+      if (this.authorityRegistry?.authorityStatus !== "VALIDATED_PRODUCTION") {
+        throw new Error(
+          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires authorityRegistry.authorityStatus === 'VALIDATED_PRODUCTION'.",
+        );
+      }
+
+      if (!verifyAuthorityRegistryIdentity(this.authorityRegistry)) {
+        throw new Error(
+          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a verified deterministic AuthorityRegistry identity.",
+        );
+      }
+
+      const computedAuthorityIdentity =
+        getComputedAuthorityRegistryIdentity(this.authorityRegistry);
+
+      if (
+        computedAuthorityIdentity.authorityRegistryVersion !==
+          this.ruleRegistry.identity.authorityRegistryVersion ||
+        computedAuthorityIdentity.authorityRegistryDigest !==
+          this.ruleRegistry.identity.authorityRegistryDigest
+      ) {
+        throw new Error(
+          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires RuleRegistry.identity authority registry identity to match the supplied AuthorityRegistry.",
+        );
+      }
+
       const sink = this.auditSink as unknown as Record<string, unknown>;
       if (sink.atomicAppend !== true || sink.durable !== true || sink.concurrencySafe !== true) {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a ValidatedAuditSink.");
@@ -3011,6 +3055,7 @@ export class BCCAAEngine {
       licenseId: request.license?.licenseId ?? "UNLICENSED",
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+      ruleGraphIdentity: this.ruleRegistry.identity,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
       executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: deps.executionStatus,
@@ -3144,6 +3189,7 @@ export class BCCAAEngine {
       licenseId: "",
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+      ruleGraphIdentity: this.ruleRegistry.identity,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
       executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: "ERROR",
@@ -3297,6 +3343,7 @@ export class BCCAAEngine {
       licenseId: request.license?.licenseId ?? "UNLICENSED",
       engineVersion: ENGINE_MANIFEST.engineVersion,
       ruleGraphVersion: ENGINE_MANIFEST.ruleGraphVersion,
+      ruleGraphIdentity: this.ruleRegistry.identity,
       factSchemaVersion: ENGINE_MANIFEST.factSchemaVersion,
       executionTimestamp: this.corpusMode === "DEVELOPMENT" ? "1970-01-01T00:00:00.000Z" : "2024-01-01T00:00:00.000Z" /* P0: deterministic */,
       executionStatus: "BLOCKED",

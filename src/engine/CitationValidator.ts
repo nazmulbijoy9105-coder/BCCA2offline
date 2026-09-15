@@ -1,6 +1,12 @@
 import { DevelopmentStatuteRegistry } from "./citations/DevelopmentStatuteRegistry";
+import { DevelopmentAuthorityRegistry } from "./authority/DevelopmentAuthorityRegistry";
+import {
+  bindCitationProvenance,
+  type CitationAuthorityBinding,
+} from "./citations/CitationProvenanceBinding";
 
 const limitationStatuteRegistry = new DevelopmentStatuteRegistry();
+const developmentAuthorityRegistry = new DevelopmentAuthorityRegistry();
 const limitationActTitle = limitationStatuteRegistry.getStatuteById("LIMITATION_ACT_1908")?.statuteTitle ?? "The Limitation Act, 1908";
 const limitationActSection3 = `Section 3, ${limitationActTitle}`;
 
@@ -50,6 +56,7 @@ export interface VerifiedPrecedentOutput {
   verificationHash: string;
   isDeterministic: boolean;
   securityHashToken: string;
+  authorityBinding?: CitationAuthorityBinding;
 }
 
 /**
@@ -458,6 +465,10 @@ export class CitationValidator {
       verificationHash: match.verificationHash,
       isDeterministic: true,
       securityHashToken: match.id,
+      authorityBinding: bindCitationProvenance(
+        match,
+        developmentAuthorityRegistry.identity,
+      ),
     };
   }
 

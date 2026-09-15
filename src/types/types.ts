@@ -4,6 +4,9 @@ import type {
   Tristate,
   RuleGraphIdentity,
 } from "../engine/rules/RuleContracts";
+import type {
+  AuthorityRegistryIdentity,
+} from "../engine/authority/AuthorityRegistry";
 
 // ============================================================================
 // 4.4.0-HARDENED CORE TYPES  (widened for 4.5.2-P0 compatibility)
@@ -331,6 +334,7 @@ export interface OutputIntegrityMetadata {
   schemaId: string;
   schemaVersion: string;
   corpusHash: string;
+  authorityRegistryIdentity: AuthorityRegistryIdentity;
   isValid: boolean;
   defects: Array<{
     category:
@@ -366,6 +370,7 @@ export interface CaseAnalysisResponse {
   licenseId?: string;
   engineVersion?: string;
   ruleGraphVersion?: string;
+  ruleGraphIdentity?: RuleGraphIdentity;
   factSchemaVersion?: string;
   executionTimestamp?: string;
   executionStatus?: string;
