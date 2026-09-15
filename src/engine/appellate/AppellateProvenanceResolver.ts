@@ -1,12 +1,22 @@
 import { DevelopmentAppellateRegistry } from "./DevelopmentAppellateRegistry";
+import type {
+  AuthorityProvenance,
+  AuthorityValidationStatus,
+} from "../authority/AuthorityRegistry";
 
 const registry = new DevelopmentAppellateRegistry();
 
 /**
- * P9-11: Appellate Provenance Binding.
- * 
- * Ensures that any appellate rule applied by the engine can be traced 
- * provenance metadata for development appellate fixture rules.
+ * P9-11 / N4-04: Appellate Provenance Binding.
+ *
+ * Binds an existing appellate fixture rule to a deterministic authority
+ * identity and explicit provenance record.
+ *
+ * IMPORTANT:
+ * - This establishes identity/provenance binding, not legal correctness.
+ * - The development fixture remains DEVELOPMENT_FIXTURE.
+ * - No runtime timestamps or random values participate in the binding.
+ * - Production authority requires a separately validated production registry.
  */
 
 export type AppellateProvenance = {
@@ -14,33 +24,68 @@ export type AppellateProvenance = {
   statute: string;
   description: string;
   limitationArticle: string;
+  authorityId: string;
+  authorityStatus: AuthorityValidationStatus;
+  provenance: AuthorityProvenance;
 };
 
+function buildAuthorityId(ruleId: string): string {
+  return `AUTH-APPELLATE-${ruleId}`;
+}
+
 /**
- * Retrieves the statutory provenance for a given appellate rule ID.
- * Returns null if the rule is not found in the registry.
+ * Retrieves deterministic provenance for an appellate rule.
+ * Returns null if the rule is not found in the development registry.
  */
-export function getAppellateProvenance(ruleId: string): AppellateProvenance | null {
-  const rule = registry.getRules().find(r => r.ruleId === ruleId);
-  
+export function getAppellateProvenance(
+  ruleId: string,
+): AppellateProvenance | null {
+  const rule = registry.getRules().find((r) => r.ruleId === ruleId);
+
   if (!rule) {
     return null;
   }
+
+  const authorityId = buildAuthorityId(rule.ruleId);
 
   return {
     ruleId: rule.ruleId,
     statute: rule.statute,
     description: rule.description,
     limitationArticle: rule.limitation.article,
+    authorityId,
+    authorityStatus: registry.authorityStatus,
+    provenance: {
+      sourceId: rule.statute,
+      citation: rule.limitation.article,
+    },
   };
 }
 
 /**
- * Hard fail-closed guard. Verifies that an applied appellate rule has verifiable provenance.
+ * Hard fail-closed guard.
+ *
+ * Verifies that an applied appellate rule has deterministic provenance
+ * and remains explicitly classified as development-only authority.
  */
 export function assertAppellateProvenance(ruleId: string): void {
   const provenance = getAppellateProvenance(ruleId);
+
   if (!provenance) {
-    throw new Error(`Appellate Provenance Violation: Rule ${ruleId} does not exist in the development fixture registry.`);
+    throw new Error(
+      `Appellate Provenance Violation: Rule ${ruleId} does not exist in the development fixture registry.`,
+    );
+  }
+
+  if (provenance.authorityStatus !== "DEVELOPMENT_FIXTURE") {
+    throw new Error(
+      `Appellate Provenance Violation: Rule ${ruleId} has unexpected authority status ${provenance.authorityStatus}.`,
+    );
+  }
+
+  if (!provenance.authorityId || !provenance.provenance.sourceId) {
+    throw new Error(
+      `Appellate Provenance Violation: Rule ${ruleId} has incomplete authority identity.`,
+    );
   }
 }
