@@ -1228,6 +1228,12 @@ export class BCCAAEngine {
       if (sink.atomicAppend !== true || sink.durable !== true || sink.concurrencySafe !== true) {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a ValidatedAuditSink.");
       }
+      if (this.factValidationProvider.isProductionReady !== true) {
+        throw new Error(
+          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production-ready FactValidationProvider.",
+        );
+      }
+
       if (this.factValidationProvider instanceof NoOpFactValidationProvider) {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
       }

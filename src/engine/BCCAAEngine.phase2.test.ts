@@ -646,6 +646,8 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
   };
 
   class StubProductionFactValidationProvider {
+    readonly isProductionReady = true;
+
     async validateFacts(input: {
       facts: AtomicFact[];
       propositions: Proposition[];
@@ -772,7 +774,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       limitationRuleRegistry: validLimitationRuleRegistry,
       authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
-    })).toThrow(/VALIDATED_PRODUCTION requires a production FactValidationProvider/);
+    })).toThrow(/VALIDATED_PRODUCTION requires a production-ready FactValidationProvider/);
   });
 
   it("throws when VALIDATED_PRODUCTION has no production limitation registry", () => {
@@ -784,6 +786,31 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(
       /VALIDATED_PRODUCTION requires an explicitly supplied production LimitationRuleRegistry/,
+    );
+  });
+
+  it("throws when FactValidationProvider is not production-ready", () => {
+    class NonProductionFactValidationProvider {
+      readonly isProductionReady = false;
+
+      async validateFacts(input: {
+        facts: AtomicFact[];
+        propositions: Proposition[];
+        assertions: Assertion[];
+      }): Promise<AtomicFact[]> {
+        return input.facts;
+      }
+    }
+
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new NonProductionFactValidationProvider(),
+    })).toThrow(
+      /VALIDATED_PRODUCTION requires a production-ready FactValidationProvider/,
     );
   });
 
