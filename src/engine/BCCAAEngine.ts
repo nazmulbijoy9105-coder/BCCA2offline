@@ -31,7 +31,6 @@ import {
   FactConsistencyGateOutput,
 } from "../types/types";
 import { AuthUser } from "../types/auth.types";
-import { generateSecureId, generateHash } from "../utils/crypto";
 import { CitationValidator } from "./CitationValidator";
 import { FactConsistencyGate } from "./FactConsistencyGate";
 import {
