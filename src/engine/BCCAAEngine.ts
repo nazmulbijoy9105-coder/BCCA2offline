@@ -76,8 +76,9 @@ import type {
   LimitationFact,
   LimitationRuleRegistry,
 } from "./rules/LimitationContracts";
-import type {
-  ClaimRuleBindingRegistry,
+import {
+  assertRuleIdsExist,
+  type ClaimRuleBindingRegistry,
 } from "./rules/ClaimRuleBinding";
 import {
   DEVELOPMENT_CLAIM_RULE_BINDING_REGISTRY,
@@ -1224,10 +1225,56 @@ export class BCCAAEngine {
         );
       }
 
+    if (
+      this.corpusMode === "VALIDATED_PRODUCTION" &&
+      !deps?.claimRuleBindingRegistry
+    ) {
+      throw new Error(
+        "FATAL LEGAL ENGINE CONFIGURATION: VALIDATED_PRODUCTION requires an explicitly supplied production ClaimRuleBindingRegistry",
+      );
+    }
+
+      for (const binding of this.claimRuleBindingRegistry.bindings) {
+        const candidateRules = this.ruleRegistry.getClaimElements(
+          binding.claimId as ClaimType,
+          "Bangladesh",
+        );
+
+        assertRuleIdsExist([binding], candidateRules);
+
+        const matchingRule = candidateRules.find(
+          rule => rule.ruleId === binding.ruleId,
+        );
+
+        if (
+          matchingRule?.canonicalClaimId &&
+          matchingRule.canonicalClaimId !== binding.claimId
+        ) {
+          throw new Error(
+            `FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION claim binding canonical claim mismatch: ${binding.claimId}:${binding.elementId}:${binding.ruleId}`,
+          );
+        }
+
+        if (
+          matchingRule?.canonicalElementId &&
+          matchingRule.canonicalElementId !== binding.elementId
+        ) {
+          throw new Error(
+            `FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION claim binding canonical element mismatch: ${binding.claimId}:${binding.elementId}:${binding.ruleId}`,
+          );
+        }
+      }
+
       const sink = this.auditSink as unknown as Record<string, unknown>;
       if (sink.atomicAppend !== true || sink.durable !== true || sink.concurrencySafe !== true) {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a ValidatedAuditSink.");
       }
+      if (this.factValidationProvider.isProductionReady !== true) {
+        throw new Error(
+          "FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production-ready FactValidationProvider.",
+        );
+      }
+
       if (this.factValidationProvider instanceof NoOpFactValidationProvider) {
         throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
       }
