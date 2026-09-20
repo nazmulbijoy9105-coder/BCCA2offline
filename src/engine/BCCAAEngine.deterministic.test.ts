@@ -643,15 +643,18 @@ describe("P3-02: Stage 13 conclusion integrity", () => {
 
     expect(captured[0].outputHash).toBe(originalHash);
 
-    const protectedFields = [
+    const protectedStringFields = [
       "overview",
       "reliefDecree",
       "costsApportionment",
       "equitableBars",
       "executionPathway",
+      "conclusion",
+      "confidence",
+      "humanReviewReason",
     ] as const;
 
-    for (const field of protectedFields) {
+    for (const field of protectedStringFields) {
       const mutatedResponse: CaseAnalysisResponse = {
         ...response,
         stage13: {
@@ -667,6 +670,82 @@ describe("P3-02: Stage 13 conclusion integrity", () => {
 
       expect(mutatedHash).not.toBe(originalHash);
     }
+
+    const mutatedHumanReviewResponse: CaseAnalysisResponse = {
+      ...response,
+      stage13: {
+        ...response.stage13,
+        requiresHumanReview: !response.stage13.requiresHumanReview,
+      },
+    };
+
+    const mutatedHumanReviewHash = (testEngine as any).computeOutputHash(
+      mutatedHumanReviewResponse,
+      request.caseId,
+    );
+
+    expect(mutatedHumanReviewHash).not.toBe(originalHash);
+
+    const mutatedElementSummaryResponse: CaseAnalysisResponse = {
+      ...response,
+      stage13: {
+        ...response.stage13,
+        elementSummary: [
+          ...(response.stage13.elementSummary ?? []),
+          {
+            ruleId: "P3-02-MUTATED-RULE",
+            status: "P3-02-MUTATED-STATUS",
+            explanation: "P3-02 deterministic hash mutation",
+          },
+        ],
+      },
+    };
+
+    const mutatedElementSummaryHash = (testEngine as any).computeOutputHash(
+      mutatedElementSummaryResponse,
+      request.caseId,
+    );
+
+    expect(mutatedElementSummaryHash).not.toBe(originalHash);
+
+    const mutatedLegalConclusionsResponse: CaseAnalysisResponse = {
+      ...response,
+      stage13: {
+        ...response.stage13,
+        legalConclusions: [
+          ...(response.stage13.legalConclusions ?? []),
+          {
+            conclusionId: "P3-02-MUTATED-CONCLUSION",
+            text: "P3-02 deterministic hash mutation",
+          },
+        ],
+      },
+    };
+
+    const mutatedLegalConclusionsHash = (testEngine as any).computeOutputHash(
+      mutatedLegalConclusionsResponse,
+      request.caseId,
+    );
+
+    expect(mutatedLegalConclusionsHash).not.toBe(originalHash);
+
+    const mutatedRecommendationsResponse: CaseAnalysisResponse = {
+      ...response,
+      stage13: {
+        ...response.stage13,
+        recommendations: [
+          ...(response.stage13.recommendations ?? []),
+          "P3-02 deterministic hash mutation",
+        ],
+      },
+    };
+
+    const mutatedRecommendationsHash = (testEngine as any).computeOutputHash(
+      mutatedRecommendationsResponse,
+      request.caseId,
+    );
+
+    expect(mutatedRecommendationsHash).not.toBe(originalHash);
   });
 });
 
