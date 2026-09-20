@@ -83,6 +83,11 @@ import type {
 import {
   DEVELOPMENT_CLAIM_RULE_BINDING_REGISTRY,
 } from "./rules/DevelopmentClaimRuleBindingRegistry";
+import {
+  resolveCanonicalClaim,
+  type CanonicalClaimId,
+  type CanonicalClaimResolution,
+} from "./rules/CanonicalClaimResolution";
 
 // ============================================================================
 // MANIFEST / HARD LIMITS
@@ -194,6 +199,13 @@ export type CitationState =
   | "PROPOSITION_SUPPORTED"
   | "TEMPORALLY_VALID"
   | "JURISDICTION_VALID";
+
+interface CanonicalRuntimeRouting {
+  readonly resolution: CanonicalClaimResolution;
+  readonly legacyClaimType: ClaimType;
+  readonly boundRuleIds: readonly string[];
+  readonly executable: boolean;
+}
 
 export type ClaimType =
   | "SPECIFIC_PERFORMANCE"
@@ -1362,7 +1374,26 @@ export class BCCAAEngine {
     startTime: number,
   ): Promise<CaseAnalysisResponse> {
     const { input } = request;
-    const claimType = this.resolveClaimType(input.factPattern, input.focusDomain ?? "");
+
+    const canonicalRouting = this.resolveCanonicalRuntimeRouting(
+      input.factPattern,
+      input.focusDomain ?? "",
+    );
+
+    const claimType = canonicalRouting.legacyClaimType;
+
+    recordTrace(ctx, {
+      layer: "P0_INPUT_VALIDATION",
+      description:
+        `Canonical claim routing: ${canonicalRouting.resolution.status}. ` +
+        `Claim: ${canonicalRouting.resolution.claimId ?? "NONE"}. ` +
+        `Reason: ${canonicalRouting.resolution.reason}`,
+      dependsOnFacts: [],
+      dependsOnRules: [...canonicalRouting.boundRuleIds],
+      result: canonicalRouting.resolution.status,
+    });
+
+
 
     const limitationReferenceDate = input.limitationReferenceDate;
     if (limitationReferenceDate) {
@@ -1477,7 +1508,11 @@ export class BCCAAEngine {
     }
 
     const limitation = this.executeLimitationRules(ctx, claimType);
-    const elementGate = this.executeElementCompletenessGate(ctx, claimType);
+    const elementGate = this.executeElementCompletenessGate(
+      ctx,
+      claimType,
+      canonicalRouting,
+    );
     const standi = this.executePartyStandiRules(ctx, claimType, input.factPattern);
     const pleading = this.executePleadingRules(elementGate, input.factPattern);
     const issues = this.executeIssueFramingRules(ctx, elementGate, input.factPattern);
@@ -2323,6 +2358,101 @@ export class BCCAAEngine {
   // DOMAIN & LEGISLATION
   // =======================================================================
 
+  private mapCanonicalClaimToLegacyClaimType(
+    claimId: CanonicalClaimId,
+  ): ClaimType {
+    switch (claimId) {
+      case "SPECIFIC_PERFORMANCE":
+        return "SPECIFIC_PERFORMANCE";
+      case "POSSESSION_RECOVERY_SEC8":
+        return "DECLARATION_AND_POSSESSION";
+      case "PARTITION":
+        return "DECLARATION_AND_POSSESSION";
+      case "DECLARATION_SEC42":
+        return "DECLARATION_AND_POSSESSION";
+      case "INHERITANCE_CONSULTATION":
+        return "INHERITANCE_CONSULTATION";
+      default:
+        return "GENERAL_CIVIL";
+    }
+  }
+
+  private resolveCanonicalRuntimeRouting(
+    factPattern: string,
+    focusDomain: string,
+  ): CanonicalRuntimeRouting {
+    const resolution = resolveCanonicalClaim(
+      factPattern,
+      focusDomain,
+    );
+
+    if (resolution.status === "UNRESOLVED") {
+      return Object.freeze({
+        resolution,
+        legacyClaimType: this.resolveClaimType(
+          factPattern,
+          focusDomain,
+        ),
+        boundRuleIds: Object.freeze([]),
+        executable: true,
+      });
+    }
+
+    if (resolution.status === "AMBIGUOUS") {
+      return Object.freeze({
+        resolution,
+        legacyClaimType: this.resolveClaimType(
+          factPattern,
+          focusDomain,
+        ),
+        boundRuleIds: Object.freeze([]),
+        executable: false,
+      });
+    }
+
+    const claimId = resolution.claimId;
+
+    if (!claimId) {
+      return Object.freeze({
+        resolution: Object.freeze({
+          ...resolution,
+          status: "AMBIGUOUS",
+          claimId: null,
+          reason:
+            "Canonical resolver returned RESOLVED without a canonical claim ID.",
+        }),
+        legacyClaimType: "GENERAL_CIVIL",
+        boundRuleIds: Object.freeze([]),
+        executable: false,
+      });
+    }
+
+    const bindings =
+      this.claimRuleBindingRegistry.getBindingsForClaim(claimId);
+
+    const boundRuleIds = Object.freeze(
+      bindings.map(binding => binding.ruleId),
+    );
+
+    if (boundRuleIds.length === 0) {
+      return Object.freeze({
+        resolution,
+        legacyClaimType:
+          this.mapCanonicalClaimToLegacyClaimType(claimId),
+        boundRuleIds,
+        executable: false,
+      });
+    }
+
+    return Object.freeze({
+      resolution,
+      legacyClaimType:
+        this.mapCanonicalClaimToLegacyClaimType(claimId),
+      boundRuleIds,
+      executable: true,
+    });
+  }
+
   private resolveClaimType(factPattern: string, focusDomain: string): ClaimType {
     const lower = factPattern.toLowerCase();
     if (focusDomain) {
@@ -2526,8 +2656,60 @@ export class BCCAAEngine {
   // ELEMENT COMPLETENESS GATE
   // =======================================================================
 
-  private executeElementCompletenessGate(ctx: ExecutionContext, claimType: ClaimType): ElementGateResult {
-    const rules = this.ruleRegistry.getClaimElements(claimType, "Bangladesh");
+  private executeElementCompletenessGate(
+    ctx: ExecutionContext,
+    claimType: ClaimType,
+    canonicalRouting?: CanonicalRuntimeRouting,
+  ): ElementGateResult {
+    const candidateRules = this.ruleRegistry.getClaimElements(
+      claimType,
+      "Bangladesh",
+    );
+
+    if (canonicalRouting && !canonicalRouting.executable) {
+      return {
+        status: GateStatus.INDETERMINATE,
+        allSatisfied: false,
+        missingElements: [],
+        unknownElements: [
+          canonicalRouting.resolution.claimId
+            ? `CANONICAL_CLAIM_UNBOUND:${canonicalRouting.resolution.claimId}`
+            : `CANONICAL_CLAIM_ROUTING:${canonicalRouting.resolution.status}`,
+        ],
+        fatalFailures: [],
+        ruleExecutionResults: [],
+      };
+    }
+
+    const rules =
+      canonicalRouting &&
+      canonicalRouting.resolution.status === "RESOLVED"
+        ? candidateRules.filter(rule =>
+            canonicalRouting.boundRuleIds.includes(rule.ruleId),
+          )
+        : candidateRules;
+
+    if (
+      canonicalRouting &&
+      canonicalRouting.resolution.status === "RESOLVED" &&
+      canonicalRouting.executable &&
+      rules.length === 0
+    ) {
+      return {
+        status: GateStatus.INDETERMINATE,
+        allSatisfied: false,
+        missingElements: [],
+        unknownElements: [
+          `CANONICAL_RULE_BINDING_NOT_EXECUTABLE:${
+            canonicalRouting.resolution.claimId ?? "UNKNOWN"
+          }`,
+        ],
+        fatalFailures: [],
+        ruleExecutionResults: [],
+      };
+    }
+
+
     const results: RuleExecutionResult[] = [];
     let allSatisfied = true;
     const missingElements: string[] = [];
@@ -2858,10 +3040,10 @@ export class BCCAAEngine {
     executionStatus: PipelineExecutionStatus,
     elementGate: ElementGateResult,
   ): ExecutionOutcome {
+    if (elementGate.status === GateStatus.INDETERMINATE) return "INDETERMINATE";
     if (executionStatus === "BLOCKED" || executionStatus === "ERROR") return "HALTED";
     if (elementGate.status === GateStatus.HALT) return "HALTED";
     if (elementGate.allSatisfied) return "STRUCTURAL_ONLY";
-    if (elementGate.status === GateStatus.INDETERMINATE) return "INDETERMINATE";
     if (executionStatus === "PARTIAL") return "PARTIAL";
     return "STRUCTURAL_ONLY";
   }
