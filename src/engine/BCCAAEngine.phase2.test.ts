@@ -1,7 +1,8 @@
 import type { LimitationRuleRegistry } from "./rules/LimitationContracts";
 import { describe, it, expect } from "vitest";
 import { BCCAAEngine, canonicalStringify, NoOpFactValidationProvider } from "./BCCAAEngine";
-import type { RuleGraphIdentity, RuleRegistry, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
+import type { RuleGraphIdentity, RuleRegistry, LegalRule, AtomicFact, Proposition, Assertion } from "./BCCAAEngine";
+import type { ClaimRuleBindingRegistry } from "./rules/ClaimRuleBinding";
 import type { AuthorityRegistry } from "./authority/AuthorityRegistry";
 import { computeAuthorityRegistryDigest } from "./authority/AuthorityRegistryHasher";
 import { makeAnalyzeRequest as makeRequest } from "./testFixtures";
@@ -604,11 +605,58 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     ruleGraphDigest: "test-digest",
   };
 
+  const productionBinding = {
+    claimId: "SPECIFIC_PERFORMANCE",
+    elementId: "ELEMENT_REGISTRATION",
+    ruleId: "SP-ELEMENT-REGISTRATION",
+  } as const;
+
+  const productionRule: LegalRule = {
+    ruleId: "SP-ELEMENT-REGISTRATION",
+    ruleVersion: "1.0.0",
+    canonicalClaimId: "SPECIFIC_PERFORMANCE",
+    canonicalElementId: "ELEMENT_REGISTRATION",
+    jurisdiction: "Bangladesh",
+    effectiveFrom: "1877-01-01",
+    claimTypes: ["SPECIFIC_PERFORMANCE"],
+    ruleType: "ELEMENT",
+    predicates: [],
+    logicalOperator: "ALL",
+    outcomeIfSatisfied: "PASS",
+    outcomeIfFailed: "FAIL",
+    authority: {
+      act: "Test Statute",
+      section: "Section 1",
+    },
+  };
+
+  const productionClaimRuleBindingRegistry: ClaimRuleBindingRegistry = {
+    bindings: [productionBinding],
+    getBindingsForClaim: claimId =>
+      claimId === productionBinding.claimId
+        ? [productionBinding]
+        : [],
+    getBindingsForElement: (claimId, elementId) =>
+      claimId === productionBinding.claimId &&
+      elementId === productionBinding.elementId
+        ? [productionBinding]
+        : [],
+    getBinding: (claimId, elementId) =>
+      claimId === productionBinding.claimId &&
+      elementId === productionBinding.elementId
+        ? productionBinding
+        : null,
+  };
+
   const validRuleRegistry: RuleRegistry = {
     version: "1.0.0",
     identity: validIdentity,
     authorityStatus: "VALIDATED_PRODUCTION",
-    getClaimElements: () => [],
+    getClaimElements: (claimType, jurisdiction) =>
+      claimType === "SPECIFIC_PERFORMANCE" &&
+      jurisdiction === "Bangladesh"
+        ? [productionRule]
+        : [],
     getLegislationMapping: () => ({ primaryAct: null, relevantSections: [] }),
   };
 
@@ -762,6 +810,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
       authorityRegistry: productionAuthorityRegistry,
+      claimRuleBindingRegistry: productionClaimRuleBindingRegistry,
       auditSink: incompleteAuditSink,
       factValidationProvider: new StubProductionFactValidationProvider(),
     })).toThrow(/VALIDATED_PRODUCTION requires a ValidatedAuditSink/);
@@ -773,6 +822,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
       authorityRegistry: productionAuthorityRegistry,
+      claimRuleBindingRegistry: productionClaimRuleBindingRegistry,
       auditSink: validAuditSink,
     })).toThrow(/VALIDATED_PRODUCTION requires a production-ready FactValidationProvider/);
   });
@@ -807,6 +857,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
       ruleRegistry: validRuleRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
       authorityRegistry: productionAuthorityRegistry,
+      claimRuleBindingRegistry: productionClaimRuleBindingRegistry,
       auditSink: validAuditSink,
       factValidationProvider: new NonProductionFactValidationProvider(),
     })).toThrow(
@@ -814,10 +865,70 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     );
   });
 
+  it("throws when no production ClaimRuleBindingRegistry is supplied", () => {
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /VALIDATED_PRODUCTION requires an explicitly supplied production ClaimRuleBindingRegistry/,
+    );
+  });
+
+  it("rejects a production binding that references a nonexistent executable rule", () => {
+    const invalidBindingRegistry: ClaimRuleBindingRegistry = {
+      ...productionClaimRuleBindingRegistry,
+      bindings: [{
+        claimId: "SPECIFIC_PERFORMANCE",
+        elementId: "ELEMENT_REGISTRATION",
+        ruleId: "NONEXISTENT-PRODUCTION-RULE",
+      }],
+    };
+
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      claimRuleBindingRegistry: invalidBindingRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /CLAIM_RULE_BINDING_UNKNOWN_RULE:NONEXISTENT-PRODUCTION-RULE/,
+    );
+  });
+
+  it("rejects a production binding whose rule points to the wrong canonical element", () => {
+    const wrongElementBindingRegistry: ClaimRuleBindingRegistry = {
+      ...productionClaimRuleBindingRegistry,
+      bindings: [{
+        claimId: "SPECIFIC_PERFORMANCE",
+        elementId: "ELEMENT_VALID_CONTRACT",
+        ruleId: "SP-ELEMENT-REGISTRATION",
+      }],
+    };
+
+    expect(() => new BCCAAEngine({
+      corpusMode: "VALIDATED_PRODUCTION",
+      ruleRegistry: validRuleRegistry,
+      claimRuleBindingRegistry: wrongElementBindingRegistry,
+      limitationRuleRegistry: validLimitationRuleRegistry,
+      authorityRegistry: productionAuthorityRegistry,
+      auditSink: validAuditSink,
+      factValidationProvider: new StubProductionFactValidationProvider(),
+    })).toThrow(
+      /claim binding canonical element mismatch/,
+    );
+  });
+
   it("does not throw when all VALIDATED_PRODUCTION requirements are met", () => {
     expect(() => new BCCAAEngine({
       corpusMode: "VALIDATED_PRODUCTION",
       ruleRegistry: validRuleRegistry,
+      claimRuleBindingRegistry: productionClaimRuleBindingRegistry,
       limitationRuleRegistry: validLimitationRuleRegistry,
       authorityRegistry: productionAuthorityRegistry,
       auditSink: validAuditSink,
