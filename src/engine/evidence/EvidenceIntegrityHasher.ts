@@ -1,4 +1,5 @@
 import { sha256 } from "@noble/hashes/sha2.js";
+import { compareCanonicalStrings } from "../../utils/crypto";
 
 /**
  * P7-08: Evidence Integrity Hashing.
@@ -26,7 +27,7 @@ function serializeFacts(facts: readonly HashableFact[]): string {
     object: f.object ?? null, 
     truth: f.truth ?? null, 
     eventDate: f.eventDate ?? null 
-  })).sort((a, b) => a.factId.localeCompare(b.factId));
+  })).sort((a, b) => compareCanonicalStrings(a.factId, b.factId));
 
   return JSON.stringify(sortedFacts);
 }

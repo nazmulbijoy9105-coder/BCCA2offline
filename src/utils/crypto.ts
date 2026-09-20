@@ -207,6 +207,21 @@ export function generateSecureId(): string {
 // CANONICAL SERIALIZATION / HASH PATH
 // ============================================================================
 
+/**
+ * Locale-independent lexical comparator for canonical identity ordering.
+ *
+ * IMPORTANT:
+ * Canonical/hash identity must never depend on ambient locale or ICU
+ * collation rules. This comparator uses JavaScript relational string
+ * ordering only.
+ */
+export function compareCanonicalStrings(
+  left: string,
+  right: string,
+): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(canonicalize);

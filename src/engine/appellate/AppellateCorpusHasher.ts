@@ -1,4 +1,4 @@
-import { canonicalHash } from "../../utils/crypto";
+import { canonicalHash, compareCanonicalStrings } from "../../utils/crypto";
 import { DevelopmentAppellateRegistry } from "./DevelopmentAppellateRegistry";
 
 const registry = new DevelopmentAppellateRegistry();
@@ -17,7 +17,7 @@ export async function getAppellateCorpusHash(): Promise<string> {
   // Preserve the existing deterministic rule ordering while using
   // the repository-wide canonical SHA-256 implementation.
   const sortedRules = [...rules].sort((a, b) =>
-    a.ruleId.localeCompare(b.ruleId),
+    compareCanonicalStrings(a.ruleId, b.ruleId),
   );
 
   return canonicalHash(sortedRules);
