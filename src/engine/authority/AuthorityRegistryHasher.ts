@@ -1,4 +1,4 @@
-import { canonicalHash } from "../../utils/crypto";
+import { canonicalHash, compareCanonicalStrings } from "../../utils/crypto";
 import type {
   AuthorityRecord,
   AuthorityRegistry,
@@ -77,7 +77,7 @@ export function canonicalizeAuthorityRegistry(
 ): readonly CanonicalAuthorityRecord[] {
   return [...registry.getAuthorities()]
     .map(canonicalizeAuthority)
-    .sort((a, b) => a.authorityId.localeCompare(b.authorityId));
+    .sort((a, b) => compareCanonicalStrings(a.authorityId, b.authorityId));
 }
 
 export function computeAuthorityRegistryDigest(

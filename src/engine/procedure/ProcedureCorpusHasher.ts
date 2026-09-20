@@ -1,4 +1,4 @@
-import { canonicalHash } from "../../utils/crypto";
+import { canonicalHash, compareCanonicalStrings } from "../../utils/crypto";
 import { DevelopmentProcedureRegistry } from "./DevelopmentProcedureRegistry";
 
 const registry = new DevelopmentProcedureRegistry();
@@ -16,7 +16,7 @@ const registry = new DevelopmentProcedureRegistry();
 export function getProcedureCorpusHash(): string {
   const rules = registry.getRules();
   const sortedRules = [...rules].sort((a, b) =>
-    a.ruleId.localeCompare(b.ruleId),
+    compareCanonicalStrings(a.ruleId, b.ruleId),
   );
 
   return canonicalHash(sortedRules);
