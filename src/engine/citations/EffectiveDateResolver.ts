@@ -1,17 +1,21 @@
 import { LIMITATION_ACT_1908_CORPUS } from "./LimitationAct1908Corpus";
 import { getArticleMetadata } from "./LimitationArticleMapper";
+import { isISODateString } from "../../utils/isoDate";
 
 /**
  * P6-05: Effective Date Resolver.
- * 
+ *
  * Parses the authoritative corpus to extract explicit ISO effective dates
  * for the Act and its amended articles (e.g., Article 113 -> 2005-07-01).
  */
 export function getActEffectiveDate(): string {
-  // The Act received assent on 7 August 1908, but commenced 1 Jan 1909 
-  // (except ss 1 & 31). For limitation computation, the baseline is 1908-01-01 
-  // as established in the registry temporal versions.
-  return "1908-01-01";
+  // Act No. IX of 1908 (assent: 7 August 1908). By s.1(2), ss.1 & 31 came
+  // into force at once; the remainder of the Act — including s.3 and the
+  // First Schedule — came into force on 1 January 1909. For limitation
+  // computation the operative baseline is the Schedule commencement:
+  // 1909-01-01. (Previously returned 1908-01-01 via a circular reference
+  // to the registry's own temporal versions — corrected P4-04 Batch 1.)
+  return "1909-01-01";
 }
 
 /**
@@ -31,10 +35,14 @@ export function getArticleEffectiveDate(articleNumber: string | number): string 
   }
 
   // If it matched DD-MM-YYYY, convert to YYYY-MM-DD
+  let resolved: string | null = null;
   if (dateMatch[1] && dateMatch[2] && dateMatch[3]) {
-    return `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+    resolved = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+  } else if (dateMatch[0]) {
+    // Already YYYY-MM-DD
+    resolved = dateMatch[0];
   }
 
-  // Already YYYY-MM-DD
-  return dateMatch[0];
+  // Fail-closed: a shape-matching but calendar-invalid date is rejected.
+  return resolved !== null && isISODateString(resolved) ? resolved : null;
 }

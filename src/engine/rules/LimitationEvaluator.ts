@@ -243,6 +243,10 @@ function getAccrualDate(
       DISPOSSESSION_DATE: "Dispossession Date",
       RIGHT_TO_SUE_DATE: "Right to Sue Date",
       DEMAND_DATE: "Demand Date",
+
+    // Phase-B-pending triggers (PLCP-07): no extraction predicate yet; fail-closed INDETERMINATE.
+    CONTRACT_BREACH_DATE: "Contract Breach Date",
+    ADVERSE_POSSESSION_DATE: "Adverse Possession Date",
     };
 
     predicates = [predicateByTrigger[rule.accrualTrigger]];

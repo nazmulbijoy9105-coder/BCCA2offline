@@ -19,12 +19,23 @@ export type LimitationAccrualTrigger =
   | "KNOWLEDGE_DATE"
   | "DISPOSSESSION_DATE"
   | "RIGHT_TO_SUE_DATE"
-  | "DEMAND_DATE";
+  | "DEMAND_DATE"
+  | "CONTRACT_BREACH_DATE"
+  | "ADVERSE_POSSESSION_DATE";
+
+export type LimitationPeriodUnit = "YEAR" | "MONTH" | "DAY";
 
 export type LimitationTemporalVersion = {
   effectiveFrom: string;
   effectiveTo?: string;
   limitationPeriodYears: number;
+
+  /** P4-04b (Batch 2+): precise period. Takes precedence over the legacy
+   * limitationPeriodYears. Required for DAY/MONTH-based articles (division 2
+   * appeals: 7-90 days + 6 months; division 3 applications). Evaluator wiring
+   * lands with the first DAY/MONTH registry batch. */
+  periodValue?: number;
+  periodUnit?: LimitationPeriodUnit;
 };
 
 export type LimitationPredicate = {

@@ -33,7 +33,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     },
     accrualTrigger: "KNOWLEDGE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 3 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 3 },
     ],
   },
 
@@ -58,7 +58,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     },
     accrualTrigger: "KNOWLEDGE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 3 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 3 },
     ],
   },
 
@@ -87,7 +87,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     },
     accrualTrigger: "FIXED_PERFORMANCE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", effectiveTo: "2005-06-30", limitationPeriodYears: 3 },
+      { effectiveFrom: "1909-01-01", effectiveTo: "2005-06-30", limitationPeriodYears: 3 },
       { effectiveFrom: "2005-07-01", limitationPeriodYears: 1 },
     ],
   },
@@ -98,22 +98,16 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     article: "ARTICLE_114",
     statute: "LIMITATION_ACT_1908",
     description:
-      "Suit for possession of immovable property not otherwise specifically provided for: twelve years from the date of dispossession or discontinuance.",
+      "Suit for rescission of contract: one year from the date when the facts entitling the plaintiff to have the contract rescinded first become known to him.",
     applicability: {
-      claimTypes: [
-        "RECOVERY_OF_POSSESSION",
-        "DECLARATION_AND_POSSESSION",
-        "GENERAL_CIVIL",
-      ],
+      claimTypes: ["GENERAL_CIVIL"],
       requiredPredicates: [
-        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
-        { predicate: "Plaintiff Possessory Entitlement" },
-        { predicate: "Dispossession Date" },
+        { predicate: "Relief", object: "RESCISSION" },
       ],
     },
-    accrualTrigger: "DISPOSSESSION_DATE",
+    accrualTrigger: "KNOWLEDGE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 1 },
     ],
   },
 
@@ -123,22 +117,17 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     article: "ARTICLE_115",
     statute: "LIMITATION_ACT_1908",
     description:
-      "Suit by a remainderman, reversioner, or remainderman for possession of immovable property: twelve years from the date of dispossession.",
+      "Suit for compensation for breach of any contract, express or implied, not in writing registered and not specially provided for: three years from the date when the contract is broken, or in successive breaches when the breach sued on occurs, or in a continuing breach when it ceases.",
     applicability: {
-      claimTypes: [
-        "RECOVERY_OF_POSSESSION",
-        "DECLARATION_AND_POSSESSION",
-        "GENERAL_CIVIL",
-      ],
+      claimTypes: ["GENERAL_CIVIL"],
       requiredPredicates: [
-        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
-        { predicate: "Plaintiff Capacity", object: "REMAINDERMAN_OR_REVERSIONER" },
-        { predicate: "Dispossession Date" },
+        { predicate: "Relief", object: "CONTRACT_COMPENSATION" },
+        { predicate: "Contract Registration Status", object: "NOT_REGISTERED" },
       ],
     },
-    accrualTrigger: "DISPOSSESSION_DATE",
+    accrualTrigger: "CONTRACT_BREACH_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 3 },
     ],
   },
 
@@ -148,21 +137,17 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     article: "ARTICLE_116",
     statute: "LIMITATION_ACT_1908",
     description:
-      "Suit by a landlord to recover possession from a tenant: twelve years from the date of dispossession or expiration of the term.",
+      "Suit for compensation for breach of a contract in writing registered: six years from the time when the period of limitation would begin to run against a similar contract not registered.",
     applicability: {
-      claimTypes: [
-        "RECOVERY_OF_POSSESSION",
-        "GENERAL_CIVIL",
-      ],
+      claimTypes: ["GENERAL_CIVIL"],
       requiredPredicates: [
-        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
-        { predicate: "Plaintiff Capacity", object: "LANDLORD" },
-        { predicate: "Dispossession Date" },
+        { predicate: "Relief", object: "CONTRACT_COMPENSATION" },
+        { predicate: "Contract Registration Status", object: "REGISTERED" },
       ],
     },
-    accrualTrigger: "DISPOSSESSION_DATE",
+    accrualTrigger: "CONTRACT_BREACH_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 6 },
     ],
   },
 
@@ -189,7 +174,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     },
     accrualTrigger: "RIGHT_TO_SUE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 6 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 6 },
     ],
   },
 
@@ -212,7 +197,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     },
     accrualTrigger: "DISPOSSESSION_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 12 },
     ],
   },
 
@@ -222,22 +207,21 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     article: "ARTICLE_144",
     statute: "LIMITATION_ACT_1908",
     description:
-      "Suit by or on behalf of the Government to recover possession of property: twelve years from the date of dispossession.",
+      "Suit for possession of immovable property or any interest therein not otherwise specially provided for: twelve years from the date when the possession of the defendant becomes adverse to the plaintiff.",
     applicability: {
       claimTypes: [
         "RECOVERY_OF_POSSESSION",
-        "GOVERNMENT_SUIT",
+        "DECLARATION_AND_POSSESSION",
         "GENERAL_CIVIL",
       ],
       requiredPredicates: [
-        { predicate: "Plaintiff Capacity", object: "GOVERNMENT" },
-        { predicate: "Relief", object: "RECOVERY_OF_POSSESSION" },
-        { predicate: "Dispossession Date" },
+        { predicate: "Plaintiff Possessory Entitlement" },
+        { predicate: "Adverse Possession Date" },
       ],
     },
-    accrualTrigger: "DISPOSSESSION_DATE",
+    accrualTrigger: "ADVERSE_POSSESSION_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", limitationPeriodYears: 12 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 12 },
     ],
   },
 
@@ -262,7 +246,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     },
     accrualTrigger: "RIGHT_TO_SUE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1908-01-01", effectiveTo: "2024-01-01", limitationPeriodYears: 60 },
+      { effectiveFrom: "1909-01-01", effectiveTo: "2024-01-01", limitationPeriodYears: 60 },
     ],
   },
 ];

@@ -14,7 +14,7 @@ const STATUTE_CORPUS: readonly StatuteSource[] = [
     statuteTitle: "The Limitation Act, 1908",
     formalCitation: "Act No. IX of 1908",
     jurisdiction: "BANGLADESH",
-    effectiveDate: "1908-01-01",
+    effectiveDate: "1909-01-01", // First Schedule commencement (s.1(2)); assent 1908-08-07
     status: "IN_FORCE",
     provenanceUrl: "http://bdlaws.minlaw.gov.bd/act-329.html",
     officialGazetteRef: "Gazette of India, 1908",
