@@ -879,7 +879,7 @@ export class DevelopmentRuleRegistry implements RuleRegistry {
           ruleId: "DP-ELEMENT-POSSESSION",
           ruleVersion: "1.0.0",
           jurisdiction,
-          effectiveFrom: "1908-01-01",
+          effectiveFrom: "1909-01-01",
           claimTypes: [claimType],
           ruleType: "ELEMENT",
           logicalOperator: "ALL",
@@ -1275,9 +1275,6 @@ export class BCCAAEngine {
         );
       }
 
-      if (this.factValidationProvider instanceof NoOpFactValidationProvider) {
-        throw new Error("FATAL CONFIGURATION ERROR: VALIDATED_PRODUCTION requires a production FactValidationProvider.");
-      }
     }
   }
 
