@@ -1,3 +1,4 @@
+import { compareCanonicalStrings } from "../../utils/crypto";
 import type {
   LimitationFact,
   LimitationRule,
@@ -158,7 +159,7 @@ function selectTemporalVersion(
    * choose the candidate with the latest effectiveFrom.
    */
   return [...candidates].sort((a, b) =>
-    b.effectiveFrom.localeCompare(a.effectiveFrom),
+    compareCanonicalStrings(b.effectiveFrom, a.effectiveFrom),
   )[0];
 }
 

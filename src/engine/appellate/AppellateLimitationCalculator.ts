@@ -1,3 +1,4 @@
+import { addDaysISO, isISODateString } from "../../utils/isoDate";
 import { DevelopmentAppellateRegistry } from "./DevelopmentAppellateRegistry";
 import type { AppellateRemedyType } from "./AppellateContracts";
 
@@ -40,24 +41,32 @@ export function calculateAppellateLimitation(
     };
   }
 
-  // Parse the decree date and add the prescribed days
-  const date = new Date(decreeDate);
-  if (isNaN(date.getTime())) {
+  // Strict ISO calendar validation prevents host-timezone parsing.
+  if (!isISODateString(decreeDate)) {
     return {
       expiryDate: null,
       periodDays,
       article,
-      reason: "Invalid decree date format. Expected ISO date string.",
+      reason: "Invalid decree date format. Expected valid ISO calendar date YYYY-MM-DD.",
     };
   }
 
   // Fixture calculation only. Production limitation computation requires
   // validated statutory authority and applicable date-counting rules.
-  const expiryDate = new Date(date);
-  expiryDate.setDate(expiryDate.getDate() + periodDays);
+  // addDaysISO performs calendar arithmetic independently of host timezone.
+  const expiryDate = addDaysISO(decreeDate, periodDays);
+
+  if (expiryDate === null) {
+    return {
+      expiryDate: null,
+      periodDays,
+      article,
+      reason: "Unable to calculate deterministic ISO expiry date.",
+    };
+  }
 
   return {
-    expiryDate: expiryDate.toISOString().split("T")[0],
+    expiryDate,
     periodDays,
     article,
     reason: `Appellate limitation of ${periodDays} days (Article ${article}) applied from decree date ${decreeDate}.`,
