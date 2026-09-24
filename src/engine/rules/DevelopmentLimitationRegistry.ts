@@ -8,8 +8,9 @@ import type {
  * Legal-rule source of truth for limitation metadata.
  *
  * P5-15.11 Forensic Gate:
- * Array ordered by Article number. ARTICLE_149 is retained at the bottom
- * for historical audit but explicitly marked SUSPENDED.
+ * Array ordered by Article number.
+ * Article 149 is an active First-Schedule limitation rule for Government
+ * suits and must not be treated as a suspended historical fixture.
  */
 const LIMITATION_RULES: readonly LimitationRule[] = [
   {
@@ -165,7 +166,6 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         "CANCELLATION",
         "SET_ASIDE",
         "FORGERY_DECLARATION",
-        "INHERITANCE_CONSULTATION",
       ],
       requiredPredicates: [
         { predicate: "Right to Sue Date" },
@@ -225,13 +225,12 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
     ],
   },
 
-  // existing ARTICLE_149 (SUSPENDED - retained for audit history)
   {
-    ruleId: "BD-LIM-ARTICLE-149-SUSPENDED",
+    ruleId: "BD-LIM-ARTICLE-149",
     article: "ARTICLE_149",
     statute: "LIMITATION_ACT_1908",
     description:
-      "SUSPENDED P5-15.10: Suit by or on behalf of the Government: sixty years, subject to the statutory qualification applicable to the underlying cause.",
+      "Suit by or on behalf of the Government, except a suit before the Appellate Division in the exercise of its original jurisdiction: sixty years from when the period of limitation would begin to run under the Act against a like suit by a private person.",
     applicability: {
       claimTypes: [
         "GENERAL_CIVIL",
@@ -241,12 +240,11 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         { predicate: "Plaintiff Capacity", object: "GOVERNMENT" },
         { predicate: "Right to Sue Date" },
       ],
-      // Excluded from active candidate selection via residual/exclusion flags if needed
       residualRule: false,
     },
     accrualTrigger: "RIGHT_TO_SUE_DATE",
     temporalVersions: [
-      { effectiveFrom: "1909-01-01", effectiveTo: "2024-01-01", limitationPeriodYears: 60 },
+      { effectiveFrom: "1909-01-01", limitationPeriodYears: 60 },
     ],
   },
 ];
@@ -260,8 +258,29 @@ export class DevelopmentLimitationRegistry implements LimitationRuleRegistry {
   }
 
   getCandidateRules(claimType: string): readonly LimitationRule[] {
-    return LIMITATION_RULES.filter((rule) =>
-      rule.applicability.claimTypes.includes(claimType),
+    /*
+     * Residual limitation rules do not compete with specific statutory
+     * limitation rules. Article 120 is therefore excluded from ordinary
+     * candidate selection and may only be resolved by an explicit
+     * residual-rule selection path after specific-rule exclusion has been
+     * established.
+     */
+    return LIMITATION_RULES.filter(
+      (rule) =>
+        !rule.applicability.residualRule &&
+        rule.applicability.claimTypes.includes(claimType),
     );
+  }
+
+  getResidualRule(): LimitationRule | null {
+    const residualRules = LIMITATION_RULES.filter(
+      (rule) => rule.applicability.residualRule === true,
+    );
+
+    if (residualRules.length !== 1) {
+      return null;
+    }
+
+    return residualRules[0];
   }
 }

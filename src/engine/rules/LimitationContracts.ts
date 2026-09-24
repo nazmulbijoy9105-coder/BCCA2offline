@@ -72,6 +72,7 @@ export type LimitationRuleRegistry = {
   authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
   getRules(): readonly LimitationRule[];
   getCandidateRules(claimType: string): readonly LimitationRule[];
+  getResidualRule(): LimitationRule | null;
 };
 
 export type LimitationFact = {
