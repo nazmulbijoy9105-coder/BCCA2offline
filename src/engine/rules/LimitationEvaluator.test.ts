@@ -213,6 +213,93 @@ describe("P5-15: deterministic limitation evaluator", () => {
     expect(result.isTimeBarred).toBeNull();
   });
 
+  it("Article 114 uses one year from knowledge of rescission facts", () => {
+    const result = evaluate(
+      "ARTICLE_114",
+      [
+        fact("Relief", { object: "RESCISSION" }),
+        fact("Knowledge Date", { eventDate: "2025-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("2025-01-15");
+    expect(result.expiryDate).toBe("2026-01-15");
+    expect(result.limitationPeriodYears).toBe(1);
+  });
+
+  it("Article 115 uses three years from contract breach", () => {
+    const result = evaluate(
+      "ARTICLE_115",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "NOT_REGISTERED" }),
+        fact("Contract Breach Date", { eventDate: "2023-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("2023-01-15");
+    expect(result.expiryDate).toBe("2026-01-15");
+    expect(result.limitationPeriodYears).toBe(3);
+  });
+
+  it("Article 116 uses six years from the corresponding limitation start", () => {
+    const result = evaluate(
+      "ARTICLE_116",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "REGISTERED" }),
+        fact("Contract Breach Date", { eventDate: "2020-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("2020-01-15");
+    expect(result.expiryDate).toBe("2026-01-15");
+    expect(result.limitationPeriodYears).toBe(6);
+  });
+
+  it("Article 144 uses twelve years from adverse possession", () => {
+    const result = evaluate(
+      "ARTICLE_144",
+      [
+        fact("Plaintiff Possessory Entitlement"),
+        fact("Adverse Possession Date", { eventDate: "2014-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("2014-01-15");
+    expect(result.expiryDate).toBe("2026-01-15");
+    expect(result.limitationPeriodYears).toBe(12);
+  });
+
+  it("Article 149 uses sixty years for a Government suit", () => {
+    const result = evaluate(
+      "ARTICLE_149",
+      [
+        fact("Plaintiff Capacity", { object: "GOVERNMENT" }),
+        fact("Right to Sue Date", { eventDate: "1966-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("1966-01-15");
+    expect(result.expiryDate).toBe("2026-01-15");
+    expect(result.limitationPeriodYears).toBe(60);
+  });
+
   it("Article 91 uses knowledge date and three years", () => {
     const result = evaluate(
       "ARTICLE_91",

@@ -665,6 +665,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     authorityStatus: "VALIDATED_PRODUCTION",
     getRules: () => [],
     getCandidateRules: () => [],
+    getResidualRule: () => null,
   };
 
   const devLimitationRuleRegistry: LimitationRuleRegistry = {
@@ -672,6 +673,7 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
     authorityStatus: "DEVELOPMENT_FIXTURE",
     getRules: () => [],
     getCandidateRules: () => [],
+    getResidualRule: () => null,
   };
 
   const devRuleRegistry: RuleRegistry = {

@@ -88,6 +88,10 @@ import {
   type CanonicalClaimId,
   type CanonicalClaimResolution,
 } from "./rules/CanonicalClaimResolution";
+import {
+  getClaimDefinition,
+  type ClaimLimitationMetadata,
+} from "./rules/EnterpriseClaimMatrix";
 
 // ============================================================================
 // MANIFEST / HARD LIMITS
@@ -1550,7 +1554,11 @@ export class BCCAAEngine {
       return finalizedResponse;
     }
 
-    const limitation = this.executeLimitationRules(ctx, claimType);
+    const limitation = this.executeLimitationRules(
+      ctx,
+      claimType,
+      canonicalRouting,
+    );
     const elementGate = this.executeElementCompletenessGate(
       ctx,
       claimType,
@@ -2529,6 +2537,7 @@ export class BCCAAEngine {
   private executeLimitationRules(
     ctx: ExecutionContext,
     claimType: ClaimType,
+    canonicalRouting?: CanonicalRuntimeRouting,
   ): {
     isTimeBarred: boolean | null;
     accrualDate: string | null;
@@ -2546,11 +2555,14 @@ export class BCCAAEngine {
     preliminaryAnalysis?: string;
   } {
     /*
-     * P5-15 architectural rule:
+     * P5-15 / L-01 / L-04:
      *
-     * ClaimType is candidate routing only.
-     * Legal applicability comes from the limitation registry.
-     * The legacy hardcoded 3/12-year branches are intentionally gone.
+     * CanonicalClaimId is authoritative for limitation semantics.
+     * Legacy ClaimType is retained only for compatibility with the
+     * development registry's existing rule-selection API.
+     *
+     * Article 120 is NEVER part of ordinary candidate selection.
+     * It can only be selected through the explicit residual path below.
      */
 
     const referenceDateFact = ctx.referenceDate;
@@ -2603,12 +2615,457 @@ export class BCCAAEngine {
         verified: fact.validationStatus === ValidationStatus.VERIFIED,
       }));
 
+    /*
+     * Canonical routing is mandatory once supplied by the pipeline.
+     * An unresolved/ambiguous canonical identity must not silently
+     * collapse back to a broader legacy claim type for limitation.
+     */
+    if (canonicalRouting) {
+      if (canonicalRouting.resolution.status !== "RESOLVED") {
+        return {
+          isTimeBarred: null,
+          accrualDate: null,
+          limitationPeriodYears: null,
+          limitationArticle: null,
+          calculationType: "canonical_claim_unresolved",
+          timelineValidation: {
+            isValid: false,
+            errors: [
+              `Canonical claim resolution is ${canonicalRouting.resolution.status}`,
+            ],
+            warnings: [],
+            calculationType: "canonical_claim_unresolved",
+          },
+          preliminaryAnalysis:
+            "Limitation is INDETERMINATE because the canonical claim identity is unresolved",
+        };
+      }
+
+      const canonicalClaimId = canonicalRouting.resolution.claimId;
+
+      if (!canonicalClaimId) {
+        return {
+          isTimeBarred: null,
+          accrualDate: null,
+          limitationPeriodYears: null,
+          limitationArticle: null,
+          calculationType: "canonical_claim_missing",
+          timelineValidation: {
+            isValid: false,
+            errors: ["Resolved canonical claim has no canonical claim ID"],
+            warnings: [],
+            calculationType: "canonical_claim_missing",
+          },
+          preliminaryAnalysis:
+            "Limitation is INDETERMINATE because the resolved canonical claim ID is missing",
+        };
+      }
+
+      const claimDefinition = getClaimDefinition(canonicalClaimId);
+
+      if (!claimDefinition) {
+        return {
+          isTimeBarred: null,
+          accrualDate: null,
+          limitationPeriodYears: null,
+          limitationArticle: null,
+          calculationType: "canonical_claim_definition_missing",
+          timelineValidation: {
+            isValid: false,
+            errors: [
+              `No enterprise claim definition exists for canonical claim ${canonicalClaimId}`,
+            ],
+            warnings: [],
+            calculationType: "canonical_claim_definition_missing",
+          },
+          preliminaryAnalysis:
+            "Limitation is INDETERMINATE because the canonical claim definition is unavailable",
+        };
+      }
+
+      const limitationMetadata: ClaimLimitationMetadata =
+        claimDefinition.limitation;
+
+      /*
+       * Claims explicitly marked NOT_APPLICABLE must not fall through
+       * to a generic limitation rule.
+       */
+      if (limitationMetadata.status === "NOT_APPLICABLE") {
+        return {
+          isTimeBarred: null,
+          accrualDate: null,
+          limitationPeriodYears: null,
+          limitationArticle: null,
+          calculationType: "limitation_not_applicable",
+          timelineValidation: {
+            isValid: true,
+            errors: [],
+            warnings: [],
+            calculationType: "limitation_not_applicable",
+          },
+          preliminaryAnalysis:
+            limitationMetadata.note ||
+            "No limitation analysis is applicable at the canonical claim level",
+        };
+      }
+
+      /*
+       * FACT_DEPENDENT claims deliberately stop here.
+       *
+       * In particular, PARTITION must not inherit Article 120 merely
+       * because its legacy claim type maps to DECLARATION_AND_POSSESSION.
+       */
+      if (limitationMetadata.status === "FACT_DEPENDENT") {
+        return {
+          isTimeBarred: null,
+          accrualDate: null,
+          limitationPeriodYears: null,
+          limitationArticle: null,
+          calculationType: "cause_of_action_resolution_required",
+          timelineValidation: {
+            isValid: false,
+            errors: [
+              limitationMetadata.note ||
+                "Concrete cause of action and relief must be resolved before limitation can be selected",
+            ],
+            warnings: [],
+            calculationType: "cause_of_action_resolution_required",
+          },
+          preliminaryAnalysis:
+            limitationMetadata.note ||
+            "Limitation is INDETERMINATE because the concrete cause of action and relief remain unresolved",
+        };
+      }
+
+      /*
+       * SPECIFIC_ARTICLE:
+       *
+       * Only ordinary non-residual registry rules may compete here.
+       * The canonical metadata supplies the expected article, while
+       * applicability facts remain subject to LimitationEvaluator.
+       */
+      if (limitationMetadata.status === "SPECIFIC_ARTICLE") {
+        const candidates = this.limitationRuleRegistry
+          .getCandidateRules(canonicalRouting.legacyClaimType)
+          .filter(
+            (rule) =>
+              !rule.applicability.residualRule &&
+              rule.article === limitationMetadata.primaryArticle,
+          )
+          .slice()
+          .sort((a, b) => {
+            if (
+              a.applicability.residualRule &&
+              !b.applicability.residualRule
+            ) {
+              return 1;
+            }
+            if (
+              !a.applicability.residualRule &&
+              b.applicability.residualRule
+            ) {
+              return -1;
+            }
+            return 0;
+          });
+
+        if (candidates.length === 0) {
+          return {
+            isTimeBarred: null,
+            accrualDate: null,
+            limitationPeriodYears: null,
+            limitationArticle: limitationMetadata.primaryArticle,
+            calculationType: "specific_limitation_rule_missing",
+            timelineValidation: {
+              isValid: false,
+              errors: [
+                `No executable non-residual limitation rule is registered for canonical claim ${canonicalClaimId} under ${limitationMetadata.primaryArticle}`,
+              ],
+              warnings: [],
+              limitationArticle: limitationMetadata.primaryArticle,
+              limitationPeriodYears: limitationMetadata.periodYears,
+              calculationType: "specific_limitation_rule_missing",
+            },
+            preliminaryAnalysis:
+              "Limitation is INDETERMINATE because the canonical specific limitation rule is not executable",
+          };
+        }
+
+        let firstIndeterminate: LimitationEvaluationResult | null = null;
+
+        for (const rule of candidates) {
+          const result = evaluateLimitation({
+            rule,
+            facts: limitationFacts,
+            referenceDate: referenceISO,
+          });
+
+          if (result.status === "BARRED" || result.status === "NOT_BARRED") {
+            return {
+              isTimeBarred: result.isTimeBarred,
+              accrualDate: result.accrualDate,
+              limitationPeriodYears: result.limitationPeriodYears,
+              limitationArticle: result.limitationArticle,
+              calculationType: result.calculationType,
+              timelineValidation: {
+                isValid: true,
+                errors: result.errors,
+                warnings: result.warnings,
+                limitationArticle: result.limitationArticle,
+                limitationPeriodYears: result.limitationPeriodYears,
+                calculationType: result.calculationType,
+              },
+              preliminaryAnalysis:
+                `Limitation determined under ${result.limitationArticle}`,
+            };
+          }
+
+          if (!firstIndeterminate) {
+            firstIndeterminate = result;
+          }
+        }
+
+        const unresolved = firstIndeterminate;
+
+        return {
+          isTimeBarred: null,
+          accrualDate: unresolved?.accrualDate ?? null,
+          limitationPeriodYears:
+            unresolved?.limitationPeriodYears ??
+            limitationMetadata.periodYears,
+          limitationArticle:
+            unresolved?.limitationArticle ??
+            limitationMetadata.primaryArticle,
+          calculationType:
+            unresolved?.calculationType ??
+            "specific_limitation_indeterminate",
+          timelineValidation: {
+            isValid: false,
+            errors:
+              unresolved?.errors ?? [
+                "Specific limitation rule could not be resolved",
+              ],
+            warnings: unresolved?.warnings ?? [],
+            limitationArticle:
+              unresolved?.limitationArticle ??
+              limitationMetadata.primaryArticle,
+            limitationPeriodYears:
+              unresolved?.limitationPeriodYears ??
+              limitationMetadata.periodYears,
+            calculationType:
+              unresolved?.calculationType ??
+              "specific_limitation_indeterminate",
+          },
+          preliminaryAnalysis:
+            "Limitation is INDETERMINATE because mandatory facts for the canonical specific limitation rule remain unresolved",
+        };
+      }
+
+      /*
+       * RESIDUAL_ARTICLE_CANDIDATE:
+       *
+       * Article 120 is reachable only through this explicit branch.
+       * At present the canonical registry exposes this status only for
+       * DECLARATION_SEC42.
+       *
+       * No generic ClaimType fallback is permitted.
+       */
+      if (limitationMetadata.status === "RESIDUAL_ARTICLE_CANDIDATE") {
+        if (canonicalClaimId !== "DECLARATION_SEC42") {
+          return {
+            isTimeBarred: null,
+            accrualDate: null,
+            limitationPeriodYears: null,
+            limitationArticle: "ARTICLE_120",
+            calculationType: "residual_claim_not_authorized",
+            timelineValidation: {
+              isValid: false,
+              errors: [
+                `Article 120 residual handling is not authorized for canonical claim ${canonicalClaimId}`,
+              ],
+              warnings: [],
+              limitationArticle: "ARTICLE_120",
+              limitationPeriodYears: 6,
+              calculationType: "residual_claim_not_authorized",
+            },
+            preliminaryAnalysis:
+              "Limitation is INDETERMINATE because Article 120 residual treatment is not authorized for this canonical claim",
+          };
+        }
+
+        if (!limitationMetadata.requiresCauseOfActionResolution) {
+          return {
+            isTimeBarred: null,
+            accrualDate: null,
+            limitationPeriodYears: 6,
+            limitationArticle: "ARTICLE_120",
+            calculationType: "residual_cause_of_action_required",
+            timelineValidation: {
+              isValid: false,
+              errors: [
+                "Article 120 requires explicit cause-of-action resolution before residual selection",
+              ],
+              warnings: [],
+              limitationArticle: "ARTICLE_120",
+              limitationPeriodYears: 6,
+              calculationType: "residual_cause_of_action_required",
+            },
+            preliminaryAnalysis:
+              "Limitation is INDETERMINATE because the cause of action required for residual Article 120 treatment is unresolved",
+          };
+        }
+
+        /*
+         * The current extraction pipeline does not produce an explicit
+         * verified Right to Sue Date. Do not synthesize one from another
+         * event such as ancestor death, dispossession, notice, or filing.
+         */
+        const rightToSueFacts = limitationFacts.filter(
+          (fact) =>
+            fact.predicate === "Right to Sue Date" &&
+            fact.verified &&
+            fact.state === Tristate.TRUE &&
+            !!fact.eventDate,
+        );
+
+        if (rightToSueFacts.length === 0) {
+          return {
+            isTimeBarred: null,
+            accrualDate: null,
+            limitationPeriodYears: 6,
+            limitationArticle: "ARTICLE_120",
+            calculationType: "missing_right_to_sue_date",
+            timelineValidation: {
+              isValid: false,
+              errors: [
+                "Verified Right to Sue Date is required before residual Article 120 selection",
+              ],
+              warnings: [],
+              limitationArticle: "ARTICLE_120",
+              limitationPeriodYears: 6,
+              calculationType: "missing_right_to_sue_date",
+            },
+            preliminaryAnalysis:
+              "Limitation is INDETERMINATE because no verified Right to Sue Date is available for residual Article 120 analysis",
+          };
+        }
+
+        if (rightToSueFacts.length > 1) {
+          return {
+            isTimeBarred: null,
+            accrualDate: null,
+            limitationPeriodYears: 6,
+            limitationArticle: "ARTICLE_120",
+            calculationType: "multiple_right_to_sue_dates",
+            timelineValidation: {
+              isValid: false,
+              errors: [
+                "Multiple verified Right to Sue Dates prevent deterministic residual accrual selection",
+              ],
+              warnings: [],
+              limitationArticle: "ARTICLE_120",
+              limitationPeriodYears: 6,
+              calculationType: "multiple_right_to_sue_dates",
+            },
+            preliminaryAnalysis:
+              "Limitation is INDETERMINATE because multiple verified Right to Sue Dates require legal resolution",
+          };
+        }
+
+        const residualRule = this.limitationRuleRegistry.getResidualRule();
+
+        if (
+          !residualRule ||
+          residualRule.article !== "ARTICLE_120" ||
+          residualRule.applicability.residualRule !== true
+        ) {
+          return {
+            isTimeBarred: null,
+            accrualDate: null,
+            limitationPeriodYears: 6,
+            limitationArticle: "ARTICLE_120",
+            calculationType: "residual_rule_unavailable",
+            timelineValidation: {
+              isValid: false,
+              errors: [
+                "The explicit Article 120 residual rule is unavailable or invalid",
+              ],
+              warnings: [],
+              limitationArticle: "ARTICLE_120",
+              limitationPeriodYears: 6,
+              calculationType: "residual_rule_unavailable",
+            },
+            preliminaryAnalysis:
+              "Limitation is INDETERMINATE because the explicit Article 120 residual rule is unavailable",
+          };
+        }
+
+        const result = evaluateLimitation({
+          rule: residualRule,
+          facts: limitationFacts,
+          referenceDate: referenceISO,
+        });
+
+        if (result.status === "BARRED" || result.status === "NOT_BARRED") {
+          return {
+            isTimeBarred: result.isTimeBarred,
+            accrualDate: result.accrualDate,
+            limitationPeriodYears: result.limitationPeriodYears,
+            limitationArticle: result.limitationArticle,
+            calculationType: result.calculationType,
+            timelineValidation: {
+              isValid: true,
+              errors: result.errors,
+              warnings: result.warnings,
+              limitationArticle: result.limitationArticle,
+              limitationPeriodYears: result.limitationPeriodYears,
+              calculationType: result.calculationType,
+            },
+            preliminaryAnalysis:
+              `Residual limitation determined under ${result.limitationArticle}`,
+          };
+        }
+
+        return {
+          isTimeBarred: null,
+          accrualDate: result.accrualDate,
+          limitationPeriodYears:
+            result.limitationPeriodYears ?? limitationMetadata.periodYears,
+          limitationArticle:
+            result.limitationArticle ?? limitationMetadata.primaryArticle,
+          calculationType: result.calculationType,
+          timelineValidation: {
+            isValid: false,
+            errors: result.errors,
+            warnings: result.warnings,
+            limitationArticle:
+              result.limitationArticle ?? limitationMetadata.primaryArticle,
+            limitationPeriodYears:
+              result.limitationPeriodYears ?? limitationMetadata.periodYears,
+            calculationType: result.calculationType,
+          },
+          preliminaryAnalysis:
+            "Limitation is INDETERMINATE because residual Article 120 applicability or mandatory facts remain unresolved",
+        };
+      }
+    }
+
+    /*
+     * Compatibility path for callers that invoke this private method
+     * without canonical routing. This preserves existing development
+     * behavior while ensuring the normal pipeline cannot silently lose
+     * canonical identity.
+     */
     const candidates = this.limitationRuleRegistry
       .getCandidateRules(claimType)
       .slice()
       .sort((a, b) => {
-        if (a.applicability.residualRule && !b.applicability.residualRule) return 1;
-        if (!a.applicability.residualRule && b.applicability.residualRule) return -1;
+        if (a.applicability.residualRule && !b.applicability.residualRule) {
+          return 1;
+        }
+        if (!a.applicability.residualRule && b.applicability.residualRule) {
+          return -1;
+        }
         return 0;
       });
 
@@ -2655,49 +3112,40 @@ export class BCCAAEngine {
             calculationType: result.calculationType,
           },
           preliminaryAnalysis:
-            result.status === "BARRED"
-              ? `Limitation determined under ${result.limitationArticle}`
-              : `Limitation determined under ${result.limitationArticle}`,
+            `Limitation determined under ${result.limitationArticle}`,
         };
       }
 
-      /*
-       * Do not silently fall through to a residual rule when a
-       * more-specific candidate has unresolved mandatory facts.
-       */
-      if (!rule.applicability.residualRule && !firstIndeterminate) {
+      if (!firstIndeterminate) {
         firstIndeterminate = result;
       }
     }
 
-    const unresolved = firstIndeterminate ?? evaluateLimitation({
-      rule: candidates[candidates.length - 1],
-      facts: limitationFacts,
-      referenceDate: referenceISO,
-    });
+    const unresolved = firstIndeterminate;
 
     return {
       isTimeBarred: null,
-      accrualDate: unresolved.accrualDate,
-      limitationPeriodYears: unresolved.limitationPeriodYears,
-      limitationArticle: unresolved.limitationArticle,
-      calculationType: unresolved.calculationType,
+      accrualDate: unresolved?.accrualDate ?? null,
+      limitationPeriodYears: unresolved?.limitationPeriodYears ?? null,
+      limitationArticle: unresolved?.limitationArticle ?? null,
+      calculationType:
+        unresolved?.calculationType ?? "limitation_indeterminate",
       timelineValidation: {
         isValid: false,
-        errors: unresolved.errors,
-        warnings: unresolved.warnings,
-        limitationArticle: unresolved.limitationArticle,
-        limitationPeriodYears: unresolved.limitationPeriodYears,
-        calculationType: unresolved.calculationType,
+        errors:
+          unresolved?.errors ?? [
+            "Applicable limitation rule remains unresolved",
+          ],
+        warnings: unresolved?.warnings ?? [],
+        limitationArticle: unresolved?.limitationArticle ?? null,
+        limitationPeriodYears: unresolved?.limitationPeriodYears ?? null,
+        calculationType:
+          unresolved?.calculationType ?? "limitation_indeterminate",
       },
       preliminaryAnalysis:
         "Limitation is INDETERMINATE because the applicable limitation rule or mandatory facts remain unresolved",
     };
   }
-
-  // =======================================================================
-  // ELEMENT COMPLETENESS GATE
-  // =======================================================================
 
   private executeElementCompletenessGate(
     ctx: ExecutionContext,

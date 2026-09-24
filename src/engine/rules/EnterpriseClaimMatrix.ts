@@ -5,6 +5,42 @@ import {
   assertClaimDefinitionHash,
   type ClaimDefinitionProvenance,
 } from "./ClaimMatrixProvenance";
+
+import type {
+  LimitationArticle,
+  LimitationAccrualTrigger,
+} from "./LimitationContracts";
+
+export type ClaimLimitationMetadata =
+  | {
+      status: "SPECIFIC_ARTICLE";
+      primaryArticle: LimitationArticle;
+      accrualTrigger:
+        | LimitationAccrualTrigger
+        | "PERFORMANCE_DATE_OR_REFUSAL";
+      periodYears: number;
+    }
+  | {
+      status: "RESIDUAL_ARTICLE_CANDIDATE";
+      primaryArticle: "ARTICLE_120";
+      accrualTrigger: "RIGHT_TO_SUE_DATE";
+      periodYears: 6;
+      requiresCauseOfActionResolution: true;
+    }
+  | {
+      status: "FACT_DEPENDENT";
+      primaryArticle: null;
+      accrualTrigger: null;
+      periodYears: null;
+      note: string;
+    }
+  | {
+      status: "NOT_APPLICABLE";
+      primaryArticle: null;
+      accrualTrigger: null;
+      periodYears: null;
+      note: string;
+    };
 /**
  * Enterprise Claim Matrix
  * 
@@ -38,11 +74,7 @@ export interface EnterpriseClaimDefinition {
     act: string;
     sections: string[];
   };
-  limitation: {
-    primaryArticle: string;
-    accrualTrigger: string;
-    periodYears: number;
-  };
+  limitation: ClaimLimitationMetadata;
   maintainabilityRules: string[];
   elements: ClaimElement[];
   courtFeeType: "AD_VALOREM" | "FIXED" | "MULTIPLE";
@@ -61,7 +93,12 @@ const CLAIM_MATRIX_DEFINITIONS: readonly Omit<EnterpriseClaimDefinition, "defini
     claimName: "Specific Performance of Contract",
     category: "CONTRACT",
     statutoryBasis: { act: "Specific Relief Act 1877", sections: ["Sec 12"] },
-    limitation: { primaryArticle: "ARTICLE_113", accrualTrigger: "PERFORMANCE_DATE_OR_REFUSAL", periodYears: 1 },
+    limitation: {
+      status: "SPECIFIC_ARTICLE",
+      primaryArticle: "ARTICLE_113",
+      accrualTrigger: "PERFORMANCE_DATE_OR_REFUSAL",
+      periodYears: 1,
+    },
     maintainabilityRules: [
       "Contract must be valid and enforceable",
       "Plaintiff must be ready and willing to perform",
@@ -107,7 +144,12 @@ const CLAIM_MATRIX_DEFINITIONS: readonly Omit<EnterpriseClaimDefinition, "defini
     claimName: "Recovery of Possession (Section 8 SRA)",
     category: "PROPERTY",
     statutoryBasis: { act: "Specific Relief Act 1877", sections: ["Sec 8"] },
-    limitation: { primaryArticle: "ARTICLE_142", accrualTrigger: "DISPOSSESSION_DATE", periodYears: 12 },
+    limitation: {
+      status: "SPECIFIC_ARTICLE",
+      primaryArticle: "ARTICLE_142",
+      accrualTrigger: "DISPOSSESSION_DATE",
+      periodYears: 12,
+    },
     maintainabilityRules: [
       "Plaintiff must prove prior possession",
       "Plaintiff must prove dispossession by defendant",
@@ -153,7 +195,14 @@ const CLAIM_MATRIX_DEFINITIONS: readonly Omit<EnterpriseClaimDefinition, "defini
     claimName: "Partition of Joint Property",
     category: "PROPERTY",
     statutoryBasis: { act: "Specific Relief Act 1877", sections: ["Sec 9"] },
-    limitation: { primaryArticle: "ARTICLE_120", accrualTrigger: "RIGHT_TO_SUE_DATE", periodYears: 6 },
+    limitation: {
+      status: "FACT_DEPENDENT",
+      primaryArticle: null,
+      accrualTrigger: null,
+      periodYears: null,
+      note:
+        "No universal limitation article is assigned at the canonical partition level; limitation depends on the specific cause of action and relief pleaded.",
+    },
     maintainabilityRules: [
       "Property must be jointly owned/co-parcenary",
       "Plaintiff must pray for partition by metes and bounds"
@@ -193,7 +242,13 @@ const CLAIM_MATRIX_DEFINITIONS: readonly Omit<EnterpriseClaimDefinition, "defini
     claimName: "Declaration of Legal Character/Title",
     category: "PROPERTY",
     statutoryBasis: { act: "Specific Relief Act 1877", sections: ["Sec 42"] },
-    limitation: { primaryArticle: "ARTICLE_120", accrualTrigger: "RIGHT_TO_SUE_DATE", periodYears: 6 },
+    limitation: {
+      status: "RESIDUAL_ARTICLE_CANDIDATE",
+      primaryArticle: "ARTICLE_120",
+      accrualTrigger: "RIGHT_TO_SUE_DATE",
+      periodYears: 6,
+      requiresCauseOfActionResolution: true,
+    },
     maintainabilityRules: [
       "Proviso: If out of possession, MUST pray for consequential relief (possession)",
       "Declaration cannot be for a collateral purpose"
@@ -233,7 +288,14 @@ const CLAIM_MATRIX_DEFINITIONS: readonly Omit<EnterpriseClaimDefinition, "defini
     claimName: "Inheritance Share Calculation",
     category: "FAMILY",
     statutoryBasis: { act: "Muslim Personal Law (Shariat) Application Act 1937", sections: ["Succession"] },
-    limitation: { primaryArticle: "ARTICLE_120", accrualTrigger: "ANCESTOR_DEATH_DATE", periodYears: 6 },
+    limitation: {
+      status: "NOT_APPLICABLE",
+      primaryArticle: null,
+      accrualTrigger: null,
+      periodYears: null,
+      note:
+        "Inheritance share calculation is substantive succession analysis. Limitation is evaluated only after a concrete litigable cause of action and relief are identified.",
+    },
     maintainabilityRules: [
       "Ancestor must be proven deceased",
       "Heirship must be established (Warisan Sanad)",

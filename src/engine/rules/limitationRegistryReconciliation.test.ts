@@ -14,13 +14,12 @@ import { isISODateString, compareISO } from "../../utils/isoDate";
  *  R6 EffectiveDateResolver baseline agrees with Schedule commencement.
  */
 
-// PENDING LEGAL REVIEW (PLCP-07) — audit note N6: registry 114/115/116 model
-// 12-year possession rules while the corpus assigns different subjects to
-// these numbers (114 rescission 1y, 115 insane-conveyance 3y, 116 registered-
-// contract breach 6y). ARTICLE_149 is SUSPENDED (retained for audit history).
-const KNOWN_PERIOD_DISCREPANCIES = new Set([
-  "ARTICLE_114", "ARTICLE_115", "ARTICLE_116", "ARTICLE_149",
-]);
+/**
+ * No statutory period discrepancies are permitted in the active
+ * limitation registry. Historical audit exceptions must not be used
+ * to make an incorrect legal rule pass reconciliation.
+ */
+const KNOWN_PERIOD_DISCREPANCIES = new Set<string>();
 
 type CorpusArticle = { a?: string; p?: string; omitted?: string };
 
@@ -92,5 +91,37 @@ describe("P4-04 Batch 1: limitation registry <-> corpus reconciliation", () => {
 
   it("R6: EffectiveDateResolver baseline agrees with Schedule commencement (1909-01-01)", () => {
     expect(getActEffectiveDate()).toBe("1909-01-01");
+  });
+});
+
+
+describe("Article 120 residual-rule selection", () => {
+  const registry = new DevelopmentLimitationRegistry();
+
+  it("does not expose Article 120 through ordinary candidate selection", () => {
+    const claimTypes = [
+      "GENERAL_CIVIL",
+      "DECLARATION",
+      "DECLARATION_AND_POSSESSION",
+      "CANCELLATION",
+      "SET_ASIDE",
+      "FORGERY_DECLARATION",
+      "INHERITANCE_CONSULTATION",
+    ];
+
+    for (const claimType of claimTypes) {
+      const candidates = registry.getCandidateRules(claimType);
+      expect(
+        candidates.some((rule) => rule.article === "ARTICLE_120"),
+      ).toBe(false);
+    }
+  });
+
+  it("exposes exactly one explicit residual rule", () => {
+    const residual = registry.getResidualRule();
+
+    expect(residual).not.toBeNull();
+    expect(residual?.article).toBe("ARTICLE_120");
+    expect(residual?.applicability.residualRule).toBe(true);
   });
 });
