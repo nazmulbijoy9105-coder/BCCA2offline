@@ -95,6 +95,71 @@ describe("P4-04 Batch 1: limitation registry <-> corpus reconciliation", () => {
 });
 
 
+
+describe("P4-04 statutory accrual semantics", () => {
+  const registry = new DevelopmentLimitationRegistry();
+
+  it("Article 115 requires explicit ordinary/successive/continuing breach alternatives", () => {
+    const rule = registry
+      .getRules()
+      .find((candidate) => candidate.article === "ARTICLE_115");
+
+    expect(rule).toBeDefined();
+    expect(rule?.accrualTrigger).toBe("CONTRACT_BREACH_DATE");
+
+    const groups = rule?.applicability.alternativePredicateGroups ?? [];
+    expect(groups).toHaveLength(3);
+
+    expect(groups).toContainEqual([
+      { predicate: "Contract Breach Mode", object: "ORDINARY" },
+      { predicate: "Contract Breach Date" },
+    ]);
+
+    expect(groups).toContainEqual([
+      { predicate: "Contract Breach Mode", object: "SUCCESSIVE" },
+      { predicate: "Successive Breach Date" },
+    ]);
+
+    expect(groups).toContainEqual([
+      { predicate: "Contract Breach Mode", object: "CONTINUING" },
+      { predicate: "Continuing Breach Date" },
+    ]);
+  });
+
+  it("Article 116 requires analogous unregistered-contract commencement", () => {
+    const rule = registry
+      .getRules()
+      .find((candidate) => candidate.article === "ARTICLE_116");
+
+    expect(rule).toBeDefined();
+    expect(rule?.accrualTrigger).toBe(
+      "ANALOGOUS_UNREGISTERED_CONTRACT_START",
+    );
+
+    expect(rule?.applicability.requiredPredicates).toContainEqual({
+      predicate: "Analogous Unregistered Contract Start",
+    });
+  });
+
+  it("Article 149 requires analogous private-suit commencement", () => {
+    const rule = registry
+      .getRules()
+      .find((candidate) => candidate.article === "ARTICLE_149");
+
+    expect(rule).toBeDefined();
+    expect(rule?.accrualTrigger).toBe("ANALOGOUS_PRIVATE_SUIT_START");
+
+    expect(rule?.applicability.requiredPredicates).toContainEqual({
+      predicate: "Analogous Private Suit Start",
+    });
+
+    expect(rule?.applicability.requiredPredicates).not.toContainEqual({
+      predicate: "Right to Sue Date",
+    });
+  });
+});
+
+
 describe("Article 120 residual-rule selection", () => {
   const registry = new DevelopmentLimitationRegistry();
 

@@ -201,6 +201,28 @@ function factSatisfiesPredicate(
   return true;
 }
 
+function getVerifiedEventDate(
+  facts: readonly LimitationFact[],
+  predicate: string,
+): string | null {
+  const candidates = facts
+    .filter(
+      (fact) =>
+        fact.predicate === predicate &&
+        fact.eventDate !== undefined &&
+        fact.verified === true,
+    )
+    .map((fact) => fact.eventDate!)
+    .filter((date) => parseISODate(date) !== null);
+
+  /*
+   * A statutory accrual trigger must resolve to exactly one verified date.
+   * Silently selecting the first/earliest date would hide conflicting
+   * factual inputs and could change the legal commencement date.
+   */
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 function getAccrualDate(
   rule: LimitationRule,
   facts: readonly LimitationFact[],
@@ -213,8 +235,6 @@ function getAccrualDate(
    * The registry therefore remains the legal source of truth for the
    * alternatives, while this resolver applies the selected factual branch.
    */
-  let predicates: readonly string[];
-
   if (rule.article === "ARTICLE_113") {
     const fixedDateFact = facts.find(
       (fact) =>
@@ -227,44 +247,110 @@ function getAccrualDate(
     }
 
     if (fixedDateFact.object === "YES") {
-      predicates = ["Performance Date"];
-    } else if (fixedDateFact.object === "NO") {
-      predicates = ["Refusal Date"];
-    } else {
-      return null;
+      return getVerifiedEventDate(facts, "Performance Date");
     }
-  } else {
-    const predicateByTrigger: Record<
-      LimitationRule["accrualTrigger"],
-      string
-    > = {
-      FIXED_PERFORMANCE_DATE: "Performance Date",
-      REFUSAL_DATE: "Refusal Date",
-      KNOWLEDGE_DATE: "Knowledge Date",
-      DISPOSSESSION_DATE: "Dispossession Date",
-      RIGHT_TO_SUE_DATE: "Right to Sue Date",
-      DEMAND_DATE: "Demand Date",
 
-    // Phase-B-pending triggers (PLCP-07): no extraction predicate yet; fail-closed INDETERMINATE.
-    CONTRACT_BREACH_DATE: "Contract Breach Date",
-    ADVERSE_POSSESSION_DATE: "Adverse Possession Date",
-    };
+    if (fixedDateFact.object === "NO") {
+      return getVerifiedEventDate(facts, "Refusal Date");
+    }
 
-    predicates = [predicateByTrigger[rule.accrualTrigger]];
+    return null;
   }
 
-  const candidates = facts
-    .filter(
+  /*
+   * Article 115 contains three distinct statutory commencement limbs:
+   * - ordinary breach: when the contract is broken;
+   * - successive breaches: when the breach sued on occurs;
+   * - continuing breach: when the continuing breach ceases.
+   *
+   * The breach mode must therefore be explicit. An unqualified
+   * "Contract Breach Date" must never silently select among these limbs.
+   */
+  if (rule.article === "ARTICLE_115") {
+    const mode = facts.find(
       (fact) =>
-        predicates.includes(fact.predicate) &&
-        fact.eventDate !== undefined &&
-        fact.verified === true,
-    )
-    .map((fact) => fact.eventDate!)
-    .filter((date) => parseISODate(date) !== null)
-    .sort();
+        fact.predicate === "Contract Breach Mode" &&
+        fact.verified === true &&
+        fact.object !== undefined,
+    );
 
-  return candidates[0] ?? null;
+    if (!mode) {
+      return null;
+    }
+
+    if (mode.object === "ORDINARY") {
+      return getVerifiedEventDate(facts, "Contract Breach Date");
+    }
+
+    if (mode.object === "SUCCESSIVE") {
+      return getVerifiedEventDate(facts, "Successive Breach Date");
+    }
+
+    if (mode.object === "CONTINUING") {
+      /*
+       * "Continuing Breach Date" is the canonical engine fact name for
+       * the date on which the continuing breach ceases, matching the
+       * Article 115 statutory commencement point.
+       */
+      return getVerifiedEventDate(facts, "Continuing Breach Date");
+    }
+
+    return null;
+  }
+
+  /*
+   * Article 116 does not commence independently from the registered
+   * contract's breach date. Its statutory reference point is when
+   * limitation would begin against a similar contract not registered.
+   *
+   * Therefore a dedicated, verified analogous-unregistered commencement
+   * fact is mandatory.
+   */
+  if (rule.article === "ARTICLE_116") {
+    return getVerifiedEventDate(
+      facts,
+      "Analogous Unregistered Contract Start",
+    );
+  }
+
+  /*
+   * Article 149 likewise does not independently commence from a generic
+   * Right to Sue Date. It adopts the commencement point applicable to
+   * a like suit by a private person.
+   */
+  if (rule.article === "ARTICLE_149") {
+    return getVerifiedEventDate(
+      facts,
+      "Analogous Private Suit Start",
+    );
+  }
+
+  const predicateByTrigger: Partial<
+    Record<LimitationRule["accrualTrigger"], string>
+  > = {
+    FIXED_PERFORMANCE_DATE: "Performance Date",
+    REFUSAL_DATE: "Refusal Date",
+    KNOWLEDGE_DATE: "Knowledge Date",
+    DISPOSSESSION_DATE: "Dispossession Date",
+    RIGHT_TO_SUE_DATE: "Right to Sue Date",
+    DEMAND_DATE: "Demand Date",
+    CONTRACT_BREACH_DATE: "Contract Breach Date",
+    SUCCESSIVE_BREACH_DATE: "Successive Breach Date",
+    CONTINUING_BREACH_DATE: "Continuing Breach Date",
+    ANALOGOUS_UNREGISTERED_CONTRACT_START:
+      "Analogous Unregistered Contract Start",
+    ANALOGOUS_PRIVATE_SUIT_START:
+      "Analogous Private Suit Start",
+    ADVERSE_POSSESSION_DATE: "Adverse Possession Date",
+  };
+
+  const predicate = predicateByTrigger[rule.accrualTrigger];
+
+  if (!predicate) {
+    return null;
+  }
+
+  return getVerifiedEventDate(facts, predicate);
 }
 
 function predicateIsSatisfied(

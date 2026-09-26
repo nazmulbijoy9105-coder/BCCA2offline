@@ -230,12 +230,13 @@ describe("P5-15: deterministic limitation evaluator", () => {
     expect(result.limitationPeriodYears).toBe(1);
   });
 
-  it("Article 115 uses three years from contract breach", () => {
+  it("Article 115 ordinary breach uses the ordinary contract breach date", () => {
     const result = evaluate(
       "ARTICLE_115",
       [
         fact("Relief", { object: "CONTRACT_COMPENSATION" }),
         fact("Contract Registration Status", { object: "NOT_REGISTERED" }),
+        fact("Contract Breach Mode", { object: "ORDINARY" }),
         fact("Contract Breach Date", { eventDate: "2023-01-15" }),
       ],
       "2026-01-15",
@@ -248,7 +249,95 @@ describe("P5-15: deterministic limitation evaluator", () => {
     expect(result.limitationPeriodYears).toBe(3);
   });
 
-  it("Article 116 uses six years from the corresponding limitation start", () => {
+  it("Article 115 successive breach uses the breach sued on", () => {
+    const result = evaluate(
+      "ARTICLE_115",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "NOT_REGISTERED" }),
+        fact("Contract Breach Mode", { object: "SUCCESSIVE" }),
+        fact("Contract Breach Date", { eventDate: "2022-01-15" }),
+        fact("Successive Breach Date", { eventDate: "2024-01-15" }),
+      ],
+      "2027-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.accrualDate).toBe("2024-01-15");
+    expect(result.expiryDate).toBe("2027-01-15");
+  });
+
+  it("Article 115 continuing breach uses the date the breach ceases", () => {
+    const result = evaluate(
+      "ARTICLE_115",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "NOT_REGISTERED" }),
+        fact("Contract Breach Mode", { object: "CONTINUING" }),
+        fact("Contract Breach Date", { eventDate: "2022-01-15" }),
+        fact("Continuing Breach Date", { eventDate: "2024-06-30" }),
+      ],
+      "2027-06-30",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.accrualDate).toBe("2024-06-30");
+    expect(result.expiryDate).toBe("2027-06-30");
+  });
+
+  it("Article 115 is indeterminate when breach mode is missing", () => {
+    const result = evaluate(
+      "ARTICLE_115",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "NOT_REGISTERED" }),
+        fact("Contract Breach Date", { eventDate: "2023-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("INDETERMINATE");
+    expect(result.isTimeBarred).toBe(null);
+  });
+
+  it("Article 115 does not use an ordinary breach date for a successive breach", () => {
+    const result = evaluate(
+      "ARTICLE_115",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "NOT_REGISTERED" }),
+        fact("Contract Breach Mode", { object: "SUCCESSIVE" }),
+        fact("Contract Breach Date", { eventDate: "2023-01-15" }),
+      ],
+      "2026-01-15",
+    );
+
+    expect(result.status).toBe("INDETERMINATE");
+    expect(result.isTimeBarred).toBe(null);
+  });
+
+  it("Article 116 uses the analogous unregistered-contract commencement date", () => {
+    const result = evaluate(
+      "ARTICLE_116",
+      [
+        fact("Relief", { object: "CONTRACT_COMPENSATION" }),
+        fact("Contract Registration Status", { object: "REGISTERED" }),
+        fact("Contract Breach Date", { eventDate: "2020-01-15" }),
+        fact("Analogous Unregistered Contract Start", {
+          eventDate: "2021-01-15",
+        }),
+      ],
+      "2027-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("2021-01-15");
+    expect(result.expiryDate).toBe("2027-01-15");
+    expect(result.limitationPeriodYears).toBe(6);
+  });
+
+  it("Article 116 is indeterminate without analogous unregistered commencement", () => {
     const result = evaluate(
       "ARTICLE_116",
       [
@@ -259,11 +348,8 @@ describe("P5-15: deterministic limitation evaluator", () => {
       "2026-01-15",
     );
 
-    expect(result.status).toBe("NOT_BARRED");
-    expect(result.isTimeBarred).toBe(false);
-    expect(result.accrualDate).toBe("2020-01-15");
-    expect(result.expiryDate).toBe("2026-01-15");
-    expect(result.limitationPeriodYears).toBe(6);
+    expect(result.status).toBe("INDETERMINATE");
+    expect(result.isTimeBarred).toBe(null);
   });
 
   it("Article 144 uses twelve years from adverse possession", () => {
@@ -283,7 +369,27 @@ describe("P5-15: deterministic limitation evaluator", () => {
     expect(result.limitationPeriodYears).toBe(12);
   });
 
-  it("Article 149 uses sixty years for a Government suit", () => {
+  it("Article 149 uses the analogous private-suit commencement date", () => {
+    const result = evaluate(
+      "ARTICLE_149",
+      [
+        fact("Plaintiff Capacity", { object: "GOVERNMENT" }),
+        fact("Right to Sue Date", { eventDate: "1966-01-15" }),
+        fact("Analogous Private Suit Start", {
+          eventDate: "1970-01-15",
+        }),
+      ],
+      "2030-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.accrualDate).toBe("1970-01-15");
+    expect(result.expiryDate).toBe("2030-01-15");
+    expect(result.limitationPeriodYears).toBe(60);
+  });
+
+  it("Article 149 is indeterminate without analogous private-suit commencement", () => {
     const result = evaluate(
       "ARTICLE_149",
       [
@@ -293,11 +399,8 @@ describe("P5-15: deterministic limitation evaluator", () => {
       "2026-01-15",
     );
 
-    expect(result.status).toBe("NOT_BARRED");
-    expect(result.isTimeBarred).toBe(false);
-    expect(result.accrualDate).toBe("1966-01-15");
-    expect(result.expiryDate).toBe("2026-01-15");
-    expect(result.limitationPeriodYears).toBe(60);
+    expect(result.status).toBe("INDETERMINATE");
+    expect(result.isTimeBarred).toBe(null);
   });
 
   it("Article 91 uses knowledge date and three years", () => {
