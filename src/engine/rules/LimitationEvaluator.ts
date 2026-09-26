@@ -1,8 +1,10 @@
-import { compareCanonicalStrings } from "../../utils/crypto";
+import { compareISO, isISODateString } from "../../utils/isoDate";
+import { resolveLimitationAccrual } from "./LimitationAccrualResolver";
+import { resolveLimitationPeriod } from "./LimitationPeriodResolver";
+import { computeLimitationDeadline } from "./LimitationStatutoryComputation";
 import type {
   LimitationFact,
   LimitationRule,
-  LimitationTemporalVersion,
 } from "./LimitationContracts";
 
 export type LimitationEvaluationStatus =
@@ -34,135 +36,6 @@ export type LimitationEvaluationResult = {
  * The limitation evaluator deliberately does not accept Date.parse(),
  * locale-dependent dates, or timestamp arithmetic.
  */
-function parseISODate(raw: string | null | undefined): {
-  year: number;
-  month: number;
-  day: number;
-} | null {
-  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return null;
-  }
-
-  const [year, month, day] = raw.split("-").map(Number);
-
-  if (
-    !Number.isInteger(year) ||
-    !Number.isInteger(month) ||
-    !Number.isInteger(day) ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > 31
-  ) {
-    return null;
-  }
-
-  const check = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    check.getUTCFullYear() !== year ||
-    check.getUTCMonth() !== month - 1 ||
-    check.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return { year, month, day };
-}
-
-function toISODate(year: number, month: number, day: number): string {
-  return `${String(year).padStart(4, "0")}-${String(month).padStart(
-    2,
-    "0",
-  )}-${String(day).padStart(2, "0")}`;
-}
-
-function isLeapYear(year: number): boolean {
-  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-}
-
-function daysInMonth(year: number, month: number): number {
-  if (month === 2) {
-    return isLeapYear(year) ? 29 : 28;
-  }
-
-  if ([4, 6, 9, 11].includes(month)) {
-    return 30;
-  }
-
-  return 31;
-}
-
-/**
- * Calendar-year anniversary.
- *
- * No 365.25-day approximation is used.
- *
- * For a 29-Feb accrual date, the anniversary in a non-leap year is
- * represented by the final valid day of February.
- */
-function addCalendarYears(
-  rawDate: string,
-  years: number,
-): string | null {
-  const parsed = parseISODate(rawDate);
-
-  if (!parsed || !Number.isInteger(years) || years < 0) {
-    return null;
-  }
-
-  const targetYear = parsed.year + years;
-  const targetDay = Math.min(
-    parsed.day,
-    daysInMonth(targetYear, parsed.month),
-  );
-
-  return toISODate(targetYear, parsed.month, targetDay);
-}
-
-function selectTemporalVersion(
-  versions: readonly LimitationTemporalVersion[],
-  accrualDate: string,
-): LimitationTemporalVersion | null {
-  const accrual = parseISODate(accrualDate);
-
-  if (!accrual) {
-    return null;
-  }
-
-  const candidates = versions.filter((version) => {
-    const from = parseISODate(version.effectiveFrom);
-    const to = version.effectiveTo
-      ? parseISODate(version.effectiveTo)
-      : null;
-
-    if (!from) {
-      return false;
-    }
-
-    const afterOrEqualFrom =
-      accrualDate >= version.effectiveFrom;
-
-    const beforeOrEqualTo =
-      !version.effectiveTo ||
-      (to !== null && accrualDate <= version.effectiveTo);
-
-    return afterOrEqualFrom && beforeOrEqualTo;
-  });
-
-  if (candidates.length === 0) {
-    return null;
-  }
-
-  /*
-   * Deterministic tie-break:
-   * choose the candidate with the latest effectiveFrom.
-   */
-  return [...candidates].sort((a, b) =>
-    compareCanonicalStrings(b.effectiveFrom, a.effectiveFrom),
-  )[0];
-}
-
 function factSatisfiesPredicate(
   fact: LimitationFact,
   predicate: {
@@ -199,158 +72,6 @@ function factSatisfiesPredicate(
   }
 
   return true;
-}
-
-function getVerifiedEventDate(
-  facts: readonly LimitationFact[],
-  predicate: string,
-): string | null {
-  const candidates = facts
-    .filter(
-      (fact) =>
-        fact.predicate === predicate &&
-        fact.eventDate !== undefined &&
-        fact.verified === true,
-    )
-    .map((fact) => fact.eventDate!)
-    .filter((date) => parseISODate(date) !== null);
-
-  /*
-   * A statutory accrual trigger must resolve to exactly one verified date.
-   * Silently selecting the first/earliest date would hide conflicting
-   * factual inputs and could change the legal commencement date.
-   */
-  return candidates.length === 1 ? candidates[0] : null;
-}
-
-function getAccrualDate(
-  rule: LimitationRule,
-  facts: readonly LimitationFact[],
-): string | null {
-  /*
-   * Article 113 has two legally distinct accrual alternatives:
-   * - fixed performance date => Performance Date
-   * - no fixed performance date => Refusal Date
-   *
-   * The registry therefore remains the legal source of truth for the
-   * alternatives, while this resolver applies the selected factual branch.
-   */
-  if (rule.article === "ARTICLE_113") {
-    const fixedDateFact = facts.find(
-      (fact) =>
-        fact.predicate === "Fixed Performance Date" &&
-        fact.verified === true,
-    );
-
-    if (!fixedDateFact || fixedDateFact.object === undefined) {
-      return null;
-    }
-
-    if (fixedDateFact.object === "YES") {
-      return getVerifiedEventDate(facts, "Performance Date");
-    }
-
-    if (fixedDateFact.object === "NO") {
-      return getVerifiedEventDate(facts, "Refusal Date");
-    }
-
-    return null;
-  }
-
-  /*
-   * Article 115 contains three distinct statutory commencement limbs:
-   * - ordinary breach: when the contract is broken;
-   * - successive breaches: when the breach sued on occurs;
-   * - continuing breach: when the continuing breach ceases.
-   *
-   * The breach mode must therefore be explicit. An unqualified
-   * "Contract Breach Date" must never silently select among these limbs.
-   */
-  if (rule.article === "ARTICLE_115") {
-    const mode = facts.find(
-      (fact) =>
-        fact.predicate === "Contract Breach Mode" &&
-        fact.verified === true &&
-        fact.object !== undefined,
-    );
-
-    if (!mode) {
-      return null;
-    }
-
-    if (mode.object === "ORDINARY") {
-      return getVerifiedEventDate(facts, "Contract Breach Date");
-    }
-
-    if (mode.object === "SUCCESSIVE") {
-      return getVerifiedEventDate(facts, "Successive Breach Date");
-    }
-
-    if (mode.object === "CONTINUING") {
-      /*
-       * "Continuing Breach Date" is the canonical engine fact name for
-       * the date on which the continuing breach ceases, matching the
-       * Article 115 statutory commencement point.
-       */
-      return getVerifiedEventDate(facts, "Continuing Breach Date");
-    }
-
-    return null;
-  }
-
-  /*
-   * Article 116 does not commence independently from the registered
-   * contract's breach date. Its statutory reference point is when
-   * limitation would begin against a similar contract not registered.
-   *
-   * Therefore a dedicated, verified analogous-unregistered commencement
-   * fact is mandatory.
-   */
-  if (rule.article === "ARTICLE_116") {
-    return getVerifiedEventDate(
-      facts,
-      "Analogous Unregistered Contract Start",
-    );
-  }
-
-  /*
-   * Article 149 likewise does not independently commence from a generic
-   * Right to Sue Date. It adopts the commencement point applicable to
-   * a like suit by a private person.
-   */
-  if (rule.article === "ARTICLE_149") {
-    return getVerifiedEventDate(
-      facts,
-      "Analogous Private Suit Start",
-    );
-  }
-
-  const predicateByTrigger: Partial<
-    Record<LimitationRule["accrualTrigger"], string>
-  > = {
-    FIXED_PERFORMANCE_DATE: "Performance Date",
-    REFUSAL_DATE: "Refusal Date",
-    KNOWLEDGE_DATE: "Knowledge Date",
-    DISPOSSESSION_DATE: "Dispossession Date",
-    RIGHT_TO_SUE_DATE: "Right to Sue Date",
-    DEMAND_DATE: "Demand Date",
-    CONTRACT_BREACH_DATE: "Contract Breach Date",
-    SUCCESSIVE_BREACH_DATE: "Successive Breach Date",
-    CONTINUING_BREACH_DATE: "Continuing Breach Date",
-    ANALOGOUS_UNREGISTERED_CONTRACT_START:
-      "Analogous Unregistered Contract Start",
-    ANALOGOUS_PRIVATE_SUIT_START:
-      "Analogous Private Suit Start",
-    ADVERSE_POSSESSION_DATE: "Adverse Possession Date",
-  };
-
-  const predicate = predicateByTrigger[rule.accrualTrigger];
-
-  if (!predicate) {
-    return null;
-  }
-
-  return getVerifiedEventDate(facts, predicate);
 }
 
 function predicateIsSatisfied(
@@ -460,9 +181,9 @@ export function evaluateLimitation(
     };
   }
 
-  const referenceDate = parseISODate(input.referenceDate);
+  const referenceDate = input.referenceDate;
 
-  if (!referenceDate) {
+  if (!referenceDate || !isISODateString(referenceDate)) {
     return {
       ...base,
       status: "INDETERMINATE",
@@ -505,9 +226,12 @@ export function evaluateLimitation(
     };
   }
 
-  const accrualDate = getAccrualDate(input.rule, input.facts);
+  const accrualResolution = resolveLimitationAccrual(
+    input.rule,
+    input.facts,
+  );
 
-  if (!accrualDate) {
+  if (!accrualResolution.accrualDate) {
     return {
       ...base,
       status: "INDETERMINATE",
@@ -515,12 +239,15 @@ export function evaluateLimitation(
       accrualDate: null,
       calculationType: "missing_accrual_trigger",
       errors: [
-        `Accrual trigger unavailable: ${input.rule.accrualTrigger}`,
+        accrualResolution.error ??
+          `Accrual trigger unavailable: ${input.rule.accrualTrigger}`,
       ],
     };
   }
 
-  if (accrualDate > input.referenceDate!) {
+  const accrualDate = accrualResolution.accrualDate;
+
+  if (compareISO(accrualDate, referenceDate) > 0) {
     return {
       ...base,
       status: "INDETERMINATE",
@@ -533,12 +260,16 @@ export function evaluateLimitation(
     };
   }
 
-  const temporalVersion = selectTemporalVersion(
-    input.rule.temporalVersions,
+  const periodResolution = resolveLimitationPeriod(
+    input.rule,
     accrualDate,
   );
 
-  if (!temporalVersion) {
+  if (
+    periodResolution.status !== "RESOLVED" ||
+    periodResolution.periodValue === null ||
+    periodResolution.periodUnit === null
+  ) {
     return {
       ...base,
       status: "INDETERMINATE",
@@ -546,37 +277,46 @@ export function evaluateLimitation(
       accrualDate,
       calculationType: "missing_temporal_version",
       errors: [
-        `No limitation temporal version applies to accrual date ${accrualDate}`,
+        periodResolution.error ??
+          `No limitation temporal version applies to accrual date ${accrualDate}`,
       ],
     };
   }
 
-  const expiryDate = addCalendarYears(
+  const computation = computeLimitationDeadline({
     accrualDate,
-    temporalVersion.limitationPeriodYears,
-  );
+    periodValue: periodResolution.periodValue,
+    periodUnit: periodResolution.periodUnit,
+  });
 
-  if (!expiryDate) {
+  if (!computation) {
     return {
       ...base,
       status: "INDETERMINATE",
       isTimeBarred: null,
       accrualDate,
+      limitationPeriodYears:
+        periodResolution.periodUnit === "YEAR"
+          ? periodResolution.periodValue
+          : null,
       calculationType: "invalid_calendar_calculation",
-      errors: ["Calendar anniversary calculation failed"],
+      errors: ["Base statutory calendar calculation failed"],
     };
   }
 
   /*
-   * Section 12-compatible calendar treatment:
-   * the accrual day itself is excluded and the anniversary represents
-   * the final day of the prescribed period.
+   * P4-06 migration boundary:
    *
-   * Therefore:
-   *   referenceDate > expiryDate => barred
-   *   referenceDate <= expiryDate => not barred
+   * rawExpiryDate is the deterministic base-calendar result.
+   * finalDeadline remains unresolved until the statutory adjustment
+   * layer implements Sections 4, 5, 12, 13-25 and 29.
+   *
+   * The existing expiryDate field is retained as a compatibility
+   * representation of rawExpiryDate. It must not be interpreted as
+   * a fully statutory-adjusted final filing deadline.
    */
-  const isTimeBarred = input.referenceDate! > expiryDate;
+  const expiryDate = computation.rawExpiryDate;
+  const isTimeBarred = compareISO(referenceDate, expiryDate) > 0;
 
   return {
     ...base,
@@ -584,7 +324,10 @@ export function evaluateLimitation(
     isTimeBarred,
     accrualDate,
     expiryDate,
-    limitationPeriodYears: temporalVersion.limitationPeriodYears,
+    limitationPeriodYears:
+      periodResolution.periodUnit === "YEAR"
+        ? periodResolution.periodValue
+        : null,
     calculationType: "calendar_anniversary",
   };
 }
