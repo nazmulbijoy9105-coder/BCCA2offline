@@ -3051,99 +3051,33 @@ export class BCCAAEngine {
     }
 
     /*
-     * Compatibility path for callers that invoke this private method
-     * without canonical routing. This preserves existing development
-     * behavior while ensuring the normal pipeline cannot silently lose
-     * canonical identity.
+     * NON-CANONICAL INVOCATION:
+     *
+     * Limitation selection is a legal classification decision and must not
+     * fall back to generic registry candidates. Production execution must
+     * establish canonical routing before an executable limitation article
+     * can be selected.
+     *
+     * Returning INDETERMINATE here prevents a private/internal compatibility
+     * invocation from silently selecting whichever registry rule happens to
+     * evaluate as determinate.
      */
-    const candidates = this.limitationRuleRegistry
-      .getCandidateRules(claimType)
-      .slice()
-      .sort((a, b) => {
-        if (a.applicability.residualRule && !b.applicability.residualRule) {
-          return 1;
-        }
-        if (!a.applicability.residualRule && b.applicability.residualRule) {
-          return -1;
-        }
-        return 0;
-      });
-
-    if (candidates.length === 0) {
-      return {
-        isTimeBarred: null,
-        accrualDate: null,
-        limitationPeriodYears: null,
-        limitationArticle: null,
-        calculationType: "no_candidate_rule",
-        timelineValidation: {
-          isValid: false,
-          errors: ["No limitation rule candidate exists for the claim type"],
-          warnings: [],
-          calculationType: "no_candidate_rule",
-        },
-        preliminaryAnalysis:
-          "Limitation cannot be computed — no limitation rule candidate exists",
-      };
-    }
-
-    let firstIndeterminate: LimitationEvaluationResult | null = null;
-
-    for (const rule of candidates) {
-      const result = evaluateLimitation({
-        rule,
-        facts: limitationFacts,
-        referenceDate: referenceISO,
-      });
-
-      if (result.status === "BARRED" || result.status === "NOT_BARRED") {
-        return {
-          isTimeBarred: result.isTimeBarred,
-          accrualDate: result.accrualDate,
-          limitationPeriodYears: result.limitationPeriodYears,
-          limitationArticle: result.limitationArticle,
-          calculationType: result.calculationType,
-          timelineValidation: {
-            isValid: true,
-            errors: result.errors,
-            warnings: result.warnings,
-            limitationArticle: result.limitationArticle,
-            limitationPeriodYears: result.limitationPeriodYears,
-            calculationType: result.calculationType,
-          },
-          preliminaryAnalysis:
-            `Limitation determined under ${result.limitationArticle}`,
-        };
-      }
-
-      if (!firstIndeterminate) {
-        firstIndeterminate = result;
-      }
-    }
-
-    const unresolved = firstIndeterminate;
-
     return {
       isTimeBarred: null,
-      accrualDate: unresolved?.accrualDate ?? null,
-      limitationPeriodYears: unresolved?.limitationPeriodYears ?? null,
-      limitationArticle: unresolved?.limitationArticle ?? null,
-      calculationType:
-        unresolved?.calculationType ?? "limitation_indeterminate",
+      accrualDate: null,
+      limitationPeriodYears: null,
+      limitationArticle: null,
+      calculationType: "canonical_limitation_resolution_required",
       timelineValidation: {
         isValid: false,
-        errors:
-          unresolved?.errors ?? [
-            "Applicable limitation rule remains unresolved",
-          ],
-        warnings: unresolved?.warnings ?? [],
-        limitationArticle: unresolved?.limitationArticle ?? null,
-        limitationPeriodYears: unresolved?.limitationPeriodYears ?? null,
-        calculationType:
-          unresolved?.calculationType ?? "limitation_indeterminate",
+        errors: [
+          "Canonical limitation routing is required before an executable limitation rule can be selected",
+        ],
+        warnings: [],
+        calculationType: "canonical_limitation_resolution_required",
       },
       preliminaryAnalysis:
-        "Limitation is INDETERMINATE because the applicable limitation rule or mandatory facts remain unresolved",
+        "Limitation is INDETERMINATE because canonical claim and limitation routing was not established",
     };
   }
 

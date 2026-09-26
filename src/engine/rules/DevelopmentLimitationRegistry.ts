@@ -104,6 +104,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
       claimTypes: ["GENERAL_CIVIL"],
       requiredPredicates: [
         { predicate: "Relief", object: "RESCISSION" },
+        { predicate: "Knowledge Date" },
       ],
     },
     accrualTrigger: "KNOWLEDGE_DATE",
@@ -125,6 +126,20 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
         { predicate: "Relief", object: "CONTRACT_COMPENSATION" },
         { predicate: "Contract Registration Status", object: "NOT_REGISTERED" },
       ],
+      alternativePredicateGroups: [
+        [
+          { predicate: "Contract Breach Mode", object: "ORDINARY" },
+          { predicate: "Contract Breach Date" },
+        ],
+        [
+          { predicate: "Contract Breach Mode", object: "SUCCESSIVE" },
+          { predicate: "Successive Breach Date" },
+        ],
+        [
+          { predicate: "Contract Breach Mode", object: "CONTINUING" },
+          { predicate: "Continuing Breach Date" },
+        ],
+      ],
     },
     accrualTrigger: "CONTRACT_BREACH_DATE",
     temporalVersions: [
@@ -144,9 +159,10 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
       requiredPredicates: [
         { predicate: "Relief", object: "CONTRACT_COMPENSATION" },
         { predicate: "Contract Registration Status", object: "REGISTERED" },
+        { predicate: "Analogous Unregistered Contract Start" },
       ],
     },
-    accrualTrigger: "CONTRACT_BREACH_DATE",
+    accrualTrigger: "ANALOGOUS_UNREGISTERED_CONTRACT_START",
     temporalVersions: [
       { effectiveFrom: "1909-01-01", limitationPeriodYears: 6 },
     ],
@@ -238,11 +254,11 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
       ],
       requiredPredicates: [
         { predicate: "Plaintiff Capacity", object: "GOVERNMENT" },
-        { predicate: "Right to Sue Date" },
+        { predicate: "Analogous Private Suit Start" },
       ],
       residualRule: false,
     },
-    accrualTrigger: "RIGHT_TO_SUE_DATE",
+    accrualTrigger: "ANALOGOUS_PRIVATE_SUIT_START",
     temporalVersions: [
       { effectiveFrom: "1909-01-01", limitationPeriodYears: 60 },
     ],
