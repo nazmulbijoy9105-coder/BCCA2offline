@@ -71,8 +71,15 @@ export type LimitationRule = {
   temporalVersions: readonly LimitationTemporalVersion[];
 };
 
+export type LimitationCorpusIdentity = {
+  corpusId: string;
+  corpusVersion: string;
+  corpusDigest: string;
+};
+
 export type LimitationRuleRegistry = {
   version: string;
+  identity: LimitationCorpusIdentity;
   authorityStatus: "VALIDATED_PRODUCTION" | "DEVELOPMENT_FIXTURE";
   getRules(): readonly LimitationRule[];
   getCandidateRules(claimType: string): readonly LimitationRule[];

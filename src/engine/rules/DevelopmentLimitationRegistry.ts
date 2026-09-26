@@ -1,3 +1,10 @@
+import {
+  getCorpusHash,
+} from "../citations/CorpusHasher";
+import {
+  getCorpusName,
+  getCorpusVersion,
+} from "../citations/CorpusVersionLock";
 import type {
   LimitationRule,
   LimitationRuleRegistry,
@@ -12,6 +19,12 @@ import type {
  * Article 149 is an active First-Schedule limitation rule for Government
  * suits and must not be treated as a suspended historical fixture.
  */
+const LIMITATION_CORPUS_IDENTITY = {
+  corpusId: getCorpusName(),
+  corpusVersion: getCorpusVersion(),
+  corpusDigest: getCorpusHash(),
+} as const;
+
 const LIMITATION_RULES: readonly LimitationRule[] = [
   {
     ruleId: "BD-LIM-ARTICLE-91",
@@ -267,6 +280,7 @@ const LIMITATION_RULES: readonly LimitationRule[] = [
 
 export class DevelopmentLimitationRegistry implements LimitationRuleRegistry {
   readonly version = "DEVELOPMENT-LIMITATION-FIXTURE-1.0.0";
+  readonly identity = LIMITATION_CORPUS_IDENTITY;
   readonly authorityStatus = "DEVELOPMENT_FIXTURE" as const;
 
   getRules(): readonly LimitationRule[] {

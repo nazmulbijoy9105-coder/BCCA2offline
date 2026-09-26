@@ -662,6 +662,11 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
 
   const validLimitationRuleRegistry: LimitationRuleRegistry = {
     version: "1.0.0",
+    identity: {
+      corpusId: "test-corpus",
+      corpusVersion: "1.0.0",
+      corpusDigest: "test-digest",
+    },
     authorityStatus: "VALIDATED_PRODUCTION",
     getRules: () => [],
     getCandidateRules: () => [],
@@ -670,6 +675,11 @@ describe("VALIDATED_PRODUCTION configuration guards", () => {
 
   const devLimitationRuleRegistry: LimitationRuleRegistry = {
     version: "DEVELOPMENT-FIXTURE-1.0.0",
+    identity: {
+      corpusId: "test-corpus",
+      corpusVersion: "1.0.0",
+      corpusDigest: "test-digest",
+    },
     authorityStatus: "DEVELOPMENT_FIXTURE",
     getRules: () => [],
     getCandidateRules: () => [],
