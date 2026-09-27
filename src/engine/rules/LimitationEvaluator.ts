@@ -316,8 +316,8 @@ export function evaluateLimitation(
    */
   const statutoryAdjustment =
     resolveLimitationStatutoryAdjustment({
-      rawExpiryDate: computation.rawExpiryDate,
       facts: input.facts,
+      rawExpiryDate: computation.rawExpiryDate,
     });
 
   if (
@@ -351,7 +351,6 @@ export function evaluateLimitation(
         status: "NOT_BARRED",
         isTimeBarred: false,
         accrualDate,
-        expiryDate: computation.rawExpiryDate,
         limitationPeriodYears:
           periodResolution.periodUnit === "YEAR"
             ? periodResolution.periodValue
@@ -370,7 +369,6 @@ export function evaluateLimitation(
       status: "INDETERMINATE",
       isTimeBarred: null,
       accrualDate,
-      expiryDate: computation.rawExpiryDate,
       limitationPeriodYears:
         periodResolution.periodUnit === "YEAR"
           ? periodResolution.periodValue
