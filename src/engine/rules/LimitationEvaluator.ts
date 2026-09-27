@@ -2,6 +2,10 @@ import { compareISO, isISODateString } from "../../utils/isoDate";
 import { resolveLimitationAccrual } from "./LimitationAccrualResolver";
 import { resolveLimitationPeriod } from "./LimitationPeriodResolver";
 import { computeLimitationDeadline } from "./LimitationStatutoryComputation";
+import { evaluateLimitationDeadline } from "./LimitationDeadline";
+import {
+  resolveLimitationStatutoryAdjustment,
+} from "./LimitationStatutoryAdjustment";
 import type {
   LimitationFact,
   LimitationRule,
@@ -305,29 +309,115 @@ export function evaluateLimitation(
   }
 
   /*
-   * P4-06 migration boundary:
+   * P4-07 statutory adjustment boundary.
    *
-   * rawExpiryDate is the deterministic base-calendar result.
-   * finalDeadline remains unresolved until the statutory adjustment
-   * layer implements Sections 4, 5, 12, 13-25 and 29.
-   *
-   * The existing expiryDate field is retained as a compatibility
-   * representation of rawExpiryDate. It must not be interpreted as
-   * a fully statutory-adjusted final filing deadline.
+   * rawExpiryDate is only the deterministic P4-06 calendar result.
+   * It must never be used directly to determine limitation status.
    */
-  const expiryDate = computation.rawExpiryDate;
-  const isTimeBarred = compareISO(referenceDate, expiryDate) > 0;
+  const statutoryAdjustment =
+    resolveLimitationStatutoryAdjustment({
+      rawExpiryDate: computation.rawExpiryDate,
+      facts: input.facts,
+    });
+
+  if (
+    statutoryAdjustment.status !== "RESOLVED" ||
+    !statutoryAdjustment.finalDeadline
+  ) {
+    /*
+     * P4-07 one-sided safety rule.
+     *
+     * An unresolved Section 4 court-closure adjustment cannot safely
+     * produce BARRED after the raw expiry date because a later
+     * reopening date may extend the filing deadline.
+     *
+     * When the reference date is on or before the raw expiry,
+     * NOT_BARRED remains logically safe because Section 4 can only
+     * preserve or extend the filing opportunity beyond the raw
+     * calendar boundary.
+     *
+     * This does NOT treat rawExpiryDate as the final statutory
+     * filing deadline.
+     */
+    const safelyNotBarred =
+      compareISO(
+        referenceDate,
+        computation.rawExpiryDate,
+      ) <= 0;
+
+    if (safelyNotBarred) {
+      return {
+        ...base,
+        status: "NOT_BARRED",
+        isTimeBarred: false,
+        accrualDate,
+        expiryDate: computation.rawExpiryDate,
+        limitationPeriodYears:
+          periodResolution.periodUnit === "YEAR"
+            ? periodResolution.periodValue
+            : null,
+        calculationType: "statutory_deadline_pending_adjustment",
+        errors: [],
+        warnings: [
+          ...statutoryAdjustment.errors,
+          "Final statutory filing deadline remains unresolved; NOT_BARRED is safe because the reference date is on or before the raw calendar expiry",
+        ],
+      };
+    }
+
+    return {
+      ...base,
+      status: "INDETERMINATE",
+      isTimeBarred: null,
+      accrualDate,
+      expiryDate: computation.rawExpiryDate,
+      limitationPeriodYears:
+        periodResolution.periodUnit === "YEAR"
+          ? periodResolution.periodValue
+          : null,
+      calculationType: "statutory_adjustment_unresolved",
+      errors:
+        statutoryAdjustment.errors.length > 0
+          ? [...statutoryAdjustment.errors]
+          : [
+              "Final statutory limitation deadline could not be resolved",
+            ],
+    };
+  }
+
+  const deadlineEvaluation = evaluateLimitationDeadline(
+    referenceDate,
+    statutoryAdjustment.finalDeadline,
+  );
+
+  if (deadlineEvaluation.status === "INDETERMINATE") {
+    return {
+      ...base,
+      status: "INDETERMINATE",
+      isTimeBarred: null,
+      accrualDate,
+      expiryDate: statutoryAdjustment.finalDeadline,
+      limitationPeriodYears:
+        periodResolution.periodUnit === "YEAR"
+          ? periodResolution.periodValue
+          : null,
+      calculationType: "invalid_final_deadline",
+      errors: [
+        "Final statutory limitation deadline could not be evaluated",
+      ],
+    };
+  }
 
   return {
     ...base,
-    status: isTimeBarred ? "BARRED" : "NOT_BARRED",
-    isTimeBarred,
+    status: deadlineEvaluation.status,
+    isTimeBarred: deadlineEvaluation.isTimeBarred,
     accrualDate,
-    expiryDate,
+    expiryDate: statutoryAdjustment.finalDeadline,
     limitationPeriodYears:
       periodResolution.periodUnit === "YEAR"
         ? periodResolution.periodValue
         : null,
-    calculationType: "calendar_anniversary",
+    calculationType: "statutory_deadline",
   };
 }

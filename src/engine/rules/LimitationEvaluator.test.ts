@@ -6,6 +6,7 @@ import {
 import {
   DevelopmentLimitationRegistry,
 } from "./DevelopmentLimitationRegistry";
+import { Tristate } from "./RuleContracts";
 import type {
   LimitationFact,
   LimitationRule,
@@ -30,6 +31,7 @@ function fact(
   options: {
     object?: string;
     eventDate?: string;
+    state?: LimitationFact["state"];
     verified?: boolean;
   } = {},
 ): LimitationFact {
@@ -37,6 +39,7 @@ function fact(
     predicate,
     object: options.object,
     eventDate: options.eventDate,
+    state: options.state,
     verified: options.verified ?? true,
   };
 }
@@ -105,6 +108,49 @@ describe("P5-15: deterministic limitation evaluator", () => {
     expect(result.limitationArticle).toBe("ARTICLE_113");
   });
 
+  it("unresolved Section 4 adjustment remains safely NOT_BARRED on the raw expiry date", () => {
+    const result = evaluate(
+      "ARTICLE_113",
+      [
+        fact("Relief", { object: "SPECIFIC_PERFORMANCE" }),
+        fact("Contract"),
+        fact("Performance Date", { eventDate: "2024-01-15" }),
+        fact("Fixed Performance Date", { object: "YES" }),
+      ],
+      "2025-01-15",
+    );
+
+    expect(result.status).toBe("NOT_BARRED");
+    expect(result.isTimeBarred).toBe(false);
+    expect(result.expiryDate).toBe("2025-01-15");
+    expect(result.calculationType).toBe(
+      "statutory_deadline_pending_adjustment",
+    );
+    expect(result.warnings).toContain(
+      "Final statutory filing deadline remains unresolved; NOT_BARRED is safe because the reference date is on or before the raw calendar expiry",
+    );
+  });
+
+  it("unresolved Section 4 adjustment cannot establish BARRED after the raw expiry", () => {
+    const result = evaluate(
+      "ARTICLE_113",
+      [
+        fact("Relief", { object: "SPECIFIC_PERFORMANCE" }),
+        fact("Contract"),
+        fact("Performance Date", { eventDate: "2024-01-15" }),
+        fact("Fixed Performance Date", { object: "YES" }),
+      ],
+      "2025-01-16",
+    );
+
+    expect(result.status).toBe("INDETERMINATE");
+    expect(result.isTimeBarred).toBeNull();
+    expect(result.expiryDate).toBe("2025-01-15");
+    expect(result.calculationType).toBe(
+      "statutory_adjustment_unresolved",
+    );
+  });
+
   it("Article 113 is barred after the one-year anniversary", () => {
     const result = evaluate(
       "ARTICLE_113",
@@ -113,6 +159,11 @@ describe("P5-15: deterministic limitation evaluator", () => {
         fact("Contract"),
         fact("Performance Date", { eventDate: "2024-01-15" }),
         fact("Fixed Performance Date", { object: "YES" }),
+        fact("Court Closed On Limitation Date", {
+          eventDate: "2025-01-15",
+          state: Tristate.FALSE,
+          verified: true,
+        }),
       ],
       "2025-01-16",
     );
@@ -146,6 +197,11 @@ describe("P5-15: deterministic limitation evaluator", () => {
         fact("Contract"),
         fact("Performance Date", { eventDate: "2004-06-30" }),
         fact("Fixed Performance Date", { object: "YES" }),
+        fact("Court Closed On Limitation Date", {
+          eventDate: "2007-06-30",
+          state: Tristate.FALSE,
+          verified: true,
+        }),
       ],
       "2007-07-01",
     );
@@ -431,6 +487,11 @@ describe("P5-15: deterministic limitation evaluator", () => {
           eventDate: "2022-01-01",
         }),
         fact("Knowledge Date", { eventDate: "2023-01-01" }),
+        fact("Court Closed On Limitation Date", {
+          eventDate: "2026-01-01",
+          state: Tristate.FALSE,
+          verified: true,
+        }),
       ],
       "2026-01-02",
     );
@@ -448,6 +509,11 @@ describe("P5-15: deterministic limitation evaluator", () => {
         fact("Relief", { object: "RECOVERY_OF_POSSESSION" }),
         fact("Plaintiff Possessory Entitlement"),
         fact("Dispossession Date", { eventDate: "2013-01-01" }),
+        fact("Court Closed On Limitation Date", {
+          eventDate: "2025-01-01",
+          state: Tristate.FALSE,
+          verified: true,
+        }),
       ],
       "2026-01-01",
     );
